@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Upload } from 'lucide-react';
+import { PlusCircle, Trash2, Upload, X } from 'lucide-react';
 import type { StepProps, ExclusionRule } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 type RuleType = 'Person Type' | 'Department' | 'Legal Entity';
 
@@ -21,6 +22,17 @@ export function EligibilityCriteria({ state, dispatch, onComplete }: StepProps) 
   const [newLovValue, setNewLovValue] = useState('');
   const { toast } = useToast();
 
+  const handleAddValueToRule = (value: string) => {
+    if (!newRuleType || !value) return;
+    if (!newRuleValues.includes(value)) {
+        setNewRuleValues([...newRuleValues, value]);
+    }
+  };
+
+  const handleRemoveValueFromRule = (value: string) => {
+    setNewRuleValues(newRuleValues.filter(v => v !== value));
+  };
+  
   const handleAddRule = () => {
     if (!newRuleType || newRuleValues.length === 0) {
       toast({ title: "Rule type and values are required", variant: "destructive" });
@@ -77,13 +89,27 @@ export function EligibilityCriteria({ state, dispatch, onComplete }: StepProps) 
                     <SelectItem value="Legal Entity">Legal Entity</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select multiple value={newRuleValues} onValueChange={setNewRuleValues} disabled={!newRuleType}>
+                <Select onValueChange={handleAddValueToRule} disabled={!newRuleType} value="">
                   <SelectTrigger><SelectValue placeholder="Select Values to Exclude" /></SelectTrigger>
                   <SelectContent>
                     {getLovForType(newRuleType).map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
+
+              {newRuleValues.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    {newRuleValues.map(val => (
+                        <Badge key={val} variant="secondary" className="flex items-center gap-1">
+                            {val}
+                            <button onClick={() => handleRemoveValueFromRule(val)} className="rounded-full hover:bg-muted-foreground/20">
+                                <X className="h-3 w-3"/>
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+              )}
+
               <Button onClick={handleAddRule} variant="secondary"><PlusCircle className="mr-2"/>Add Rule</Button>
 
               {newRuleType && (
