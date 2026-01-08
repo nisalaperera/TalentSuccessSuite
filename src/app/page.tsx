@@ -61,14 +61,66 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
 }
 
 const steps = [
+  // Stage 1: Independent
   'reviewPeriod', 
   'performanceTemplate', 
   'evaluationFlow', 
   'eligibility', 
+
+  // Stage 2: Dependent on Stage 1
   'goalPlan', 
   'performanceTemplateSection', 
+  
+  // Stage 3: Final Assembly
   'performanceDocument'
 ];
+
+const stepComponents = {
+  reviewPeriod: {
+    title: 'Review Period Management',
+    Component: ReviewPeriod,
+  },
+  performanceTemplate: {
+    title: 'Performance Template Setup',
+    Component: PerformanceTemplate,
+  },
+  evaluationFlow: {
+    title: 'Evaluation Flow Setup',
+    Component: EvaluationFlow,
+  },
+  eligibility: {
+    title: 'Eligibility Criteria Definition',
+    Component: EligibilityCriteria,
+  },
+  goalPlan: {
+    title: 'Goal Plan Configuration',
+    Component: GoalPlan,
+  },
+  performanceTemplateSection: {
+    title: 'Performance Template Section Setup',
+    Component: PerformanceTemplateSection,
+  },
+  performanceDocument: {
+    title: 'Performance Document Setup',
+    Component: PerformanceDocument,
+  }
+};
+
+const flowStructure = [
+  {
+    title: "Foundation Setup (can be done in any order)",
+    steps: ['reviewPeriod', 'performanceTemplate', 'evaluationFlow', 'eligibility'],
+  },
+  {
+    title: "Dependent Configuration",
+    steps: ['goalPlan', 'performanceTemplateSection'],
+  },
+  {
+    title: "Final Assembly",
+    steps: ['performanceDocument'],
+  },
+]
+
 
 export default function Home() {
   const [state, dispatch] = useReducer(configReducer, initialState);
@@ -76,20 +128,21 @@ export default function Home() {
 
   const handleNext = (currentItem: string) => {
     const currentIndex = steps.indexOf(currentItem);
-    if (currentIndex < steps.length - 1) {
-      const nextStep = steps[currentIndex + 1];
-      // Check if next step is disabled, if so, find the next available one.
-      if (isStepDisabled(nextStep)) {
-        // This is a simplistic approach. A more robust solution might be needed
-        // if there are complex branching paths.
-        for (let i = currentIndex + 2; i < steps.length; i++) {
-          if (!isStepDisabled(steps[i])) {
-            setOpenItem(steps[i]);
-            return;
-          }
+    
+    // Simply close the current item, and let the user decide what to open next.
+    if (openItem === currentItem) {
+        // Find the next available item to open, if any
+        for (let i = currentIndex + 1; i < steps.length; i++) {
+            const nextStep = steps[i];
+            if (!isStepDisabled(nextStep)) {
+                setOpenItem(nextStep);
+                return;
+            }
         }
-      }
-      setOpenItem(nextStep);
+        setOpenItem(''); // Close if no next step is available
+    } else {
+        // Let user open steps manually
+        setOpenItem(currentItem);
     }
   };
 
@@ -118,7 +171,7 @@ export default function Home() {
       case 'performanceTemplateSection':
         return !isStepComplete('performanceTemplate');
       case 'performanceDocument':
-        return !isStepComplete('goalPlan') || !isStepComplete('performanceTemplate') || !isStepComplete('evaluationFlow') || !isStepComplete('eligibility');
+        return !isStepComplete('goalPlan') || !isStepComplete('performanceTemplateSection') || !isStepComplete('evaluationFlow') || !isStepComplete('eligibility');
       default:
         return true;
     }
@@ -135,37 +188,6 @@ export default function Home() {
     );
   };
 
-  const stepComponents = {
-    reviewPeriod: {
-      title: '1. Review Period Management',
-      Component: ReviewPeriod,
-    },
-    performanceTemplate: {
-      title: '2. Performance Template Setup',
-      Component: PerformanceTemplate,
-    },
-     evaluationFlow: {
-      title: '3. Evaluation Flow Setup',
-      Component: EvaluationFlow,
-    },
-    eligibility: {
-      title: '4. Eligibility Criteria Definition',
-      Component: EligibilityCriteria,
-    },
-    goalPlan: {
-      title: '5. Goal Plan Configuration',
-      Component: GoalPlan,
-    },
-    performanceTemplateSection: {
-      title: '6. Performance Template Section Setup',
-      Component: PerformanceTemplateSection,
-    },
-    performanceDocument: {
-      title: '7. Performance Document Setup',
-      Component: PerformanceDocument,
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:px-8 md:py-12">
@@ -176,29 +198,34 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="max-w-4xl mx-auto">
-          <Accordion type="single" value={openItem} onValueChange={setOpenItem} className="w-full space-y-4">
-            {steps.map(stepKey => {
-              const stepInfo = stepComponents[stepKey as keyof typeof stepComponents];
-              const isDisabled = isStepDisabled(stepKey);
-              return (
-                <AccordionItem value={stepKey} key={stepKey} className="border-none">
-                  <AccordionTrigger
-                    disabled={isDisabled}
-                    className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <div className="flex items-center gap-4">
-                      {getStepStatusIcon(stepKey)}
-                      {stepInfo.title}
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                    <stepInfo.Component state={state} dispatch={dispatch} onComplete={() => handleNext(stepKey)} />
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
+        <div className="max-w-4xl mx-auto space-y-8">
+            {flowStructure.map((group, index) => (
+                <div key={index}>
+                    <h2 className="text-2xl font-headline font-semibold mb-4 text-foreground/90">{group.title}</h2>
+                    <Accordion type="single" value={openItem} onValueChange={setOpenItem} className="w-full space-y-4">
+                        {group.steps.map(stepKey => {
+                        const stepInfo = stepComponents[stepKey as keyof typeof stepComponents];
+                        const isDisabled = isStepDisabled(stepKey);
+                        return (
+                            <AccordionItem value={stepKey} key={stepKey} className="border-none">
+                            <AccordionTrigger
+                                disabled={isDisabled}
+                                className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <div className="flex items-center gap-4">
+                                {getStepStatusIcon(stepKey)}
+                                {stepInfo.title}
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
+                                <stepInfo.Component state={state} dispatch={dispatch} onComplete={() => handleNext(stepKey)} />
+                            </AccordionContent>
+                            </AccordionItem>
+                        );
+                        })}
+                    </Accordion>
+                </div>
+            ))}
         </div>
       </main>
     </div>
