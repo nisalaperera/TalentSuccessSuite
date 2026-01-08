@@ -5,6 +5,7 @@ import { useReducer, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CheckCircle2, Circle, Lock } from 'lucide-react';
 import type { ConfigState, Action } from '@/lib/types';
+import { format } from 'date-fns';
 
 import { ReviewPeriod } from '@/app/components/config-flow/review-period';
 import { GoalPlan } from '@/app/components/config-flow/goal-plan';
@@ -205,7 +206,9 @@ export default function Home() {
                                     {stepInfo.title}
                                   </div>
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-base">{selectedReviewPeriod.name}</Badge>
+                                      <Badge variant="secondary" className="px-5 py-1 text-base">
+                                        {selectedReviewPeriod.name} ({format(selectedReviewPeriod.startDate, 'MMM d')} - {format(selectedReviewPeriod.endDate, 'MMM d, yyyy')})
+                                      </Badge>
                                   )}
                                 </div>
                             </AccordionTrigger>
