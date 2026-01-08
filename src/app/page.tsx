@@ -61,17 +61,12 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
 }
 
 const steps = [
-  // Stage 1: Independent
   'reviewPeriod', 
+  'goalPlan', 
   'performanceTemplate', 
+  'performanceTemplateSection', 
   'evaluationFlow', 
   'eligibility', 
-
-  // Stage 2: Dependent on Stage 1
-  'goalPlan', 
-  'performanceTemplateSection', 
-  
-  // Stage 3: Final Assembly
   'performanceDocument'
 ];
 
@@ -80,9 +75,17 @@ const stepComponents = {
     title: 'Review Period Management',
     Component: ReviewPeriod,
   },
+  goalPlan: {
+    title: 'Goal Plan Configuration',
+    Component: GoalPlan,
+  },
   performanceTemplate: {
     title: 'Performance Template Setup',
     Component: PerformanceTemplate,
+  },
+  performanceTemplateSection: {
+    title: 'Performance Template Section Setup',
+    Component: PerformanceTemplateSection,
   },
   evaluationFlow: {
     title: 'Evaluation Flow Setup',
@@ -92,14 +95,6 @@ const stepComponents = {
     title: 'Eligibility Criteria Definition',
     Component: EligibilityCriteria,
   },
-  goalPlan: {
-    title: 'Goal Plan Configuration',
-    Component: GoalPlan,
-  },
-  performanceTemplateSection: {
-    title: 'Performance Template Section Setup',
-    Component: PerformanceTemplateSection,
-  },
   performanceDocument: {
     title: 'Performance Document Setup',
     Component: PerformanceDocument,
@@ -108,15 +103,19 @@ const stepComponents = {
 
 const flowStructure = [
   {
-    title: "Foundation Setup (can be done in any order)",
-    steps: ['reviewPeriod', 'performanceTemplate', 'evaluationFlow', 'eligibility'],
+    title: "Periods & Goals",
+    steps: ['reviewPeriod', 'goalPlan'],
   },
   {
-    title: "Dependent Configuration",
-    steps: ['goalPlan', 'performanceTemplateSection'],
+    title: "Templates & Sections",
+    steps: ['performanceTemplate', 'performanceTemplateSection'],
   },
   {
-    title: "Final Assembly",
+    title: "Workflows & Eligibility",
+    steps: ['evaluationFlow', 'eligibility'],
+  },
+  {
+    title: "Final Document Assembly",
     steps: ['performanceDocument'],
   },
 ]
@@ -129,9 +128,7 @@ export default function Home() {
   const handleNext = (currentItem: string) => {
     const currentIndex = steps.indexOf(currentItem);
     
-    // Simply close the current item, and let the user decide what to open next.
     if (openItem === currentItem) {
-        // Find the next available item to open, if any
         for (let i = currentIndex + 1; i < steps.length; i++) {
             const nextStep = steps[i];
             if (!isStepDisabled(nextStep)) {
@@ -139,9 +136,8 @@ export default function Home() {
                 return;
             }
         }
-        setOpenItem(''); // Close if no next step is available
+        setOpenItem(''); 
     } else {
-        // Let user open steps manually
         setOpenItem(currentItem);
     }
   };
@@ -165,7 +161,7 @@ export default function Home() {
       case 'performanceTemplate':
       case 'evaluationFlow':
       case 'eligibility':
-        return false; // These are independent
+        return false;
       case 'goalPlan':
         return !isStepComplete('reviewPeriod');
       case 'performanceTemplateSection':
