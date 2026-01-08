@@ -13,6 +13,7 @@ import { PerformanceTemplateSection } from '@/app/components/config-flow/perform
 import { EvaluationFlow } from '@/app/components/config-flow/evaluation-flow';
 import { EligibilityCriteria } from '@/app/components/config-flow/eligibility-criteria';
 import { PerformanceDocument } from '@/app/components/config-flow/performance-document';
+import { Badge } from '@/components/ui/badge';
 
 const initialState: ConfigState = {
   reviewPeriods: [],
@@ -201,7 +202,7 @@ export default function Home() {
                                     {stepInfo.title}
                                   </div>
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
-                                      <span className="text-lg font-medium text-foreground/70">{selectedReviewPeriod.name}</span>
+                                      <Badge variant="secondary">{selectedReviewPeriod.name}</Badge>
                                   )}
                                 </div>
                             </AccordionTrigger>
