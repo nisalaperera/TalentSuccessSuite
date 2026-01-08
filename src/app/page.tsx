@@ -201,7 +201,7 @@ export default function Home() {
                                     {stepInfo.title}
                                   </div>
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
-                                      <span className="text-sm font-medium text-foreground/70">{selectedReviewPeriod.name}</span>
+                                      <span className="text-base font-medium text-foreground/70">{selectedReviewPeriod.name}</span>
                                   )}
                                 </div>
                             </AccordionTrigger>
