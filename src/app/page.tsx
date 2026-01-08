@@ -100,14 +100,17 @@ export default function Home() {
   const isStepDisabled = (step: string): boolean => {
      switch (step) {
       case 'reviewPeriod':
-      case 'performanceTemplate':
-      case 'evaluationFlow':
-      case 'eligibility':
         return false;
       case 'goalPlan':
         return !isStepComplete('reviewPeriod');
+      case 'performanceTemplate':
+        return false;
       case 'performanceTemplateSection':
         return !isStepComplete('performanceTemplate');
+      case 'evaluationFlow':
+        return false;
+      case 'eligibility':
+        return false;
       case 'performanceDocument':
         return !isStepComplete('goalPlan') || !isStepComplete('performanceTemplateSection') || !isStepComplete('evaluationFlow') || !isStepComplete('eligibility');
       default:
@@ -202,7 +205,7 @@ export default function Home() {
                                     {stepInfo.title}
                                   </div>
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
-                                      <Badge variant="secondary">{selectedReviewPeriod.name}</Badge>
+                                      <Badge variant="secondary" className="px-5 py-1 text-base">{selectedReviewPeriod.name}</Badge>
                                   )}
                                 </div>
                             </AccordionTrigger>
