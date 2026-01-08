@@ -51,6 +51,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
       status: 'Active' as const,
     };
     dispatch({ type: 'ADD_REVIEW_PERIOD', payload: newPeriod });
+    setSelectedReviewPeriodId(newPeriod.id);
     toast({
       title: 'Success',
       description: `Review period "${name}" has been created.`,

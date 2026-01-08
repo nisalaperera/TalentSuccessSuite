@@ -88,7 +88,7 @@ export default function Home() {
       case 'reviewPeriod': return state.reviewPeriods.length > 0 && !!selectedReviewPeriodId;
       case 'goalPlan': return state.goalPlans.length > 0;
       case 'performanceTemplate': return state.performanceTemplates.length > 0;
-      case 'performanceTemplateSection': return state.performanceTemplateSections.length > 0;
+      case 'performanceTemplateSection': return state.performanceTemplates.length > 0 && state.performanceTemplateSections.length > 0;
       case 'evaluationFlow': return state.evaluationFlows.length > 0;
       case 'eligibility': return state.eligibility.length > 0;
       case 'performanceDocument': return state.performanceDocuments.length > 0;
@@ -125,8 +125,14 @@ export default function Home() {
     );
   };
   
-  const stepComponents: { [key: string]: { title: string; Component: React.FC<any> } } = {
-    reviewPeriod: { title: 'Review Period Management', Component: ReviewPeriod },
+  const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
+
+  const stepComponents: { [key: string]: { title: string; Component: React.FC<any>, getTitle?: () => string } } = {
+    reviewPeriod: { 
+      title: 'Review Period Management', 
+      Component: ReviewPeriod,
+      getTitle: () => `Review Period Management ${selectedReviewPeriod ? `(${selectedReviewPeriod.name})` : ''}`
+    },
     goalPlan: { title: 'Goal Plan Configuration', Component: GoalPlan },
     performanceTemplate: { title: 'Performance Template Setup', Component: PerformanceTemplate },
     performanceTemplateSection: { title: 'Performance Template Section Setup', Component: PerformanceTemplateSection },
@@ -135,11 +141,9 @@ export default function Home() {
     performanceDocument: { title: 'Performance Document Setup', Component: PerformanceDocument },
   };
 
-  const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
-
   const flowStructure = [
     {
-      title: `Periods & Goals ${selectedReviewPeriod ? `(${selectedReviewPeriod.name})` : ''}`,
+      title: `Periods & Goals`,
       steps: ['reviewPeriod', 'goalPlan'],
     },
     {
@@ -194,7 +198,7 @@ export default function Home() {
                             >
                                 <div className="flex items-center gap-4">
                                 {getStepStatusIcon(stepKey)}
-                                {stepInfo.title}
+                                {stepInfo.getTitle ? stepInfo.getTitle() : stepInfo.title}
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
