@@ -60,77 +60,18 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
   }
 }
 
-const steps = [
-  'reviewPeriod', 
-  'goalPlan', 
-  'performanceTemplate', 
-  'performanceTemplateSection', 
-  'evaluationFlow', 
-  'eligibility', 
-  'performanceDocument'
-];
-
-const stepComponents = {
-  reviewPeriod: {
-    title: 'Review Period Management',
-    Component: ReviewPeriod,
-  },
-  goalPlan: {
-    title: 'Goal Plan Configuration',
-    Component: GoalPlan,
-  },
-  performanceTemplate: {
-    title: 'Performance Template Setup',
-    Component: PerformanceTemplate,
-  },
-  performanceTemplateSection: {
-    title: 'Performance Template Section Setup',
-    Component: PerformanceTemplateSection,
-  },
-  evaluationFlow: {
-    title: 'Evaluation Flow Setup',
-    Component: EvaluationFlow,
-  },
-  eligibility: {
-    title: 'Eligibility Criteria Definition',
-    Component: EligibilityCriteria,
-  },
-  performanceDocument: {
-    title: 'Performance Document Setup',
-    Component: PerformanceDocument,
-  }
-};
-
-const flowStructure = [
-  {
-    title: "Periods & Goals",
-    steps: ['reviewPeriod', 'goalPlan'],
-  },
-  {
-    title: "Templates & Sections",
-    steps: ['performanceTemplate', 'performanceTemplateSection'],
-  },
-  {
-    title: "Workflows & Eligibility",
-    steps: ['evaluationFlow', 'eligibility'],
-  },
-  {
-    title: "Final Document Assembly",
-    steps: ['performanceDocument'],
-  },
-]
-
-
 export default function Home() {
   const [state, dispatch] = useReducer(configReducer, initialState);
   const [openItem, setOpenItem] = useState('reviewPeriod');
+  const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>();
 
   const handleNext = (currentItem: string) => {
-    const currentIndex = steps.indexOf(currentItem);
+    const allSteps = flowStructure.flatMap(g => g.steps);
+    const currentIndex = allSteps.indexOf(currentItem);
     
     if (openItem === currentItem) {
-        for (let i = currentIndex + 1; i < steps.length; i++) {
-            const nextStep = steps[i];
+        for (let i = currentIndex + 1; i < allSteps.length; i++) {
+            const nextStep = allSteps[i];
             if (!isStepDisabled(nextStep)) {
                 setOpenItem(nextStep);
                 return;
@@ -144,7 +85,7 @@ export default function Home() {
 
   const isStepComplete = (step: string): boolean => {
     switch (step) {
-      case 'reviewPeriod': return state.reviewPeriods.length > 0;
+      case 'reviewPeriod': return state.reviewPeriods.length > 0 && !!selectedReviewPeriodId;
       case 'goalPlan': return state.goalPlans.length > 0;
       case 'performanceTemplate': return state.performanceTemplates.length > 0;
       case 'performanceTemplateSection': return state.performanceTemplateSections.length > 0;
@@ -183,6 +124,47 @@ export default function Home() {
       <Circle className="h-5 w-5 text-muted-foreground" />
     );
   };
+  
+  const stepComponents: { [key: string]: { title: string; Component: React.FC<any> } } = {
+    reviewPeriod: { title: 'Review Period Management', Component: ReviewPeriod },
+    goalPlan: { title: 'Goal Plan Configuration', Component: GoalPlan },
+    performanceTemplate: { title: 'Performance Template Setup', Component: PerformanceTemplate },
+    performanceTemplateSection: { title: 'Performance Template Section Setup', Component: PerformanceTemplateSection },
+    evaluationFlow: { title: 'Evaluation Flow Setup', Component: EvaluationFlow },
+    eligibility: { title: 'Eligibility Criteria Definition', Component: EligibilityCriteria },
+    performanceDocument: { title: 'Performance Document Setup', Component: PerformanceDocument },
+  };
+
+  const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
+
+  const flowStructure = [
+    {
+      title: `Periods & Goals ${selectedReviewPeriod ? `(${selectedReviewPeriod.name})` : ''}`,
+      steps: ['reviewPeriod', 'goalPlan'],
+    },
+    {
+      title: "Templates & Sections",
+      steps: ['performanceTemplate', 'performanceTemplateSection'],
+    },
+    {
+      title: "Workflows & Eligibility",
+      steps: ['evaluationFlow', 'eligibility'],
+    },
+    {
+      title: "Final Document Assembly",
+      steps: ['performanceDocument'],
+    },
+  ];
+
+  const componentProps = {
+    reviewPeriod: { state, dispatch, onComplete: () => handleNext('reviewPeriod'), selectedReviewPeriodId, setSelectedReviewPeriodId },
+    goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId },
+    performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate') },
+    performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection') },
+    evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow') },
+    eligibility: { state, dispatch, onComplete: () => handleNext('eligibility') },
+    performanceDocument: { state, dispatch, onComplete: () => handleNext('performanceDocument') },
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,6 +184,8 @@ export default function Home() {
                         {group.steps.map(stepKey => {
                         const stepInfo = stepComponents[stepKey as keyof typeof stepComponents];
                         const isDisabled = isStepDisabled(stepKey);
+                        const StepComponent = stepInfo.Component;
+                        
                         return (
                             <AccordionItem value={stepKey} key={stepKey} className="border-none">
                             <AccordionTrigger
@@ -214,7 +198,7 @@ export default function Home() {
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                                <stepInfo.Component state={state} dispatch={dispatch} onComplete={() => handleNext(stepKey)} />
+                                <StepComponent {...componentProps[stepKey as keyof typeof componentProps]} />
                             </AccordionContent>
                             </AccordionItem>
                         );

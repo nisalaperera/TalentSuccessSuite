@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -10,8 +11,15 @@ import { PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { StepProps } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
-export function ReviewPeriod({ state, dispatch, onComplete }: StepProps) {
+interface ReviewPeriodProps extends StepProps {
+    selectedReviewPeriodId?: string;
+    setSelectedReviewPeriodId: (id: string) => void;
+}
+
+export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriodId, setSelectedReviewPeriodId }: ReviewPeriodProps) {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
@@ -81,37 +89,43 @@ export function ReviewPeriod({ state, dispatch, onComplete }: StepProps) {
           <CardTitle className="font-headline">Existing Review Periods</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Review Period Name</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {state.reviewPeriods.length > 0 ? (
-                state.reviewPeriods.map((period) => (
-                  <TableRow key={period.id}>
-                    <TableCell className="font-medium">{period.name}</TableCell>
-                    <TableCell>{format(period.startDate, 'PPP')}</TableCell>
-                    <TableCell>{format(period.endDate, 'PPP')}</TableCell>
-                    <TableCell>{period.status}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          <RadioGroup value={selectedReviewPeriodId} onValueChange={setSelectedReviewPeriodId}>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">No review periods created yet.</TableCell>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>Review Period Name</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {state.reviewPeriods.length > 0 ? (
+                  state.reviewPeriods.map((period) => (
+                    <TableRow key={period.id}>
+                      <TableCell>
+                          <RadioGroupItem value={period.id} id={period.id} />
+                      </TableCell>
+                      <TableCell className="font-medium"><Label htmlFor={period.id}>{period.name}</Label></TableCell>
+                      <TableCell>{format(period.startDate, 'PPP')}</TableCell>
+                      <TableCell>{format(period.endDate, 'PPP')}</TableCell>
+                      <TableCell>{period.status}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center">No review periods created yet.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </RadioGroup>
         </CardContent>
       </Card>
       {state.reviewPeriods.length > 0 && (
          <div className="flex justify-end">
-            <Button onClick={onComplete} variant="default">Next Step</Button>
+            <Button onClick={onComplete} variant="default" disabled={!selectedReviewPeriodId}>Next Step</Button>
         </div>
       )}
     </div>
