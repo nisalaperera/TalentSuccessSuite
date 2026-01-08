@@ -107,8 +107,8 @@ export function EvaluationFlow({ state, dispatch, onComplete }: StepProps) {
                             <SelectContent>{ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                         </Select>
                     </TableCell>
-                    <TableCell><DatePicker date={step.startDate} setDate={d => handleStepChange(step.id!, 'startDate', d)} placeholder="Start"/></TableCell>
-                    <TableCell><DatePicker date={step.endDate} setDate={d => handleStepChange(step.id!, 'endDate', d)} placeholder="End"/></TableCell>
+                    <TableCell><DatePicker date={step.startDate} setDate={d => handleStepChange(step.id!, 'startDate', d)} placeholder="Start Date"/></TableCell>
+                    <TableCell><DatePicker date={step.endDate} setDate={d => handleStepChange(step.id!, 'endDate', d)} placeholder="End Date"/></TableCell>
                     <TableCell>{step.sequence && getFlowType(step.sequence, index)}</TableCell>
                     <TableCell>
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveStep(step.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>

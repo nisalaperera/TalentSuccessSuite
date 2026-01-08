@@ -126,12 +126,11 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
                 <DialogTitle className="font-headline">Create New Review Period</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     <Input
                     placeholder="e.g., FY 2024-25 Mid-Year"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="md:col-span-3"
                     />
                     <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
                     <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" />
