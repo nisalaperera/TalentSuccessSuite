@@ -61,6 +61,11 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
     setEndDate(undefined);
   };
 
+  const handleSelection = (id: string) => {
+    setSelectedReviewPeriodId(id);
+    onComplete();
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -90,7 +95,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
           <CardTitle className="font-headline">Existing Review Periods</CardTitle>
         </CardHeader>
         <CardContent>
-          <RadioGroup value={selectedReviewPeriodId} onValueChange={setSelectedReviewPeriodId}>
+          <RadioGroup value={selectedReviewPeriodId} onValueChange={handleSelection}>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -104,7 +109,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
               <TableBody>
                 {state.reviewPeriods.length > 0 ? (
                   state.reviewPeriods.map((period) => (
-                    <TableRow key={period.id}>
+                    <TableRow key={period.id} data-state={period.id === selectedReviewPeriodId ? 'selected' : 'unselected'}>
                       <TableCell>
                           <RadioGroupItem value={period.id} id={period.id} />
                       </TableCell>
