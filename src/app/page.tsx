@@ -67,6 +67,7 @@ export default function Home() {
   const [openItem, setOpenItem] = useState('reviewPeriod');
   const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>();
   const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>();
+  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
 
   const handleNext = (currentItem: string) => {
     const allSteps = flowStructure.flatMap(g => g.steps);
@@ -90,7 +91,7 @@ export default function Home() {
     switch (step) {
       case 'reviewPeriod': return state.reviewPeriods.length > 0 && !!selectedReviewPeriodId;
       case 'goalPlan': return state.goalPlans.length > 0 && !!selectedGoalPlanId;
-      case 'performanceTemplate': return state.performanceTemplates.length > 0;
+      case 'performanceTemplate': return state.performanceTemplates.length > 0 && !!selectedPerformanceTemplateId;
       case 'performanceTemplateSection': return state.performanceTemplates.length > 0 && state.performanceTemplateSections.length > 0;
       case 'evaluationFlow': return state.evaluationFlows.length > 0;
       case 'eligibility': return state.eligibility.length > 0;
@@ -133,6 +134,7 @@ export default function Home() {
   
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
   const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
+  const selectedPerformanceTemplate = state.performanceTemplates.find(p => p.id === selectedPerformanceTemplateId);
 
   const stepComponents: { [key: string]: { title: string; Component: React.FC<any> } } = {
     reviewPeriod: { 
@@ -169,7 +171,7 @@ export default function Home() {
   const componentProps = {
     reviewPeriod: { state, dispatch, onComplete: () => handleNext('reviewPeriod'), selectedReviewPeriodId, setSelectedReviewPeriodId },
     goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId },
-    performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate') },
+    performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate'), selectedPerformanceTemplateId, setSelectedPerformanceTemplateId },
     performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection') },
     evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow') },
     eligibility: { state, dispatch, onComplete: () => handleNext('eligibility') },
@@ -215,6 +217,11 @@ export default function Home() {
                                   {stepKey === 'goalPlan' && selectedGoalPlan && (
                                       <Badge variant="secondary" className="px-5 py-1 text-base">
                                         {selectedGoalPlan.name}
+                                      </Badge>
+                                  )}
+                                  {stepKey === 'performanceTemplate' && selectedPerformanceTemplate && (
+                                      <Badge variant="secondary" className="px-5 py-1 text-base">
+                                        {selectedPerformanceTemplate.name}
                                       </Badge>
                                   )}
                                 </div>
