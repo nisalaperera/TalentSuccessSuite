@@ -39,6 +39,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId }
       description: `Goal plan "${name}" has been created.`,
     });
     setName('');
+    onComplete();
   };
 
   const getReviewPeriodName = (id: string) => {
