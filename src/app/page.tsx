@@ -97,7 +97,7 @@ export default function Home() {
       case 'reviewPeriod': return state.reviewPeriods.length > 0 && !!selectedReviewPeriodId;
       case 'goalPlan': return state.goalPlans.length > 0 && !!selectedGoalPlanId;
       case 'performanceTemplate': return state.performanceTemplates.length > 0 && !!selectedPerformanceTemplateId;
-      case 'performanceTemplateSection': return state.performanceTemplates.length > 0 && state.performanceTemplateSections.length > 0;
+      case 'performanceTemplateSection': return state.performanceTemplateSections.length > 0;
       case 'evaluationFlow': return state.evaluationFlows.length > 0;
       case 'eligibility': return state.eligibility.length > 0;
       case 'performanceDocument': return state.performanceDocuments.length > 0;
@@ -114,7 +114,7 @@ export default function Home() {
       case 'performanceTemplate':
         return false;
       case 'performanceTemplateSection':
-        return !isStepComplete('performanceTemplate');
+        return state.performanceTemplates.length === 0;
       case 'evaluationFlow':
         return false;
       case 'eligibility':
