@@ -127,11 +127,10 @@ export default function Home() {
   
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
 
-  const stepComponents: { [key: string]: { title: string; Component: React.FC<any>, getTitle?: () => string } } = {
+  const stepComponents: { [key: string]: { title: string; Component: React.FC<any> } } = {
     reviewPeriod: { 
       title: 'Review Period Management', 
       Component: ReviewPeriod,
-      getTitle: () => `Review Period Management ${selectedReviewPeriod ? `(${selectedReviewPeriod.name})` : ''}`
     },
     goalPlan: { title: 'Goal Plan Configuration', Component: GoalPlan },
     performanceTemplate: { title: 'Performance Template Setup', Component: PerformanceTemplate },
@@ -196,9 +195,14 @@ export default function Home() {
                                 disabled={isDisabled}
                                 className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <div className="flex items-center gap-4">
-                                {getStepStatusIcon(stepKey)}
-                                {stepInfo.getTitle ? stepInfo.getTitle() : stepInfo.title}
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center gap-4">
+                                    {getStepStatusIcon(stepKey)}
+                                    {stepInfo.title}
+                                  </div>
+                                  {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
+                                      <span className="text-sm font-medium text-foreground/70">{selectedReviewPeriod.name}</span>
+                                  )}
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
