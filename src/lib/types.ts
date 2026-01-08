@@ -12,7 +12,7 @@ export type GoalPlan = {
   reviewPeriodId: string;
 };
 
-export type DocumentType = {
+export type PerformanceTemplate = {
   id: string;
   name: string;
   category: 'Performance' | 'Survey';
@@ -27,11 +27,11 @@ export type AccessPermission = {
   edit: boolean;
 };
 
-export type DocumentSection = {
+export type PerformanceTemplateSection = {
   id: string;
   name: string;
   type: 'Performance Goals' | 'Overall Summary' | 'Survey Question Group' | 'Rating Only' | 'Comment Only' | 'Mixed Feedback';
-  documentTypeId: string;
+  performanceTemplateId: string;
   ratingScale?: number;
   permissions: AccessPermission[];
 };
@@ -69,7 +69,7 @@ export type PerformanceDocument = {
   name: string;
   reviewPeriodId: string;
   goalPlanId: string;
-  documentTypeId: string;
+  performanceTemplateId: string;
   sectionIds: string[];
   evaluationFlowId: string;
   eligibilityId: string;
@@ -88,8 +88,8 @@ export type LOVs = {
 export type ConfigState = {
   reviewPeriods: ReviewPeriod[];
   goalPlans: GoalPlan[];
-  documentTypes: DocumentType[];
-  documentSections: DocumentSection[];
+  performanceTemplates: PerformanceTemplate[];
+  performanceTemplateSections: PerformanceTemplateSection[];
   evaluationFlows: EvaluationFlow[];
   eligibility: Eligibility[];
   performanceDocuments: PerformanceDocument[];
@@ -99,8 +99,8 @@ export type ConfigState = {
 export type Action =
   | { type: 'ADD_REVIEW_PERIOD'; payload: ReviewPeriod }
   | { type: 'ADD_GOAL_PLAN'; payload: GoalPlan }
-  | { type: 'ADD_DOCUMENT_TYPE'; payload: DocumentType }
-  | { type: 'SET_DOCUMENT_SECTIONS'; payload: DocumentSection[] }
+  | { type: 'ADD_PERFORMANCE_TEMPLATE'; payload: PerformanceTemplate }
+  | { type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS'; payload: PerformanceTemplateSection[] }
   | { type: 'ADD_EVALUATION_FLOW'; payload: EvaluationFlow }
   | { type: 'ADD_ELIGIBILITY'; payload: Eligibility }
   | { type: 'ADD_PERFORMANCE_DOCUMENT'; payload: PerformanceDocument }

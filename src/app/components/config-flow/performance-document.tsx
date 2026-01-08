@@ -16,7 +16,7 @@ export function PerformanceDocument({ state, dispatch }: StepProps) {
   const [name, setName] = useState('');
   const [reviewPeriodId, setReviewPeriodId] = useState<string>();
   const [goalPlanId, setGoalPlanId] = useState<string>();
-  const [documentTypeId, setDocumentTypeId] = useState<string>();
+  const [performanceTemplateId, setPerformanceTemplateId] = useState<string>();
   const [evaluationFlowId, setEvaluationFlowId] = useState<string>();
   const [eligibilityId, setEligibilityId] = useState<string>();
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
@@ -27,7 +27,7 @@ export function PerformanceDocument({ state, dispatch }: StepProps) {
   const { toast } = useToast();
 
   const handleCreateDocument = () => {
-    if (!name || !reviewPeriodId || !goalPlanId || !documentTypeId || !evaluationFlowId || !eligibilityId) {
+    if (!name || !reviewPeriodId || !goalPlanId || !performanceTemplateId || !evaluationFlowId || !eligibilityId) {
       toast({ title: "All fields are required", variant: "destructive" });
       return;
     }
@@ -37,7 +37,7 @@ export function PerformanceDocument({ state, dispatch }: StepProps) {
       name,
       reviewPeriodId,
       goalPlanId,
-      documentTypeId,
+      performanceTemplateId,
       sectionIds: selectedSections,
       evaluationFlowId,
       eligibilityId,
@@ -54,14 +54,14 @@ export function PerformanceDocument({ state, dispatch }: StepProps) {
     setName('');
     setReviewPeriodId(undefined);
     setGoalPlanId(undefined);
-    setDocumentTypeId(undefined);
+    setPerformanceTemplateId(undefined);
     setEvaluationFlowId(undefined);
     setEligibilityId(undefined);
     setSelectedSections([]);
   };
   
-  const getDocTypeName = (id: string) => state.documentTypes.find(dt => dt.id === id)?.name || '';
-  const availableSections = state.documentSections.filter(s => s.documentTypeId === documentTypeId);
+  const getPerformanceTemplateName = (id: string) => state.performanceTemplates.find(dt => dt.id === id)?.name || '';
+  const availableSections = state.performanceTemplateSections.filter(s => s.performanceTemplateId === performanceTemplateId);
 
   return (
     <div className="space-y-6">
@@ -75,14 +75,14 @@ export function PerformanceDocument({ state, dispatch }: StepProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Select onValueChange={setReviewPeriodId} value={reviewPeriodId}><SelectTrigger><SelectValue placeholder="Select Review Period"/></SelectTrigger><SelectContent>{state.reviewPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
             <Select onValueChange={setGoalPlanId} value={goalPlanId}><SelectTrigger><SelectValue placeholder="Select Goal Plan"/></SelectTrigger><SelectContent>{state.goalPlans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-            <Select onValueChange={setDocumentTypeId} value={documentTypeId}><SelectTrigger><SelectValue placeholder="Select Document Type"/></SelectTrigger><SelectContent>{state.documentTypes.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+            <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{state.performanceTemplates.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
             <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{state.evaluationFlows.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
             <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{state.eligibility.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
           </div>
 
-          {documentTypeId && availableSections.length > 0 && (
+          {performanceTemplateId && availableSections.length > 0 && (
             <div className="space-y-2 pt-4 border-t">
-              <h4 className="font-semibold">Select Document Sections for "{getDocTypeName(documentTypeId)}"</h4>
+              <h4 className="font-semibold">Select Performance Template Sections for "{getPerformanceTemplateName(performanceTemplateId)}"</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {availableSections.map(section => (
                   <div key={section.id} className="flex items-center space-x-2">
@@ -123,14 +123,14 @@ export function PerformanceDocument({ state, dispatch }: StepProps) {
         <CardHeader><CardTitle className="font-headline">Created Performance Documents</CardTitle></CardHeader>
         <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Review Period</TableHead><TableHead>Document Type</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Review Period</TableHead><TableHead>Performance Template</TableHead></TableRow></TableHeader>
             <TableBody>
               {state.performanceDocuments.length > 0 ? (
                 state.performanceDocuments.map(doc => (
                   <TableRow key={doc.id}>
                     <TableCell className="font-medium">{doc.name}</TableCell>
                     <TableCell>{state.reviewPeriods.find(p => p.id === doc.reviewPeriodId)?.name}</TableCell>
-                    <TableCell>{state.documentTypes.find(p => p.id === doc.documentTypeId)?.name}</TableCell>
+                    <TableCell>{state.performanceTemplates.find(p => p.id === doc.performanceTemplateId)?.name}</TableCell>
                   </TableRow>
                 ))
               ) : (

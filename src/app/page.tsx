@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useReducer, useState } from 'react';
@@ -7,8 +8,8 @@ import type { ConfigState, Action } from '@/lib/types';
 
 import { ReviewPeriod } from '@/app/components/config-flow/review-period';
 import { GoalPlan } from '@/app/components/config-flow/goal-plan';
-import { DocumentType } from '@/app/components/config-flow/document-type';
-import { DocumentSection } from '@/app/components/config-flow/document-section';
+import { PerformanceTemplate } from '@/app/components/config-flow/performance-template';
+import { PerformanceTemplateSection } from '@/app/components/config-flow/performance-template-section';
 import { EvaluationFlow } from '@/app/components/config-flow/evaluation-flow';
 import { EligibilityCriteria } from '@/app/components/config-flow/eligibility-criteria';
 import { PerformanceDocument } from '@/app/components/config-flow/performance-document';
@@ -16,8 +17,8 @@ import { PerformanceDocument } from '@/app/components/config-flow/performance-do
 const initialState: ConfigState = {
   reviewPeriods: [],
   goalPlans: [],
-  documentTypes: [],
-  documentSections: [],
+  performanceTemplates: [],
+  performanceTemplateSections: [],
   evaluationFlows: [],
   eligibility: [],
   performanceDocuments: [],
@@ -34,10 +35,10 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
       return { ...state, reviewPeriods: [...state.reviewPeriods, action.payload] };
     case 'ADD_GOAL_PLAN':
       return { ...state, goalPlans: [...state.goalPlans, action.payload] };
-    case 'ADD_DOCUMENT_TYPE':
-      return { ...state, documentTypes: [...state.documentTypes, action.payload] };
-    case 'SET_DOCUMENT_SECTIONS':
-      return { ...state, documentSections: action.payload };
+    case 'ADD_PERFORMANCE_TEMPLATE':
+      return { ...state, performanceTemplates: [...state.performanceTemplates, action.payload] };
+    case 'SET_PERFORMANCE_TEMPLATE_SECTIONS':
+      return { ...state, performanceTemplateSections: action.payload };
     case 'ADD_EVALUATION_FLOW':
       return { ...state, evaluationFlows: [...state.evaluationFlows, action.payload] };
     case 'ADD_ELIGIBILITY':
@@ -60,7 +61,7 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
 }
 
 const steps = [
-  'reviewPeriod', 'goalPlan', 'documentType', 'documentSection', 'evaluationFlow', 'eligibility', 'performanceDocument'
+  'reviewPeriod', 'goalPlan', 'performanceTemplate', 'performanceTemplateSection', 'evaluationFlow', 'eligibility', 'performanceDocument'
 ];
 
 export default function Home() {
@@ -78,8 +79,8 @@ export default function Home() {
     switch (step) {
       case 'reviewPeriod': return state.reviewPeriods.length > 0;
       case 'goalPlan': return state.goalPlans.length > 0;
-      case 'documentType': return state.documentTypes.length > 0;
-      case 'documentSection': return state.documentSections.length > 0;
+      case 'performanceTemplate': return state.performanceTemplates.length > 0;
+      case 'performanceTemplateSection': return state.performanceTemplateSections.length > 0;
       case 'evaluationFlow': return state.evaluationFlows.length > 0;
       case 'eligibility': return state.eligibility.length > 0;
       default: return false;
@@ -131,32 +132,32 @@ export default function Home() {
                 </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="documentType" className="border-none">
+            <AccordionItem value="performanceTemplate" className="border-none">
                 <AccordionTrigger disabled={!isStepComplete('goalPlan')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
                    <div className="flex items-center gap-4">
-                    {getStepStatusIcon('documentType')}
-                    3. Document Type Setup
+                    {getStepStatusIcon('performanceTemplate')}
+                    3. Performance Template Setup
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <DocumentType state={state} dispatch={dispatch} onComplete={() => handleNext('documentType')} />
+                  <PerformanceTemplate state={state} dispatch={dispatch} onComplete={() => handleNext('performanceTemplate')} />
                 </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="documentSection" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('documentType')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
+            <AccordionItem value="performanceTemplateSection" className="border-none">
+                <AccordionTrigger disabled={!isStepComplete('performanceTemplate')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
                    <div className="flex items-center gap-4">
-                    {getStepStatusIcon('documentSection')}
-                    4. Document Section Setup
+                    {getStepStatusIcon('performanceTemplateSection')}
+                    4. Performance Template Section Setup
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <DocumentSection state={state} dispatch={dispatch} onComplete={() => handleNext('documentSection')} />
+                  <PerformanceTemplateSection state={state} dispatch={dispatch} onComplete={() => handleNext('performanceTemplateSection')} />
                 </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="evaluationFlow" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('documentSection')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
+                <AccordionTrigger disabled={!isStepComplete('performanceTemplateSection')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
                   <div className="flex items-center gap-4">
                     {getStepStatusIcon('evaluationFlow')}
                     5. Evaluation Flow Setup

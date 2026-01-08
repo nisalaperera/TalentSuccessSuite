@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Settings, Check, X } from 'lucide-react';
-import type { StepProps, DocumentSection as DocumentSectionType, AccessPermission } from '@/lib/types';
+import type { StepProps, PerformanceTemplateSection as PerformanceTemplateSectionType, AccessPermission } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { StarRating } from './shared/star-rating';
 
@@ -24,8 +24,8 @@ const allSectionTemplates = [
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head'];
 
-export function DocumentSection({ state, dispatch, onComplete }: StepProps) {
-  const [selectedDocumentTypeId, setSelectedDocumentTypeId] = useState<string | undefined>();
+export function PerformanceTemplateSection({ state, dispatch, onComplete }: StepProps) {
+  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<any>(null);
   const [ratingScale, setRatingScale] = useState(5);
@@ -44,30 +44,30 @@ export function DocumentSection({ state, dispatch, onComplete }: StepProps) {
   };
 
   const handleSaveSection = () => {
-    if (!currentSection || !selectedDocumentTypeId) return;
+    if (!currentSection || !selectedPerformanceTemplateId) return;
 
-    const newSection: DocumentSectionType = {
+    const newSection: PerformanceTemplateSectionType = {
         id: `ds-${Date.now()}`,
         name: currentSection.name,
         type: currentSection.type,
-        documentTypeId: selectedDocumentTypeId,
+        performanceTemplateId: selectedPerformanceTemplateId,
         ratingScale,
         permissions
     };
     
     // Check if section with same name and type already exists for this doc type
-    const existingSectionIndex = state.documentSections.findIndex(
-      s => s.name === newSection.name && s.type === newSection.type && s.documentTypeId === newSection.documentTypeId
+    const existingSectionIndex = state.performanceTemplateSections.findIndex(
+      s => s.name === newSection.name && s.type === newSection.type && s.performanceTemplateId === newSection.performanceTemplateId
     );
 
-    let updatedSections = [...state.documentSections];
+    let updatedSections = [...state.performanceTemplateSections];
     if(existingSectionIndex > -1) {
       updatedSections[existingSectionIndex] = newSection;
     } else {
       updatedSections.push(newSection);
     }
     
-    dispatch({ type: 'SET_DOCUMENT_SECTIONS', payload: updatedSections });
+    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: updatedSections });
     toast({
         title: 'Success',
         description: `Configuration for "${currentSection.name}" has been saved.`,
@@ -77,30 +77,30 @@ export function DocumentSection({ state, dispatch, onComplete }: StepProps) {
   };
 
   const filteredSections = useMemo(() => {
-    if (!selectedDocumentTypeId) return [];
-    const docType = state.documentTypes.find(dt => dt.id === selectedDocumentTypeId);
+    if (!selectedPerformanceTemplateId) return [];
+    const docType = state.performanceTemplates.find(dt => dt.id === selectedPerformanceTemplateId);
     if (!docType) return [];
     return allSectionTemplates.filter(st => st.docCategory === docType.category);
-  }, [selectedDocumentTypeId, state.documentTypes]);
+  }, [selectedPerformanceTemplateId, state.performanceTemplates]);
 
   const isSectionConfigured = (sectionName: string) => {
-    return state.documentSections.some(s => s.name === sectionName && s.documentTypeId === selectedDocumentTypeId);
+    return state.performanceTemplateSections.some(s => s.name === sectionName && s.performanceTemplateId === selectedPerformanceTemplateId);
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Configure Document Sections</CardTitle>
-          <CardDescription>First, select a document type to see its available sections for configuration.</CardDescription>
+          <CardTitle className="font-headline">Configure Performance Template Sections</CardTitle>
+          <CardDescription>First, select a performance template to see its available sections for configuration.</CardDescription>
         </CardHeader>
         <CardContent>
-            <Select onValueChange={setSelectedDocumentTypeId} value={selectedDocumentTypeId}>
+            <Select onValueChange={setSelectedPerformanceTemplateId} value={selectedPerformanceTemplateId}>
                 <SelectTrigger className="md:w-1/2">
-                    <SelectValue placeholder="Select a Document Type" />
+                    <SelectValue placeholder="Select a Performance Template" />
                 </SelectTrigger>
                 <SelectContent>
-                    {state.documentTypes.map((type) => (
+                    {state.performanceTemplates.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                         {type.name}
                     </SelectItem>
@@ -110,7 +110,7 @@ export function DocumentSection({ state, dispatch, onComplete }: StepProps) {
         </CardContent>
       </Card>
 
-      {selectedDocumentTypeId && (
+      {selectedPerformanceTemplateId && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredSections.map(template => (
             <Card key={template.name}>
@@ -199,7 +199,7 @@ export function DocumentSection({ state, dispatch, onComplete }: StepProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {state.documentSections.length > 0 && (
+      {state.performanceTemplateSections.length > 0 && (
          <div className="flex justify-end mt-6">
             <Button onClick={onComplete} variant="default">Next Step</Button>
         </div>
