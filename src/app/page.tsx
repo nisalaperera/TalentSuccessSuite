@@ -3,7 +3,7 @@
 
 import { useReducer, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, Lock } from 'lucide-react';
 import type { ConfigState, Action } from '@/lib/types';
 
 import { ReviewPeriod } from '@/app/components/config-flow/review-period';
@@ -61,7 +61,13 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
 }
 
 const steps = [
-  'reviewPeriod', 'goalPlan', 'performanceTemplate', 'performanceTemplateSection', 'evaluationFlow', 'eligibility', 'performanceDocument'
+  'reviewPeriod', 
+  'performanceTemplate', 
+  'evaluationFlow', 
+  'eligibility', 
+  'goalPlan', 
+  'performanceTemplateSection', 
+  'performanceDocument'
 ];
 
 export default function Home() {
@@ -71,7 +77,19 @@ export default function Home() {
   const handleNext = (currentItem: string) => {
     const currentIndex = steps.indexOf(currentItem);
     if (currentIndex < steps.length - 1) {
-      setOpenItem(steps[currentIndex + 1]);
+      const nextStep = steps[currentIndex + 1];
+      // Check if next step is disabled, if so, find the next available one.
+      if (isStepDisabled(nextStep)) {
+        // This is a simplistic approach. A more robust solution might be needed
+        // if there are complex branching paths.
+        for (let i = currentIndex + 2; i < steps.length; i++) {
+          if (!isStepDisabled(steps[i])) {
+            setOpenItem(steps[i]);
+            return;
+          }
+        }
+      }
+      setOpenItem(nextStep);
     }
   };
 
@@ -83,16 +101,69 @@ export default function Home() {
       case 'performanceTemplateSection': return state.performanceTemplateSections.length > 0;
       case 'evaluationFlow': return state.evaluationFlows.length > 0;
       case 'eligibility': return state.eligibility.length > 0;
+      case 'performanceDocument': return state.performanceDocuments.length > 0;
       default: return false;
     }
   };
 
+  const isStepDisabled = (step: string): boolean => {
+     switch (step) {
+      case 'reviewPeriod':
+      case 'performanceTemplate':
+      case 'evaluationFlow':
+      case 'eligibility':
+        return false; // These are independent
+      case 'goalPlan':
+        return !isStepComplete('reviewPeriod');
+      case 'performanceTemplateSection':
+        return !isStepComplete('performanceTemplate');
+      case 'performanceDocument':
+        return !isStepComplete('goalPlan') || !isStepComplete('performanceTemplate') || !isStepComplete('evaluationFlow') || !isStepComplete('eligibility');
+      default:
+        return true;
+    }
+  };
+
   const getStepStatusIcon = (step: string) => {
+    if (isStepDisabled(step)) {
+      return <Lock className="h-5 w-5 text-muted-foreground" />;
+    }
     return isStepComplete(step) ? (
       <CheckCircle2 className="h-5 w-5 text-accent" />
     ) : (
       <Circle className="h-5 w-5 text-muted-foreground" />
     );
+  };
+
+  const stepComponents = {
+    reviewPeriod: {
+      title: '1. Review Period Management',
+      Component: ReviewPeriod,
+    },
+    performanceTemplate: {
+      title: '2. Performance Template Setup',
+      Component: PerformanceTemplate,
+    },
+     evaluationFlow: {
+      title: '3. Evaluation Flow Setup',
+      Component: EvaluationFlow,
+    },
+    eligibility: {
+      title: '4. Eligibility Criteria Definition',
+      Component: EligibilityCriteria,
+    },
+    goalPlan: {
+      title: '5. Goal Plan Configuration',
+      Component: GoalPlan,
+    },
+    performanceTemplateSection: {
+      title: '6. Performance Template Section Setup',
+      Component: PerformanceTemplateSection,
+    },
+    performanceDocument: {
+      title: '7. Performance Document Setup',
+      Component: PerformanceDocument,
+    }
   };
 
   return (
@@ -107,91 +178,26 @@ export default function Home() {
 
         <div className="max-w-4xl mx-auto">
           <Accordion type="single" value={openItem} onValueChange={setOpenItem} className="w-full space-y-4">
-            
-            <AccordionItem value="reviewPeriod" className="border-none">
-                <AccordionTrigger className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
-                  <div className="flex items-center gap-4">
-                    {getStepStatusIcon('reviewPeriod')}
-                    1. Review Period Management
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <ReviewPeriod state={state} dispatch={dispatch} onComplete={() => handleNext('reviewPeriod')} />
-                </AccordionContent>
-            </AccordionItem>
-            
-            <AccordionItem value="goalPlan" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('reviewPeriod')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
-                   <div className="flex items-center gap-4">
-                    {getStepStatusIcon('goalPlan')}
-                    2. Goal Plan Configuration
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleNext('goalPlan')} />
-                </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="performanceTemplate" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('goalPlan')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
-                   <div className="flex items-center gap-4">
-                    {getStepStatusIcon('performanceTemplate')}
-                    3. Performance Template Setup
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <PerformanceTemplate state={state} dispatch={dispatch} onComplete={() => handleNext('performanceTemplate')} />
-                </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="performanceTemplateSection" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('performanceTemplate')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
-                   <div className="flex items-center gap-4">
-                    {getStepStatusIcon('performanceTemplateSection')}
-                    4. Performance Template Section Setup
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <PerformanceTemplateSection state={state} dispatch={dispatch} onComplete={() => handleNext('performanceTemplateSection')} />
-                </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="evaluationFlow" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('performanceTemplateSection')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
-                  <div className="flex items-center gap-4">
-                    {getStepStatusIcon('evaluationFlow')}
-                    5. Evaluation Flow Setup
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <EvaluationFlow state={state} dispatch={dispatch} onComplete={() => handleNext('evaluationFlow')} />
-                </AccordionContent>
-            </AccordionItem>
-
-             <AccordionItem value="eligibility" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('evaluationFlow')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
-                  <div className="flex items-center gap-4">
-                    {getStepStatusIcon('eligibility')}
-                    6. Eligibility Criteria Definition
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <EligibilityCriteria state={state} dispatch={dispatch} onComplete={() => handleNext('eligibility')} />
-                </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="performanceDocument" className="border-none">
-                <AccordionTrigger disabled={!isStepComplete('eligibility')} className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline">
-                  <div className="flex items-center gap-4">
-                    <Circle className="h-5 w-5 text-muted-foreground" />
-                    7. Performance Document Setup
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                  <PerformanceDocument state={state} dispatch={dispatch} onComplete={() => handleNext('performanceDocument')} />
-                </AccordionContent>
-            </AccordionItem>
-
+            {steps.map(stepKey => {
+              const stepInfo = stepComponents[stepKey as keyof typeof stepComponents];
+              const isDisabled = isStepDisabled(stepKey);
+              return (
+                <AccordionItem value={stepKey} key={stepKey} className="border-none">
+                  <AccordionTrigger
+                    disabled={isDisabled}
+                    className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-4">
+                      {getStepStatusIcon(stepKey)}
+                      {stepInfo.title}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
+                    <stepInfo.Component state={state} dispatch={dispatch} onComplete={() => handleNext(stepKey)} />
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
           </Accordion>
         </div>
       </main>

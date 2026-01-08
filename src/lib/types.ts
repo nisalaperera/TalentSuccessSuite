@@ -30,7 +30,7 @@ export type AccessPermission = {
 export type PerformanceTemplateSection = {
   id: string;
   name: string;
-  type: 'Performance Goals' | 'Overall Summary' | 'Survey Question Group' | 'Rating Only' | 'Comment Only' | 'Mixed Feedback';
+  type: 'Performance Goals' | 'Overall Summary' | 'Survey Question Group' | 'Rating Only' | 'Comment Only';
   performanceTemplateId: string;
   ratingScale?: number;
   permissions: AccessPermission[];
@@ -54,7 +54,7 @@ export type EvaluationFlow = {
 
 export type ExclusionRule = {
     id: string;
-    type: 'Person Type' | 'Department' | 'Legal Entity' | 'Employee List';
+    type: 'Person Type' | 'Department' | 'Legal Entity';
     values: string[];
 };
 
