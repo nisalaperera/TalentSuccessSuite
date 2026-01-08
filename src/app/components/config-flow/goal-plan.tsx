@@ -9,12 +9,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PlusCircle } from 'lucide-react';
 import type { StepProps } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 interface GoalPlanProps extends StepProps {
     selectedReviewPeriodId?: string;
+    selectedGoalPlanId?: string;
+    setSelectedGoalPlanId: (id: string) => void;
 }
 
-export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId }: GoalPlanProps) {
+export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId }: GoalPlanProps) {
   const [name, setName] = useState('');
   const { toast } = useToast();
 
@@ -34,6 +38,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId }
       reviewPeriodId: selectedReviewPeriodId,
     };
     dispatch({ type: 'ADD_GOAL_PLAN', payload: newPlan });
+    setSelectedGoalPlanId(newPlan.id);
     toast({
       title: 'Success',
       description: `Goal plan "${name}" has been created.`,
@@ -45,6 +50,13 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId }
   const getReviewPeriodName = (id: string) => {
     return state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
   }
+
+  const handleSelection = (id: string) => {
+    setSelectedGoalPlanId(id);
+    onComplete();
+  }
+  
+  const filteredGoalPlans = state.goalPlans.filter(gp => gp.reviewPeriodId === selectedReviewPeriodId);
 
   return (
     <div className="space-y-6">
@@ -63,43 +75,49 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId }
           </div>
           <Button onClick={handleAddGoalPlan}>
             <PlusCircle className="mr-2" />
-            Save & Close
+            Create & Select Goal Plan
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Existing Goal Plans</CardTitle>
+          <CardTitle className="font-headline">Existing Goal Plans for Selected Review Period</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Goal Plan Name</TableHead>
-                <TableHead>Linked Review Period</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {state.goalPlans.length > 0 ? (
-                state.goalPlans.map((plan) => (
-                  <TableRow key={plan.id}>
-                    <TableCell className="font-medium">{plan.name}</TableCell>
-                    <TableCell>{getReviewPeriodName(plan.reviewPeriodId)}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          <RadioGroup value={selectedGoalPlanId} onValueChange={handleSelection}>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center">No goal plans created yet.</TableCell>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead>Goal Plan Name</TableHead>
+                  <TableHead>Linked Review Period</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredGoalPlans.length > 0 ? (
+                  filteredGoalPlans.map((plan) => (
+                    <TableRow key={plan.id} data-state={plan.id === selectedGoalPlanId ? 'selected' : 'unselected'}>
+                      <TableCell>
+                        <RadioGroupItem value={plan.id} id={plan.id} />
+                      </TableCell>
+                      <TableCell className="font-medium"><Label htmlFor={plan.id}>{plan.name}</Label></TableCell>
+                      <TableCell>{getReviewPeriodName(plan.reviewPeriodId)}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center">No goal plans created for this review period yet.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </RadioGroup>
         </CardContent>
       </Card>
-      {state.goalPlans.length > 0 && (
+      {filteredGoalPlans.length > 0 && (
          <div className="flex justify-end">
-            <Button onClick={onComplete} variant="default">Next Step</Button>
+            <Button onClick={onComplete} variant="default" disabled={!selectedGoalPlanId}>Next Step</Button>
         </div>
       )}
     </div>

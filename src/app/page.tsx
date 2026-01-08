@@ -66,6 +66,7 @@ export default function Home() {
   const [state, dispatch] = useReducer(configReducer, initialState);
   const [openItem, setOpenItem] = useState('reviewPeriod');
   const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>();
+  const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>();
 
   const handleNext = (currentItem: string) => {
     const allSteps = flowStructure.flatMap(g => g.steps);
@@ -88,7 +89,7 @@ export default function Home() {
   const isStepComplete = (step: string): boolean => {
     switch (step) {
       case 'reviewPeriod': return state.reviewPeriods.length > 0 && !!selectedReviewPeriodId;
-      case 'goalPlan': return state.goalPlans.length > 0;
+      case 'goalPlan': return state.goalPlans.length > 0 && !!selectedGoalPlanId;
       case 'performanceTemplate': return state.performanceTemplates.length > 0;
       case 'performanceTemplateSection': return state.performanceTemplates.length > 0 && state.performanceTemplateSections.length > 0;
       case 'evaluationFlow': return state.evaluationFlows.length > 0;
@@ -131,6 +132,7 @@ export default function Home() {
   };
   
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
+  const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
 
   const stepComponents: { [key: string]: { title: string; Component: React.FC<any> } } = {
     reviewPeriod: { 
@@ -166,7 +168,7 @@ export default function Home() {
 
   const componentProps = {
     reviewPeriod: { state, dispatch, onComplete: () => handleNext('reviewPeriod'), selectedReviewPeriodId, setSelectedReviewPeriodId },
-    goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId },
+    goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId },
     performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate') },
     performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection') },
     evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow') },
@@ -208,6 +210,11 @@ export default function Home() {
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
                                       <Badge variant="secondary" className="px-5 py-1 text-base">
                                         {selectedReviewPeriod.name} ({format(selectedReviewPeriod.startDate, 'MMM d')} - {format(selectedReviewPeriod.endDate, 'MMM d, yyyy')})
+                                      </Badge>
+                                  )}
+                                  {stepKey === 'goalPlan' && selectedGoalPlan && (
+                                      <Badge variant="secondary" className="px-5 py-1 text-base">
+                                        {selectedGoalPlan.name}
                                       </Badge>
                                   )}
                                 </div>
