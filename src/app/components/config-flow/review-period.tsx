@@ -13,6 +13,7 @@ import type { StepProps } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 
 interface ReviewPeriodProps extends StepProps {
     selectedReviewPeriodId?: string;
@@ -23,6 +24,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const handleAddReviewPeriod = () => {
@@ -59,6 +61,8 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
     setName('');
     setStartDate(undefined);
     setEndDate(undefined);
+    setIsDialogOpen(false);
+    onComplete();
   };
 
   const handleSelection = (id: string) => {
@@ -68,72 +72,80 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Create New Review Period</CardTitle>
-          <CardDescription>Define the time boundary for all performance-related activities.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="e.g., FY 2024-25 Mid-Year"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
-            <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" />
-          </div>
-          <Button onClick={handleAddReviewPeriod}>
-            <PlusCircle className="mr-2" />
-            Save & Close
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">Existing Review Periods</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup value={selectedReviewPeriodId} onValueChange={handleSelection}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead>Review Period Name</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {state.reviewPeriods.length > 0 ? (
-                  state.reviewPeriods.map((period) => (
-                    <TableRow key={period.id} data-state={period.id === selectedReviewPeriodId ? 'selected' : 'unselected'}>
-                      <TableCell>
-                          <RadioGroupItem value={period.id} id={period.id} />
-                      </TableCell>
-                      <TableCell className="font-medium"><Label htmlFor={period.id}>{period.name}</Label></TableCell>
-                      <TableCell>{format(period.startDate, 'PPP')}</TableCell>
-                      <TableCell>{format(period.endDate, 'PPP')}</TableCell>
-                      <TableCell>{period.status}</TableCell>
+       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div className="space-y-1.5">
+                    <CardTitle className="font-headline">Review Periods</CardTitle>
+                    <CardDescription>Define the time boundary for all performance-related activities.</CardDescription>
+                </div>
+                <DialogTrigger asChild>
+                    <Button>
+                        <PlusCircle className="mr-2" />
+                        Add New
+                    </Button>
+                </DialogTrigger>
+            </CardHeader>
+            <CardContent>
+            <RadioGroup value={selectedReviewPeriodId} onValueChange={handleSelection}>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead>Review Period Name</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
+                    <TableHead>Status</TableHead>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">No review periods created yet.</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </RadioGroup>
-        </CardContent>
-      </Card>
-      {state.reviewPeriods.length > 0 && (
-         <div className="flex justify-end">
-            <Button onClick={onComplete} variant="default" disabled={!selectedReviewPeriodId}>Next Step</Button>
-        </div>
-      )}
+                </TableHeader>
+                <TableBody>
+                    {state.reviewPeriods.length > 0 ? (
+                    state.reviewPeriods.map((period) => (
+                        <TableRow key={period.id} data-state={period.id === selectedReviewPeriodId ? 'selected' : 'unselected'}>
+                        <TableCell>
+                            <RadioGroupItem value={period.id} id={period.id} />
+                        </TableCell>
+                        <TableCell className="font-medium"><Label htmlFor={period.id}>{period.name}</Label></TableCell>
+                        <TableCell>{format(period.startDate, 'PPP')}</TableCell>
+                        <TableCell>{format(period.endDate, 'PPP')}</TableCell>
+                        <TableCell>{period.status}</TableCell>
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center">No review periods created yet.</TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+            </RadioGroup>
+            </CardContent>
+        </Card>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle className="font-headline">Create New Review Period</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                    placeholder="e.g., FY 2024-25 Mid-Year"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="md:col-span-3"
+                    />
+                    <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
+                    <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" />
+                </div>
+            </div>
+            <DialogFooter>
+                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddReviewPeriod}>
+                    <PlusCircle className="mr-2" />
+                    Create & Select
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
