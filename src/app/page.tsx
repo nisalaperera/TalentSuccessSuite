@@ -70,6 +70,11 @@ export default function Home() {
   const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
 
   const handleNext = (currentItem: string) => {
+    if (currentItem === 'reviewPeriod') {
+      setOpenItem('goalPlan');
+      return;
+    }
+
     const allSteps = flowStructure.flatMap(g => g.steps);
     const currentIndex = allSteps.indexOf(currentItem);
     
