@@ -137,6 +137,11 @@ export default function Home() {
       setOpenItem('goalPlan');
       return;
     }
+    
+    if (currentItem === 'performanceTemplate') {
+        setOpenItem('performanceTemplateSection');
+        return;
+    }
 
     const allSteps = flowStructure.flatMap(g => g.steps);
     const currentIndex = allSteps.indexOf(currentItem);
@@ -204,6 +209,10 @@ export default function Home() {
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
   const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
   const selectedPerformanceTemplate = state.performanceTemplates.find(p => p.id === selectedPerformanceTemplateId);
+  const configuredSections = state.performanceTemplateSections
+    .filter(s => s.performanceTemplateId === selectedPerformanceTemplateId)
+    .sort((a,b) => a.order - b.order);
+
   const selectedEvaluationFlow = state.evaluationFlows.find(p => p.id === selectedEvaluationFlowId);
   const selectedEligibility = state.eligibility.find(p => p.id === selectedEligibilityId);
 
@@ -243,7 +252,7 @@ export default function Home() {
   const componentProps = {
     reviewPeriod: { state, dispatch, onComplete: () => handleNext('reviewPeriod'), selectedReviewPeriodId, setSelectedReviewPeriodId },
     goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId },
-    performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate'), selectedPerformanceTemplateId, setSelectedPerformanceTemplateId },
+    performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate'), selectedPerformanceTemplateId, setSelectedPerformanceTemplateId: (id: string) => { setSelectedPerformanceTemplateId(id); setOpenItem('performanceTemplateSection'); } },
     performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection'), selectedPerformanceTemplateId },
     evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow'), selectedEvaluationFlowId, setSelectedEvaluationFlowId },
     eligibility: { state, dispatch, onComplete: () => handleNext('eligibility'), selectedEligibilityId, setSelectedEligibilityId },
@@ -281,6 +290,7 @@ export default function Home() {
                                     {getStepStatusIcon(stepKey)}
                                     {stepInfo.title}
                                   </div>
+                                  <div className="truncate">
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
                                       <Badge variant="secondary" className="px-5 py-1 text-lg">
                                         {selectedReviewPeriod.name} ({format(selectedReviewPeriod.startDate, 'MMM d')} - {format(selectedReviewPeriod.endDate, 'MMM d, yyyy')})
@@ -296,6 +306,11 @@ export default function Home() {
                                         {selectedPerformanceTemplate.name} ({selectedPerformanceTemplate.category})
                                       </Badge>
                                   )}
+                                  {stepKey === 'performanceTemplateSection' && configuredSections.length > 0 && (
+                                    <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                      {configuredSections.map(s => s.name).join(', ')}
+                                    </Badge>
+                                  )}
                                   {stepKey === 'evaluationFlow' && selectedEvaluationFlow && (
                                       <Badge variant="secondary" className="px-5 py-1 text-lg">
                                         {selectedEvaluationFlow.name}
@@ -306,6 +321,7 @@ export default function Home() {
                                         {selectedEligibility.name}
                                       </Badge>
                                   )}
+                                  </div>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">

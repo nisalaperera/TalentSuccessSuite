@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -61,7 +62,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
   
   const handleSelection = (id: string) => {
     setSelectedPerformanceTemplateId(id);
-    onComplete();
+    // onComplete(); // This was causing premature closing
   }
 
   return (
