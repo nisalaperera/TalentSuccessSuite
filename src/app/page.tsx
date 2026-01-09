@@ -83,7 +83,36 @@ const initialState: ConfigState = {
         ]
     }
   ],
-  performanceDocuments: [],
+  performanceDocuments: [
+    {
+        id: 'pd-1',
+        name: 'FY24 Annual Performance Document',
+        reviewPeriodId: 'rp-1',
+        goalPlanId: 'gp-1',
+        performanceTemplateId: 'pt-1',
+        sectionIds: ['ds-1', 'ds-2'],
+        evaluationFlowId: 'flow-1',
+        eligibilityId: 'elig-1',
+        managerRatingEnabled: true,
+        employeeRatingEnabled: true,
+        managerCommentsEnabled: true,
+        employeeCommentsEnabled: true,
+    },
+    {
+        id: 'pd-2',
+        name: 'Q3 Engagement Survey Document',
+        reviewPeriodId: 'rp-1',
+        goalPlanId: 'gp-1',
+        performanceTemplateId: 'pt-2',
+        sectionIds: [],
+        evaluationFlowId: 'flow-1',
+        eligibilityId: 'elig-1',
+        managerRatingEnabled: false,
+        employeeRatingEnabled: true,
+        managerCommentsEnabled: false,
+        employeeCommentsEnabled: true,
+    }
+  ],
   lovs: {
     personTypes: ['Full-Time', 'Part-Time', 'Intern', 'Contractor'],
     departments: ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'],
@@ -189,7 +218,7 @@ export default function Home() {
       case 'eligibility':
         return false;
       case 'performanceDocument':
-        return !isStepComplete('goalPlan') || !isStepComplete('performanceTemplateSection') || !isStepComplete('evaluationFlow') || !isStepComplete('eligibility');
+        return false;
       default:
         return true;
     }
@@ -227,7 +256,7 @@ export default function Home() {
     performanceTemplateSection: { title: 'Performance Template Section Setup', Component: PerformanceTemplateSection },
     evaluationFlow: { title: 'Evaluation Flow Setup', Component: EvaluationFlow },
     eligibility: { title: 'Eligibility Criteria Definition', Component: EligibilityCriteria },
-    performanceDocument: { title: 'Performance Document Setup', Component: PerformanceDocument },
+    performanceDocument: { title: 'Performance Documents', Component: PerformanceDocument },
   };
 
   const flowStructure = [
@@ -244,7 +273,7 @@ export default function Home() {
       steps: ['evaluationFlow', 'eligibility'],
     },
     {
-      title: "Final Document Assembly",
+      title: "Performance Documents",
       steps: ['performanceDocument'],
     },
   ];
@@ -252,7 +281,7 @@ export default function Home() {
   const componentProps = {
     reviewPeriod: { state, dispatch, onComplete: () => handleNext('reviewPeriod'), selectedReviewPeriodId, setSelectedReviewPeriodId },
     goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId },
-    performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate'), selectedPerformanceTemplateId, setSelectedPerformanceTemplateId: (id: string) => { setSelectedPerformanceTemplateId(id); setOpenItem('performanceTemplateSection'); } },
+    performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate'), selectedPerformanceTemplateId, setSelectedPerformanceTemplateId: (id: string) => { setSelectedPerformanceTemplateId(id); handleNext('performanceTemplate'); } },
     performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection'), selectedPerformanceTemplateId },
     evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow'), selectedEvaluationFlowId, setSelectedEvaluationFlowId },
     eligibility: { state, dispatch, onComplete: () => handleNext('eligibility'), selectedEligibilityId, setSelectedEligibilityId },

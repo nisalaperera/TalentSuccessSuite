@@ -29,9 +29,11 @@ export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) 
   const [managerComments, setManagerComments] = useState(true);
   const [employeeComments, setEmployeeComments] = useState(true);
   const { toast } = useToast();
+  
+  const isCreateDisabled = !name || !reviewPeriodId || !goalPlanId || !performanceTemplateId || !evaluationFlowId || !eligibilityId;
 
   const handleCreateDocument = () => {
-    if (!name || !reviewPeriodId || !goalPlanId || !performanceTemplateId || !evaluationFlowId || !eligibilityId) {
+    if (isCreateDisabled) {
       toast({ title: "All fields are required", variant: "destructive" });
       return;
     }
@@ -39,12 +41,12 @@ export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) 
     const newDoc: PerfDocType = {
       id: `pd-${Date.now()}`,
       name,
-      reviewPeriodId,
-      goalPlanId,
-      performanceTemplateId,
+      reviewPeriodId: reviewPeriodId!,
+      goalPlanId: goalPlanId!,
+      performanceTemplateId: performanceTemplateId!,
       sectionIds: selectedSections,
-      evaluationFlowId,
-      eligibilityId,
+      evaluationFlowId: evaluationFlowId!,
+      eligibilityId: eligibilityId!,
       managerRatingEnabled: managerRating,
       employeeRatingEnabled: employeeRating,
       managerCommentsEnabled: managerComments,
@@ -153,7 +155,7 @@ export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) 
             </div>
              <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateDocument}>Create & Finalize Document</Button>
+                <Button onClick={handleCreateDocument} disabled={isCreateDisabled}>Create & Finalize Document</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
