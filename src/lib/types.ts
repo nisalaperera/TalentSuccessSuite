@@ -49,6 +49,19 @@ export type PerformanceTemplateSection = {
   order: number;
   ratingScale?: number;
   permissions: AccessPermission[];
+
+  // Performance Goals Section Attributes
+  enableSectionRatings?: boolean;
+  enableSectionComments?: boolean;
+  sectionRatingMandatory?: boolean;
+  sectionCommentMandatory?: boolean;
+  enableSectionWeights?: boolean;
+  sectionWeight?: number;
+  sectionMinimumWeight?: number;
+  enableItemRatings?: boolean;
+  enableItemComments?: boolean;
+  itemRatingMandatory?: boolean;
+  itemCommentMandatory?: boolean;
 };
 
 export type EvaluationStep = {

@@ -63,7 +63,9 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
         performanceTemplateId: selectedPerformanceTemplateId,
         order: sections.length + 1,
         ratingScale: 5,
-        permissions: ROLES.map(role => ({ role, view: true, edit: false }))
+        permissions: ROLES.map(role => ({ role, view: true, edit: false })),
+        enableSectionRatings: true,
+        enableSectionComments: true,
     };
     
     const updatedSections = [...sections, newSection];
@@ -203,7 +205,32 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
                 </CardContent>
               </Card>
 
-              {currentSection.type !== 'Comment' && (
+              {currentSection.type === 'Performance Goals' && (
+                <Card>
+                    <CardHeader><CardTitle>Goal Settings</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                            <div className="flex items-center justify-between"><Label>Enable Section Ratings</Label><Switch checked={currentSection.enableSectionRatings} onCheckedChange={v => handleConfigChange('enableSectionRatings', v)} /></div>
+                            <div className="flex items-center justify-between"><Label>Enable Section Comments</Label><Switch checked={currentSection.enableSectionComments} onCheckedChange={v => handleConfigChange('enableSectionComments', v)} /></div>
+                            <div className="flex items-center justify-between"><Label>Section Rating Mandatory</Label><Switch checked={currentSection.sectionRatingMandatory} onCheckedChange={v => handleConfigChange('sectionRatingMandatory', v)} /></div>
+                            <div className="flex items-center justify-between"><Label>Section Comment Mandatory</Label><Switch checked={currentSection.sectionCommentMandatory} onCheckedChange={v => handleConfigChange('sectionCommentMandatory', v)} /></div>
+                            <div className="flex items-center justify-between"><Label>Enable Ratings for Items</Label><Switch checked={currentSection.enableItemRatings} onCheckedChange={v => handleConfigChange('enableItemRatings', v)} /></div>
+                            <div className="flex items-center justify-between"><Label>Enable Item Comments</Label><Switch checked={currentSection.enableItemComments} onCheckedChange={v => handleConfigChange('enableItemComments', v)} /></div>
+                            <div className="flex items-center justify-between"><Label>Item Rating Mandatory</Label><Switch checked={currentSection.itemRatingMandatory} onCheckedChange={v => handleConfigChange('itemRatingMandatory', v)} /></div>
+                            <div className="flex items-center justify-between"><Label>Item Comment Mandatory</Label><Switch checked={currentSection.itemCommentMandatory} onCheckedChange={v => handleConfigChange('itemCommentMandatory', v)} /></div>
+                            <div className="flex items-center justify-between col-span-2"><Label>Enable Section Weights</Label><Switch checked={currentSection.enableSectionWeights} onCheckedChange={v => handleConfigChange('enableSectionWeights', v)} /></div>
+                            {currentSection.enableSectionWeights && (
+                                <>
+                                    <div className="space-y-2"><Label>Section Weight %</Label><Input type="number" value={currentSection.sectionWeight} onChange={e => handleConfigChange('sectionWeight', e.target.valueAsNumber)} /></div>
+                                    <div className="space-y-2"><Label>Section Min. Weight %</Label><Input type="number" value={currentSection.sectionMinimumWeight} onChange={e => handleConfigChange('sectionMinimumWeight', e.target.valueAsNumber)} /></div>
+                                </>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+              )}
+
+              {['Performance Goals', 'Competencies', 'Survey Question Group', 'Rating'].includes(currentSection.type!) && (
                 <Card>
                     <CardHeader><CardTitle>Rating Scale</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
