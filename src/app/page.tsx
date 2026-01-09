@@ -124,9 +124,9 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
 export default function Home() {
   const [state, dispatch] = useReducer(configReducer, initialState);
   const [openItem, setOpenItem] = useState('reviewPeriod');
-  const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>('rp-1');
-  const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>('gp-1');
-  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>('pt-1');
+  const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>();
+  const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>();
+  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
 
   const handleNext = (currentItem: string) => {
     if (currentItem === 'reviewPeriod') {
