@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import type { StepProps, PerformanceDocument as PerfDocType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { PlusCircle } from 'lucide-react';
 
 export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) {
