@@ -17,8 +17,14 @@ import { PerformanceDocument } from '@/app/components/config-flow/performance-do
 import { Badge } from '@/components/ui/badge';
 
 const initialState: ConfigState = {
-  reviewPeriods: [],
-  goalPlans: [],
+  reviewPeriods: [
+    { id: 'rp-1', name: 'FY 2024 Annual', startDate: new Date('2024-01-01'), endDate: new Date('2024-12-31'), status: 'Active' },
+    { id: 'rp-2', name: 'FY 2025 Mid-Year', startDate: new Date('2025-01-01'), endDate: new Date('2025-06-30'), status: 'Active' },
+  ],
+  goalPlans: [
+    { id: 'gp-1', name: 'FY 2024 Goal Plan', reviewPeriodId: 'rp-1' },
+    { id: 'gp-2', name: 'FY 2025 Mid-Year Goals', reviewPeriodId: 'rp-2' },
+  ],
   performanceTemplates: [],
   performanceTemplateSections: [],
   evaluationFlows: [],
@@ -215,17 +221,17 @@ export default function Home() {
                                     {stepInfo.title}
                                   </div>
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-base">
+                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
                                         {selectedReviewPeriod.name} ({format(selectedReviewPeriod.startDate, 'MMM d')} - {format(selectedReviewPeriod.endDate, 'MMM d, yyyy')})
                                       </Badge>
                                   )}
                                   {stepKey === 'goalPlan' && selectedGoalPlan && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-base">
+                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
                                         {selectedGoalPlan.name}
                                       </Badge>
                                   )}
                                   {stepKey === 'performanceTemplate' && selectedPerformanceTemplate && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-base">
+                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
                                         {selectedPerformanceTemplate.name}
                                       </Badge>
                                   )}
