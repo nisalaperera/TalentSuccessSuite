@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useReducer, useState } from 'react';
@@ -127,6 +128,9 @@ export default function Home() {
   const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>();
   const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>();
   const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
+  const [selectedEvaluationFlowId, setSelectedEvaluationFlowId] = useState<string | undefined>();
+  const [selectedEligibilityId, setSelectedEligibilityId] = useState<string | undefined>();
+
 
   const handleNext = (currentItem: string) => {
     if (currentItem === 'reviewPeriod') {
@@ -153,13 +157,13 @@ export default function Home() {
 
   const isStepComplete = (step: string): boolean => {
     switch (step) {
-      case 'reviewPeriod': return state.reviewPeriods.length > 0 && !!selectedReviewPeriodId;
-      case 'goalPlan': return state.goalPlans.length > 0 && !!selectedGoalPlanId;
-      case 'performanceTemplate': return state.performanceTemplates.length > 0 && !!selectedPerformanceTemplateId;
+      case 'reviewPeriod': return !!selectedReviewPeriodId;
+      case 'goalPlan': return !!selectedGoalPlanId;
+      case 'performanceTemplate': return !!selectedPerformanceTemplateId;
       case 'performanceTemplateSection': 
         return state.performanceTemplateSections.some(s => s.performanceTemplateId === selectedPerformanceTemplateId);
-      case 'evaluationFlow': return state.evaluationFlows.length > 0;
-      case 'eligibility': return state.eligibility.length > 0;
+      case 'evaluationFlow': return !!selectedEvaluationFlowId;
+      case 'eligibility': return !!selectedEligibilityId;
       case 'performanceDocument': return state.performanceDocuments.length > 0;
       default: return false;
     }
@@ -200,6 +204,9 @@ export default function Home() {
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
   const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
   const selectedPerformanceTemplate = state.performanceTemplates.find(p => p.id === selectedPerformanceTemplateId);
+  const selectedEvaluationFlow = state.evaluationFlows.find(p => p.id === selectedEvaluationFlowId);
+  const selectedEligibility = state.eligibility.find(p => p.id === selectedEligibilityId);
+
 
   const stepComponents: { [key: string]: { title: string; Component: React.FC<any> } } = {
     reviewPeriod: { 
@@ -238,8 +245,8 @@ export default function Home() {
     goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId },
     performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate'), selectedPerformanceTemplateId, setSelectedPerformanceTemplateId },
     performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection'), selectedPerformanceTemplateId },
-    evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow') },
-    eligibility: { state, dispatch, onComplete: () => handleNext('eligibility') },
+    evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow'), selectedEvaluationFlowId, setSelectedEvaluationFlowId },
+    eligibility: { state, dispatch, onComplete: () => handleNext('eligibility'), selectedEligibilityId, setSelectedEligibilityId },
     performanceDocument: { state, dispatch, onComplete: () => handleNext('performanceDocument') },
   };
 
@@ -287,6 +294,16 @@ export default function Home() {
                                   {stepKey === 'performanceTemplate' && selectedPerformanceTemplate && (
                                       <Badge variant="secondary" className="px-5 py-1 text-lg">
                                         {selectedPerformanceTemplate.name} ({selectedPerformanceTemplate.category})
+                                      </Badge>
+                                  )}
+                                  {stepKey === 'evaluationFlow' && selectedEvaluationFlow && (
+                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                        {selectedEvaluationFlow.name}
+                                      </Badge>
+                                  )}
+                                  {stepKey === 'eligibility' && selectedEligibility && (
+                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                        {selectedEligibility.name}
                                       </Badge>
                                   )}
                                 </div>
