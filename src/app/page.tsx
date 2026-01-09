@@ -124,6 +124,10 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
   switch (action.type) {
     case 'ADD_REVIEW_PERIOD':
       return { ...state, reviewPeriods: [...state.reviewPeriods, action.payload] };
+    case 'UPDATE_REVIEW_PERIOD':
+      return { ...state, reviewPeriods: state.reviewPeriods.map(p => p.id === action.payload.id ? action.payload : p) };
+    case 'DELETE_REVIEW_PERIOD':
+      return { ...state, reviewPeriods: state.reviewPeriods.filter(p => p.id !== action.payload) };
     case 'ADD_GOAL_PLAN':
       return { ...state, goalPlans: [...state.goalPlans, action.payload] };
     case 'ADD_PERFORMANCE_TEMPLATE':

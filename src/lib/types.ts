@@ -126,6 +126,8 @@ export type ConfigState = {
 
 export type Action =
   | { type: 'ADD_REVIEW_PERIOD'; payload: ReviewPeriod }
+  | { type: 'UPDATE_REVIEW_PERIOD'; payload: ReviewPeriod }
+  | { type: 'DELETE_REVIEW_PERIOD'; payload: string }
   | { type: 'ADD_GOAL_PLAN'; payload: GoalPlan }
   | { type: 'ADD_PERFORMANCE_TEMPLATE'; payload: PerformanceTemplate }
   | { type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS'; payload: PerformanceTemplateSection[] }
