@@ -35,6 +35,7 @@ const initialState: ConfigState = {
       name: 'Performance Goals',
       type: 'Performance Goals',
       performanceTemplateId: 'pt-1',
+      order: 1,
       ratingScale: 5,
       permissions: [
         { role: 'Worker', view: true, edit: true },
@@ -49,6 +50,7 @@ const initialState: ConfigState = {
       name: 'Overall Summary',
       type: 'Overall Summary',
       performanceTemplateId: 'pt-1',
+      order: 2,
       ratingScale: 5,
       permissions: [
         { role: 'Worker', view: true, edit: false },
@@ -122,9 +124,9 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
 export default function Home() {
   const [state, dispatch] = useReducer(configReducer, initialState);
   const [openItem, setOpenItem] = useState('reviewPeriod');
-  const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>();
-  const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>();
-  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
+  const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>('rp-1');
+  const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>('gp-1');
+  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>('pt-1');
 
   const handleNext = (currentItem: string) => {
     if (currentItem === 'reviewPeriod') {
@@ -154,7 +156,8 @@ export default function Home() {
       case 'reviewPeriod': return state.reviewPeriods.length > 0 && !!selectedReviewPeriodId;
       case 'goalPlan': return state.goalPlans.length > 0 && !!selectedGoalPlanId;
       case 'performanceTemplate': return state.performanceTemplates.length > 0 && !!selectedPerformanceTemplateId;
-      case 'performanceTemplateSection': return state.performanceTemplateSections.length > 0;
+      case 'performanceTemplateSection': 
+        return state.performanceTemplateSections.some(s => s.performanceTemplateId === selectedPerformanceTemplateId);
       case 'evaluationFlow': return state.evaluationFlows.length > 0;
       case 'eligibility': return state.eligibility.length > 0;
       case 'performanceDocument': return state.performanceDocuments.length > 0;

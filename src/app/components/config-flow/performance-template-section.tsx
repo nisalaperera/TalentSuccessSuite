@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -9,17 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Settings, Trash2 } from 'lucide-react';
+import { PlusCircle, Settings, Trash2, GripVertical } from 'lucide-react';
 import type { StepProps, PerformanceTemplateSection as PerformanceTemplateSectionType, AccessPermission, SectionType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { StarRating } from './shared/star-rating';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head'];
 
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary', 'Competencies', 'Comment'];
 const surveySectionTypes: SectionType[] = ['Survey Question Group', 'Rating', 'Comment'];
-
 
 interface PerformanceTemplateSectionProps extends StepProps {
     selectedPerformanceTemplateId?: string;
@@ -28,6 +28,7 @@ interface PerformanceTemplateSectionProps extends StepProps {
 export function PerformanceTemplateSection({ state, dispatch, onComplete, selectedPerformanceTemplateId }: PerformanceTemplateSectionProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<Partial<PerformanceTemplateSectionType> | null>(null);
+  const [sections, setSections] = useState<PerformanceTemplateSectionType[]>([]);
   const { toast } = useToast();
 
   const selectedTemplate = useMemo(() => 
@@ -35,33 +36,45 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
     [selectedPerformanceTemplateId, state.performanceTemplates]
   );
   
+  useEffect(() => {
+    if (selectedPerformanceTemplateId) {
+      const templateSections = state.performanceTemplateSections
+        .filter(s => s.performanceTemplateId === selectedPerformanceTemplateId)
+        .sort((a, b) => a.order - b.order);
+      setSections(templateSections);
+    } else {
+      setSections([]);
+    }
+  }, [selectedPerformanceTemplateId, state.performanceTemplateSections]);
+
+
   const availableSectionTypes = useMemo(() => {
     if (!selectedTemplate) return [];
     return selectedTemplate.category === 'Performance' ? performanceSectionTypes : surveySectionTypes;
   }, [selectedTemplate]);
   
-  const templateSections = useMemo(() => 
-    state.performanceTemplateSections.filter(s => s.performanceTemplateId === selectedPerformanceTemplateId),
-    [selectedPerformanceTemplateId, state.performanceTemplateSections]
-  );
-
   const handleAddSection = (type: SectionType) => {
     if (!type || !selectedPerformanceTemplateId) return;
 
     const newSection: PerformanceTemplateSectionType = {
         id: `ds-${Date.now()}`,
-        name: type, // Default name to type, can be changed in setup
+        name: type,
         type: type,
         performanceTemplateId: selectedPerformanceTemplateId,
+        order: sections.length + 1,
         ratingScale: 5,
         permissions: ROLES.map(role => ({ role, view: true, edit: false }))
     };
     
-    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections, newSection] });
+    const updatedSections = [...sections, newSection];
+    setSections(updatedSections);
+    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedPerformanceTemplateId), ...updatedSections] });
   };
   
   const handleRemoveSection = (sectionId: string) => {
-    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: state.performanceTemplateSections.filter(s => s.id !== sectionId) });
+    const newSections = sections.filter(s => s.id !== sectionId).map((s, i) => ({...s, order: i + 1}));
+    setSections(newSections);
+    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedPerformanceTemplateId), ...newSections] });
   };
 
   const handleSetupClick = (section: PerformanceTemplateSectionType) => {
@@ -81,17 +94,32 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
   };
 
   const handleSaveSection = () => {
-    if (!currentSection) return;
+    if (!currentSection || !currentSection.id) return;
     
-    const updatedSections = state.performanceTemplateSections.map(s => s.id === currentSection.id ? currentSection as PerformanceTemplateSectionType : s);
+    const updatedLocalSections = sections.map(s => s.id === currentSection!.id ? currentSection as PerformanceTemplateSectionType : s);
+    setSections(updatedLocalSections);
     
-    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: updatedSections });
+    const updatedGlobalSections = state.performanceTemplateSections.map(s => s.id === currentSection!.id ? currentSection as PerformanceTemplateSectionType : s);
+    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: updatedGlobalSections });
+
     toast({
         title: 'Success',
         description: `Configuration for "${currentSection.name}" has been saved.`,
     });
     setIsDialogOpen(false);
     setCurrentSection(null);
+  };
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(sections);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    const updatedSections = items.map((item, index) => ({ ...item, order: index + 1 }));
+    setSections(updatedSections);
+    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedPerformanceTemplateId), ...updatedSections] });
   };
 
   if (!selectedTemplate) {
@@ -107,7 +135,7 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Configure Sections for: {selectedTemplate?.name}</CardTitle>
-          <CardDescription>Add and configure the content blocks for this performance template.</CardDescription>
+          <CardDescription>Add and configure the content blocks for this performance template. You can drag and drop to reorder the sections.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
             <div className="flex gap-2">
@@ -117,29 +145,43 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
                         {availableSectionTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                     </SelectContent>
                 </Select>
-                <Button variant="outline"><PlusCircle className="mr-2"/> Add Section</Button>
             </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {templateSections.map(section => (
-                <Card key={section.id}>
-                  <CardHeader>
-                      <CardTitle className="font-headline text-lg">{section.name}</CardTitle>
-                      <CardDescription>{section.type}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex justify-between items-center">
-                    <Button onClick={() => handleSetupClick(section)}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Setup
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveSection(section.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            {templateSections.length === 0 && (
+             <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="sections">
+                  {(provided) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                      {sections.map((section, index) => (
+                        <Draggable key={section.id} draggableId={section.id} index={index}>
+                           {(provided, snapshot) => (
+                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`bg-card p-4 rounded-lg border shadow-sm flex items-center justify-between ${snapshot.isDragging ? 'opacity-80 shadow-lg' : ''}`}>
+                                <div className="flex items-center gap-3">
+                                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                    <div>
+                                        <p className="font-medium font-headline">{section.name}</p>
+                                        <p className="text-sm text-muted-foreground">{section.type}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button size="sm" onClick={() => handleSetupClick(section)}>
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        Setup
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveSection(section.id)}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </div>
+                            </div>
+                           )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+             </DragDropContext>
+
+            {sections.length === 0 && (
                 <p className="text-center text-muted-foreground py-4">No sections added yet.</p>
             )}
         </CardContent>

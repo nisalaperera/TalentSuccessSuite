@@ -46,6 +46,7 @@ export type PerformanceTemplateSection = {
   name: string;
   type: SectionType;
   performanceTemplateId: string;
+  order: number;
   ratingScale?: number;
   permissions: AccessPermission[];
 };
