@@ -11,7 +11,7 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import type { StepProps, EvaluationStep } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { DatePicker } from './shared/date-picker';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
