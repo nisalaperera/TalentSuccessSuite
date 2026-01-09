@@ -1,19 +1,20 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Upload, X } from 'lucide-react';
-import type { StepProps, ExclusionRule } from '@/lib/types';
+import { PlusCircle, Trash2, Upload, X, Pencil, Power, PowerOff } from 'lucide-react';
+import type { StepProps, ExclusionRule, Eligibility as EligibilityType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 type RuleType = 'Person Type' | 'Department' | 'Legal Entity';
 
@@ -29,7 +30,30 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
   const [newRuleType, setNewRuleType] = useState<RuleType | undefined>();
   const [newRuleValues, setNewRuleValues] = useState<string[]>([]);
   const [newLovValue, setNewLovValue] = useState('');
+  const [editingEligibility, setEditingEligibility] = useState<EligibilityType | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (editingEligibility) {
+        setEligibilityName(editingEligibility.name);
+        setRules(editingEligibility.rules);
+        setIsDialogOpen(true);
+    } else {
+        setEligibilityName('');
+        setRules([]);
+    }
+  }, [editingEligibility]);
+  
+  const handleOpenDialog = (eligibility: EligibilityType | null = null) => {
+    setEditingEligibility(eligibility);
+    setIsDialogOpen(true);
+  };
+  
+  const handleCloseDialog = () => {
+    setEditingEligibility(null);
+    setIsDialogOpen(false);
+  };
+
 
   const handleAddValueToRule = (value: string) => {
     if (!newRuleType || !value) return;
@@ -60,19 +84,39 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
     setNewLovValue('');
   };
 
-  const handleSaveEligibility = () => {
+  const handleSave = () => {
     if (!eligibilityName) {
       toast({ title: "Eligibility configuration name is required", variant: "destructive" });
       return;
     }
-    const newEligibility = { id: `elig-${Date.now()}`, name: eligibilityName, rules };
-    dispatch({ type: 'ADD_ELIGIBILITY', payload: newEligibility });
-    setSelectedEligibilityId(newEligibility.id);
-    toast({ title: "Success", description: `Eligibility configuration "${eligibilityName}" saved.` });
-    setEligibilityName('');
-    setRules([]);
-    setIsDialogOpen(false);
-    onComplete();
+
+    if (editingEligibility) {
+        const updatedEligibility = { ...editingEligibility, name: eligibilityName, rules };
+        dispatch({ type: 'UPDATE_ELIGIBILITY', payload: updatedEligibility });
+        toast({ title: "Success", description: `Eligibility "${eligibilityName}" updated.` });
+    } else {
+        const newEligibility: EligibilityType = { id: `elig-${Date.now()}`, name: eligibilityName, rules, status: 'Active' };
+        dispatch({ type: 'ADD_ELIGIBILITY', payload: newEligibility });
+        setSelectedEligibilityId(newEligibility.id);
+        toast({ title: "Success", description: `Eligibility configuration "${eligibilityName}" saved.` });
+        onComplete();
+    }
+    
+    handleCloseDialog();
+  };
+
+  const handleDelete = (id: string) => {
+    dispatch({ type: 'DELETE_ELIGIBILITY', payload: id });
+    toast({ title: 'Success', description: 'Eligibility criteria deleted.'});
+    if (id === selectedEligibilityId) {
+        setSelectedEligibilityId('');
+    }
+  };
+
+  const handleToggleStatus = (eligibility: EligibilityType) => {
+    const newStatus = eligibility.status === 'Active' ? 'Inactive' : 'Active';
+    dispatch({ type: 'UPDATE_ELIGIBILITY', payload: { ...eligibility, status: newStatus } });
+    toast({ title: 'Success', description: `Eligibility status set to ${newStatus}.` });
   };
   
   const getLovForType = (type: RuleType | undefined) => {
@@ -86,9 +130,13 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
     onComplete();
   }
 
+  const isEligibilityInUse = (id: string) => {
+    return state.performanceDocuments.some(pd => pd.eligibilityId === id);
+  }
+
   return (
     <div className="space-y-6">
-       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+       <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -96,32 +144,66 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
                     <CardDescription>Define named sets of exclusion rules. Employees matching any rule will be ineligible.</CardDescription>
                 </div>
                 <DialogTrigger asChild>
-                    <Button><PlusCircle className="mr-2"/>Add New</Button>
+                    <Button onClick={() => handleOpenDialog()}><PlusCircle className="mr-2"/>Add New</Button>
                 </DialogTrigger>
             </CardHeader>
             <CardContent>
                 <RadioGroup value={selectedEligibilityId} onValueChange={handleSelection}>
+                    <TooltipProvider>
                      {state.eligibility.length > 0 ? (
-                        state.eligibility.map(e => (
-                        <div key={e.id} className="p-4 border rounded-lg mb-4 flex items-center gap-4 data-[state=checked]:bg-muted" data-state={e.id === selectedEligibilityId ? 'checked' : 'unchecked'}>
-                            <RadioGroupItem value={e.id} id={`elig-${e.id}`} />
-                            <div>
-                                <Label htmlFor={`elig-${e.id}`} className="font-bold font-headline mb-2 cursor-pointer">{e.name}</Label>
-                                {e.rules.map(r => (
-                                <p key={r.id} className="text-sm">Exclude if <strong>{r.type}</strong> is one of [{r.values.join(', ')}]</p>
-                                ))}
-                            </div>
-                        </div>
-                        ))
+                        state.eligibility.map(e => {
+                            const inUse = isEligibilityInUse(e.id);
+                            return (
+                                <div key={e.id} className="p-4 border rounded-lg mb-4 flex items-center justify-between gap-4 data-[state=checked]:bg-muted" data-state={e.id === selectedEligibilityId ? 'checked' : 'unchecked'}>
+                                    <div className="flex items-start gap-4">
+                                        <RadioGroupItem value={e.id} id={`elig-${e.id}`} className="mt-1" />
+                                        <div>
+                                            <Label htmlFor={`elig-${e.id}`} className="font-bold font-headline mb-2 cursor-pointer">{e.name} ({e.status})</Label>
+                                            {e.rules.map(r => (
+                                            <p key={r.id} className="text-sm">Exclude if <strong>{r.type}</strong> is one of [{r.values.join(', ')}]</p>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild><span tabIndex={0}><Button variant="ghost" size="icon" onClick={() => handleOpenDialog(e)} disabled={inUse}><Pencil className="h-4 w-4" /></Button></span></TooltipTrigger>
+                                            {inUse && <TooltipContent><p>Cannot edit criteria that are in use.</p></TooltipContent>}
+                                        </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span tabIndex={0}>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" disabled={inUse}><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the eligibility criteria.</AlertDialogDescription></AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDelete(e.id)}>Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </span>
+                                            </TooltipTrigger>
+                                            {inUse && <TooltipContent><p>Cannot delete criteria that are in use.</p></TooltipContent>}
+                                        </Tooltip>
+                                        <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(e)}>
+                                            {e.status === 'Active' ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                                            <span className="sr-only">{e.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                        </Button>
+                                    </div>
+                                </div>
+                            )
+                        })
                     ) : (
                         <p className="text-center text-muted-foreground py-8">No eligibility configurations saved yet.</p>
                     )}
+                    </TooltipProvider>
                 </RadioGroup>
             </CardContent>
         </Card>
         <DialogContent className="max-w-3xl">
             <DialogHeader>
-                <DialogTitle className="font-headline text-2xl">Define Eligibility Criteria</DialogTitle>
+                <DialogTitle className="font-headline text-2xl">{editingEligibility ? 'Edit' : 'Define'} Eligibility Criteria</DialogTitle>
                 <DialogDescription>Define a named set of exclusion rules. Employees matching any rule will be ineligible.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -130,7 +212,7 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
                 <div className="p-4 border rounded-lg space-y-4">
                 <h4 className="font-semibold font-headline">Add New Exclusion Rule</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Select onValueChange={(v: RuleType) => { setNewRuleType(v); setNewRuleValues([]); }}>
+                    <Select onValueChange={(v: RuleType) => { setNewRuleType(v); setNewRuleValues([]); }} value={newRuleType || ''}>
                     <SelectTrigger><SelectValue placeholder="Exclusion Rule Type" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="Person Type">Person Type</SelectItem>
@@ -183,8 +265,8 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
 
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveEligibility}>Save Eligibility Config</Button>
+                <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
+                <Button onClick={handleSave}>{editingEligibility ? 'Save Changes' : 'Save Eligibility Config'}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -12,6 +12,7 @@ export type GoalPlan = {
   id: string;
   name: string;
   reviewPeriodId: string;
+  status: 'Active' | 'Inactive';
 };
 
 export type PerformanceTemplate = {
@@ -78,6 +79,7 @@ export type EvaluationFlow = {
   id:string;
   name: string;
   steps: EvaluationStep[];
+  status: 'Active' | 'Inactive';
 };
 
 export type ExclusionRule = {
@@ -90,6 +92,7 @@ export type Eligibility = {
     id: string;
     name: string;
     rules: ExclusionRule[];
+    status: 'Active' | 'Inactive';
 };
 
 export type PerformanceDocument = {
@@ -129,10 +132,18 @@ export type Action =
   | { type: 'UPDATE_REVIEW_PERIOD'; payload: ReviewPeriod }
   | { type: 'DELETE_REVIEW_PERIOD'; payload: string }
   | { type: 'ADD_GOAL_PLAN'; payload: GoalPlan }
+  | { type: 'UPDATE_GOAL_PLAN'; payload: GoalPlan }
+  | { type: 'DELETE_GOAL_PLAN'; payload: string }
   | { type: 'ADD_PERFORMANCE_TEMPLATE'; payload: PerformanceTemplate }
+  | { type: 'UPDATE_PERFORMANCE_TEMPLATE'; payload: PerformanceTemplate }
+  | { type: 'DELETE_PERFORMANCE_TEMPLATE'; payload: string }
   | { type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS'; payload: PerformanceTemplateSection[] }
   | { type: 'ADD_EVALUATION_FLOW'; payload: EvaluationFlow }
+  | { type: 'UPDATE_EVALUATION_FLOW'; payload: EvaluationFlow }
+  | { type: 'DELETE_EVALUATION_FLOW'; payload: string }
   | { type: 'ADD_ELIGIBILITY'; payload: Eligibility }
+  | { type: 'UPDATE_ELIGIBILITY'; payload: Eligibility }
+  | { type: 'DELETE_ELIGIBILITY'; payload: string }
   | { type: 'ADD_PERFORMANCE_DOCUMENT'; payload: PerformanceDocument }
   | { type: 'ADD_LOV_VALUE'; payload: { lovType: keyof LOVs; value: string } };
 

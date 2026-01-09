@@ -23,8 +23,8 @@ const initialState: ConfigState = {
     { id: 'rp-2', name: 'FY 2025 Mid-Year', startDate: new Date('2025-01-01'), endDate: new Date('2025-06-30'), status: 'Active' },
   ],
   goalPlans: [
-    { id: 'gp-1', name: 'FY 2024 Goal Plan', reviewPeriodId: 'rp-1' },
-    { id: 'gp-2', name: 'FY 2025 Mid-Year Goals', reviewPeriodId: 'rp-2' },
+    { id: 'gp-1', name: 'FY 2024 Goal Plan', reviewPeriodId: 'rp-1', status: 'Active' },
+    { id: 'gp-2', name: 'FY 2025 Mid-Year Goals', reviewPeriodId: 'rp-2', status: 'Active' },
   ],
   performanceTemplates: [
     { id: 'pt-1', name: 'Annual Performance Review', category: 'Performance', supportsRatings: true, supportsComments: true, status: 'Active' },
@@ -45,6 +45,15 @@ const initialState: ConfigState = {
         { role: 'Secondary Appraiser 2', view: false, edit: false },
         { role: 'HR / Department Head', view: true, edit: false },
       ],
+      enableSectionRatings: true,
+      enableSectionComments: true,
+      sectionRatingMandatory: false,
+      sectionCommentMandatory: false,
+      enableSectionWeights: false,
+      enableItemRatings: true,
+      enableItemComments: true,
+      itemRatingMandatory: false,
+      itemCommentMandatory: false,
     },
     {
       id: 'ds-2',
@@ -66,6 +75,7 @@ const initialState: ConfigState = {
     {
         id: 'flow-1',
         name: 'Standard Annual Review Flow',
+        status: 'Active',
         steps: [
             { id: 'step-1', sequence: 1, task: 'Worker Self-Evaluation', role: 'Primary (Worker)', flowType: 'Start' },
             { id: 'step-2', sequence: 2, task: 'Manager Evaluation', role: 'Secondary (Manager)', flowType: 'Sequential' },
@@ -78,6 +88,7 @@ const initialState: ConfigState = {
     {
         id: 'elig-1',
         name: 'Standard Exclusions',
+        status: 'Active',
         rules: [
             { id: 'rule-1', type: 'Person Type', values: ['Intern', 'Contractor'] }
         ]
@@ -128,16 +139,38 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
       return { ...state, reviewPeriods: state.reviewPeriods.map(p => p.id === action.payload.id ? action.payload : p) };
     case 'DELETE_REVIEW_PERIOD':
       return { ...state, reviewPeriods: state.reviewPeriods.filter(p => p.id !== action.payload) };
+    
     case 'ADD_GOAL_PLAN':
       return { ...state, goalPlans: [...state.goalPlans, action.payload] };
+    case 'UPDATE_GOAL_PLAN':
+      return { ...state, goalPlans: state.goalPlans.map(p => p.id === action.payload.id ? action.payload : p) };
+    case 'DELETE_GOAL_PLAN':
+      return { ...state, goalPlans: state.goalPlans.filter(p => p.id !== action.payload) };
+      
     case 'ADD_PERFORMANCE_TEMPLATE':
       return { ...state, performanceTemplates: [...state.performanceTemplates, action.payload] };
+    case 'UPDATE_PERFORMANCE_TEMPLATE':
+        return { ...state, performanceTemplates: state.performanceTemplates.map(p => p.id === action.payload.id ? action.payload : p) };
+    case 'DELETE_PERFORMANCE_TEMPLATE':
+        return { ...state, performanceTemplates: state.performanceTemplates.filter(p => p.id !== action.payload) };
+
     case 'SET_PERFORMANCE_TEMPLATE_SECTIONS':
       return { ...state, performanceTemplateSections: action.payload };
+
     case 'ADD_EVALUATION_FLOW':
       return { ...state, evaluationFlows: [...state.evaluationFlows, action.payload] };
+    case 'UPDATE_EVALUATION_FLOW':
+      return { ...state, evaluationFlows: state.evaluationFlows.map(p => p.id === action.payload.id ? action.payload : p) };
+    case 'DELETE_EVALUATION_FLOW':
+      return { ...state, evaluationFlows: state.evaluationFlows.filter(p => p.id !== action.payload) };
+
     case 'ADD_ELIGIBILITY':
         return { ...state, eligibility: [...state.eligibility, action.payload] };
+    case 'UPDATE_ELIGIBILITY':
+      return { ...state, eligibility: state.eligibility.map(p => p.id === action.payload.id ? action.payload : p) };
+    case 'DELETE_ELIGIBILITY':
+      return { ...state, eligibility: state.eligibility.filter(p => p.id !== action.payload) };
+        
     case 'ADD_PERFORMANCE_DOCUMENT':
       return { ...state, performanceDocuments: [...state.performanceDocuments, action.payload] };
     case 'ADD_LOV_VALUE':

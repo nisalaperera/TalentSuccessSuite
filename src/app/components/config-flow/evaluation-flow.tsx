@@ -1,19 +1,21 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import type { StepProps, EvaluationStep } from '@/lib/types';
+import { PlusCircle, Trash2, Pencil, Power, PowerOff } from 'lucide-react';
+import type { StepProps, EvaluationFlow as EvaluationFlowType, EvaluationStep } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { DatePicker } from './shared/date-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const PROCESS_PHASES: EvaluationStep['task'][] = ['Worker Self-Evaluation', 'Manager Evaluation', 'Normalization', 'Share Document', 'Confirm Review Meeting', 'Provide Final Feedback', 'Close Document'];
 const ROLES: EvaluationStep['role'][] = ['Primary (Worker)', 'Secondary (Manager)', 'Sec. Appraiser 1', 'Sec. Appraiser 2', 'HR / Dept Head'];
@@ -28,7 +30,29 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [flowName, setFlowName] = useState('');
   const [steps, setSteps] = useState<Partial<EvaluationStep>[]>([]);
+  const [editingFlow, setEditingFlow] = useState<EvaluationFlowType | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (editingFlow) {
+        setFlowName(editingFlow.name);
+        setSteps(editingFlow.steps);
+        setIsDialogOpen(true);
+    } else {
+        setFlowName('');
+        setSteps([]);
+    }
+  }, [editingFlow]);
+  
+  const handleOpenDialog = (flow: EvaluationFlowType | null = null) => {
+    setEditingFlow(flow);
+    setIsDialogOpen(true);
+  };
+  
+  const handleCloseDialog = () => {
+    setEditingFlow(null);
+    setIsDialogOpen(false);
+  };
 
   const handleAddStep = () => {
     setSteps([...steps, { id: `step-${Date.now()}` }]);
@@ -45,12 +69,15 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
 
   const getFlowType = (sequence: number, index: number): EvaluationStep['flowType'] => {
       if (index === 0) return 'Start';
-      const prevSequence = steps[index-1]?.sequence;
-      if (sequence === prevSequence) return 'Parallel';
+      const prevStep = steps
+        .filter(s => s.sequence)
+        .sort((a,b) => a.sequence! - b.sequence!)
+        [index-1];
+      if (prevStep && sequence === prevStep.sequence) return 'Parallel';
       return 'Sequential';
   }
 
-  const handleSaveFlow = () => {
+  const handleSave = () => {
     if (!flowName) {
       toast({ title: "Flow name is required", variant: "destructive" });
       return;
@@ -60,22 +87,43 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
       return;
     }
 
-    const finalSteps: EvaluationStep[] = steps.map((s, index) => ({
-      ...s,
-      sequence: s.sequence!,
-      task: s.task!,
-      role: s.role!,
-      flowType: getFlowType(s.sequence!, index),
-    } as EvaluationStep));
+    const finalSteps: EvaluationStep[] = steps
+      .map((s, index) => ({
+        ...s,
+        sequence: s.sequence!,
+        task: s.task!,
+        role: s.role!,
+        flowType: getFlowType(s.sequence!, index),
+      } as EvaluationStep))
+      .sort((a, b) => a.sequence - b.sequence);
 
-    const newFlow = { id: `flow-${Date.now()}`, name: flowName, steps: finalSteps };
-    dispatch({ type: 'ADD_EVALUATION_FLOW', payload: newFlow });
-    setSelectedEvaluationFlowId(newFlow.id);
-    toast({ title: "Success", description: `Evaluation flow "${flowName}" has been saved.` });
-    setFlowName('');
-    setSteps([]);
-    setIsDialogOpen(false);
-    onComplete();
+    if (editingFlow) {
+        const updatedFlow = { ...editingFlow, name: flowName, steps: finalSteps };
+        dispatch({ type: 'UPDATE_EVALUATION_FLOW', payload: updatedFlow });
+        toast({ title: "Success", description: `Flow "${flowName}" updated.` });
+    } else {
+        const newFlow: EvaluationFlowType = { id: `flow-${Date.now()}`, name: flowName, steps: finalSteps, status: 'Active' };
+        dispatch({ type: 'ADD_EVALUATION_FLOW', payload: newFlow });
+        setSelectedEvaluationFlowId(newFlow.id);
+        toast({ title: "Success", description: `Evaluation flow "${flowName}" has been saved.` });
+        onComplete();
+    }
+
+    handleCloseDialog();
+  };
+
+  const handleDelete = (id: string) => {
+    dispatch({ type: 'DELETE_EVALUATION_FLOW', payload: id });
+    toast({ title: 'Success', description: 'Evaluation flow deleted.'});
+    if (id === selectedEvaluationFlowId) {
+        setSelectedEvaluationFlowId('');
+    }
+  };
+
+  const handleToggleStatus = (flow: EvaluationFlowType) => {
+    const newStatus = flow.status === 'Active' ? 'Inactive' : 'Active';
+    dispatch({ type: 'UPDATE_EVALUATION_FLOW', payload: { ...flow, status: newStatus } });
+    toast({ title: 'Success', description: `Flow status set to ${newStatus}.` });
   };
 
   const handleSelection = (id: string) => {
@@ -83,9 +131,13 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
     onComplete();
   }
 
+  const isFlowInUse = (id: string) => {
+    return state.performanceDocuments.some(pd => pd.evaluationFlowId === id);
+  }
+
   return (
     <div className="space-y-6">
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
@@ -93,7 +145,7 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
                     <CardDescription>Define who does what, when, and in what order for a document.</CardDescription>
                 </div>
                 <DialogTrigger asChild>
-                    <Button>
+                    <Button onClick={() => handleOpenDialog()}>
                         <PlusCircle className="mr-2" />
                         Add New
                     </Button>
@@ -101,27 +153,60 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
             </CardHeader>
             <CardContent>
                 <RadioGroup value={selectedEvaluationFlowId} onValueChange={handleSelection}>
+                    <TooltipProvider>
                      {state.evaluationFlows.length > 0 ? (
-                        state.evaluationFlows.map(flow => (
-                            <div key={flow.id} className="p-4 border rounded-lg mb-4 flex items-center gap-4 data-[state=checked]:bg-muted" data-state={flow.id === selectedEvaluationFlowId ? 'checked' : 'unchecked'}>
-                                <RadioGroupItem value={flow.id} id={`flow-${flow.id}`} />
-                                <div>
-                                    <Label htmlFor={`flow-${flow.id}`} className="font-bold font-headline mb-2 cursor-pointer">{flow.name}</Label>
-                                    <p className="text-sm text-muted-foreground">
-                                    {flow.steps.map(s => s.task).join(' → ')}
-                                    </p>
+                        state.evaluationFlows.map(flow => {
+                            const inUse = isFlowInUse(flow.id);
+                            return (
+                            <div key={flow.id} className="p-4 border rounded-lg mb-4 flex items-center justify-between gap-4 data-[state=checked]:bg-muted" data-state={flow.id === selectedEvaluationFlowId ? 'checked' : 'unchecked'}>
+                                <div className="flex items-start gap-4">
+                                    <RadioGroupItem value={flow.id} id={`flow-${flow.id}`} className="mt-1" />
+                                    <div>
+                                        <Label htmlFor={`flow-${flow.id}`} className="font-bold font-headline mb-2 cursor-pointer">{flow.name} ({flow.status})</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                        {flow.steps.map(s => s.task).join(' → ')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                     <Tooltip>
+                                        <TooltipTrigger asChild><span tabIndex={0}><Button variant="ghost" size="icon" onClick={() => handleOpenDialog(flow)} disabled={inUse}><Pencil className="h-4 w-4" /></Button></span></TooltipTrigger>
+                                        {inUse && <TooltipContent><p>Cannot edit a flow that is in use.</p></TooltipContent>}
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span tabIndex={0}>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon" disabled={inUse}><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the flow.</AlertDialogDescription></AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(flow.id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </span>
+                                        </TooltipTrigger>
+                                        {inUse && <TooltipContent><p>Cannot delete a flow that is in use.</p></TooltipContent>}
+                                    </Tooltip>
+                                    <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(flow)}>
+                                        {flow.status === 'Active' ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                                        <span className="sr-only">{flow.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                    </Button>
                                 </div>
                             </div>
-                        ))
+                        )})
                     ) : (
                          <p className="text-center text-muted-foreground py-8">No evaluation flows created yet.</p>
                     )}
+                    </TooltipProvider>
                 </RadioGroup>
             </CardContent>
         </Card>
         <DialogContent className="max-w-4xl">
             <DialogHeader>
-                <DialogTitle className="font-headline text-2xl">Create New Evaluation Flow</DialogTitle>
+                <DialogTitle className="font-headline text-2xl">{editingFlow ? 'Edit' : 'Create New'} Evaluation Flow</DialogTitle>
                 <DialogDescription>Define the sequence of tasks, roles, and deadlines for the evaluation process.</DialogDescription>
             </DialogHeader>
              <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -143,19 +228,19 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
                         {steps.map((step, index) => (
                             <TableRow key={step.id}>
                             <TableCell>
-                                <Select onValueChange={(val) => handleStepChange(step.id!, 'sequence', parseInt(val))} >
+                                <Select onValueChange={(val) => handleStepChange(step.id!, 'sequence', parseInt(val))} value={step.sequence ? String(step.sequence) : ''}>
                                     <SelectTrigger className="w-20"><SelectValue placeholder="No." /></SelectTrigger>
                                     <SelectContent>{SEQUENCE_NUMBERS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
                                 </Select>
                             </TableCell>
                             <TableCell>
-                                <Select onValueChange={(val) => handleStepChange(step.id!, 'task', val)} >
+                                <Select onValueChange={(val) => handleStepChange(step.id!, 'task', val)} value={step.task}>
                                     <SelectTrigger><SelectValue placeholder="Select Task" /></SelectTrigger>
                                     <SelectContent>{PROCESS_PHASES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                                 </Select>
                             </TableCell>
                             <TableCell>
-                                <Select onValueChange={(val) => handleStepChange(step.id!, 'role', val)} >
+                                <Select onValueChange={(val) => handleStepChange(step.id!, 'role', val)} value={step.role}>
                                     <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
                                     <SelectContent>{ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                                 </Select>
@@ -174,8 +259,8 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
                  <Button variant="outline" onClick={handleAddStep}><PlusCircle className="mr-2" /> Add Step</Button>
             </div>
             <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveFlow}>Save Flow</Button>
+                <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
+                <Button onClick={handleSave}>{editingFlow ? 'Save Changes' : 'Save Flow'}</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
