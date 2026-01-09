@@ -285,39 +285,39 @@ export default function Home() {
                                 disabled={isDisabled}
                                 className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <div className="flex items-center justify-between w-full">
-                                  <div className="flex items-center gap-4">
+                                <div className="flex items-center justify-between w-full gap-4">
+                                  <div className="flex items-center gap-4 flex-shrink-0">
                                     {getStepStatusIcon(stepKey)}
                                     {stepInfo.title}
                                   </div>
-                                  <div className="truncate">
+                                  <div className="flex-shrink w-full text-right whitespace-normal">
                                   {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
                                         {selectedReviewPeriod.name} ({format(selectedReviewPeriod.startDate, 'MMM d')} - {format(selectedReviewPeriod.endDate, 'MMM d, yyyy')})
                                       </Badge>
                                   )}
                                   {stepKey === 'goalPlan' && selectedGoalPlan && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
                                         {selectedGoalPlan.name}
                                       </Badge>
                                   )}
                                   {stepKey === 'performanceTemplate' && selectedPerformanceTemplate && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
                                         {selectedPerformanceTemplate.name} ({selectedPerformanceTemplate.category})
                                       </Badge>
                                   )}
                                   {stepKey === 'performanceTemplateSection' && configuredSections.length > 0 && (
-                                    <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                    <Badge variant="secondary" className="px-3 py-1 text-sm">
                                       {configuredSections.map(s => s.name).join(', ')}
                                     </Badge>
                                   )}
                                   {stepKey === 'evaluationFlow' && selectedEvaluationFlow && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
                                         {selectedEvaluationFlow.name}
                                       </Badge>
                                   )}
                                   {stepKey === 'eligibility' && selectedEligibility && (
-                                      <Badge variant="secondary" className="px-5 py-1 text-lg">
+                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
                                         {selectedEligibility.name}
                                       </Badge>
                                   )}
