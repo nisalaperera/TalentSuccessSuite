@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Settings, Check, X } from 'lucide-react';
@@ -24,8 +24,11 @@ const allSectionTemplates = [
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head'];
 
-export function PerformanceTemplateSection({ state, dispatch, onComplete }: StepProps) {
-  const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
+interface PerformanceTemplateSectionProps extends StepProps {
+    selectedPerformanceTemplateId?: string;
+}
+
+export function PerformanceTemplateSection({ state, dispatch, onComplete, selectedPerformanceTemplateId }: PerformanceTemplateSectionProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<any>(null);
   const [ratingScale, setRatingScale] = useState(5);
@@ -86,51 +89,38 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete }: Step
   const isSectionConfigured = (sectionName: string) => {
     return state.performanceTemplateSections.some(s => s.name === sectionName && s.performanceTemplateId === selectedPerformanceTemplateId);
   };
+  
+  const selectedTemplate = state.performanceTemplates.find(t => t.id === selectedPerformanceTemplateId);
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Configure Performance Template Sections</CardTitle>
-          <CardDescription>First, select a performance template to see its available sections for configuration.</CardDescription>
+          <CardTitle className="font-headline">Configure Sections for: {selectedTemplate?.name || '...'}</CardTitle>
+          <CardDescription>Set up the individual content blocks for the selected performance template.</CardDescription>
         </CardHeader>
         <CardContent>
-            <Select onValueChange={setSelectedPerformanceTemplateId} value={selectedPerformanceTemplateId}>
-                <SelectTrigger className="md:w-1/2">
-                    <SelectValue placeholder="Select a Performance Template" />
-                </SelectTrigger>
-                <SelectContent>
-                    {state.performanceTemplates.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                        {type.name}
-                    </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredSections.map(template => (
+                <Card key={template.name}>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="font-headline text-lg">{template.name}</CardTitle>
+                      <CardDescription>{template.type}</CardDescription>
+                    </div>
+                    {isSectionConfigured(template.name) ? <Check className="text-accent" /> : <X className="text-destructive" />}
+                  </CardHeader>
+                  <CardContent>
+                    <Button onClick={() => handleSetupClick(template)}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      {isSectionConfigured(template.name) ? 'Edit Setup' : 'Setup'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
         </CardContent>
       </Card>
-
-      {selectedPerformanceTemplateId && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredSections.map(template => (
-            <Card key={template.name}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="font-headline text-lg">{template.name}</CardTitle>
-                  <CardDescription>{template.type}</CardDescription>
-                </div>
-                {isSectionConfigured(template.name) ? <Check className="text-accent" /> : <X className="text-destructive" />}
-              </CardHeader>
-              <CardContent>
-                <Button onClick={() => handleSetupClick(template)}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  {isSectionConfigured(template.name) ? 'Edit Setup' : 'Setup'}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-3xl">

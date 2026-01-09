@@ -171,7 +171,7 @@ export default function Home() {
       case 'performanceTemplate':
         return false;
       case 'performanceTemplateSection':
-        return state.performanceTemplates.length === 0;
+        return !isStepComplete('performanceTemplate');
       case 'evaluationFlow':
         return false;
       case 'eligibility':
@@ -234,7 +234,7 @@ export default function Home() {
     reviewPeriod: { state, dispatch, onComplete: () => handleNext('reviewPeriod'), selectedReviewPeriodId, setSelectedReviewPeriodId },
     goalPlan: { state, dispatch, onComplete: () => handleNext('goalPlan'), selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId },
     performanceTemplate: { state, dispatch, onComplete: () => handleNext('performanceTemplate'), selectedPerformanceTemplateId, setSelectedPerformanceTemplateId },
-    performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection') },
+    performanceTemplateSection: { state, dispatch, onComplete: () => handleNext('performanceTemplateSection'), selectedPerformanceTemplateId },
     evaluationFlow: { state, dispatch, onComplete: () => handleNext('evaluationFlow') },
     eligibility: { state, dispatch, onComplete: () => handleNext('eligibility') },
     performanceDocument: { state, dispatch, onComplete: () => handleNext('performanceDocument') },
@@ -283,7 +283,7 @@ export default function Home() {
                                   )}
                                   {stepKey === 'performanceTemplate' && selectedPerformanceTemplate && (
                                       <Badge variant="secondary" className="px-5 py-1 text-lg">
-                                        {selectedPerformanceTemplate.name}
+                                        {selectedPerformanceTemplate.name} ({selectedPerformanceTemplate.category})
                                       </Badge>
                                   )}
                                 </div>
