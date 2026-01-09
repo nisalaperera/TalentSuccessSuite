@@ -25,10 +25,61 @@ const initialState: ConfigState = {
     { id: 'gp-1', name: 'FY 2024 Goal Plan', reviewPeriodId: 'rp-1' },
     { id: 'gp-2', name: 'FY 2025 Mid-Year Goals', reviewPeriodId: 'rp-2' },
   ],
-  performanceTemplates: [],
-  performanceTemplateSections: [],
-  evaluationFlows: [],
-  eligibility: [],
+  performanceTemplates: [
+    { id: 'pt-1', name: 'Annual Performance Review', category: 'Performance', supportsRatings: true, supportsComments: true, status: 'Active' },
+    { id: 'pt-2', name: 'Q3 Employee Engagement Survey', category: 'Survey', supportsRatings: true, supportsComments: true, status: 'Active' },
+  ],
+  performanceTemplateSections: [
+    {
+      id: 'ds-1',
+      name: 'Performance Goals',
+      type: 'Performance Goals',
+      performanceTemplateId: 'pt-1',
+      ratingScale: 5,
+      permissions: [
+        { role: 'Worker', view: true, edit: true },
+        { role: 'Primary Appraiser', view: true, edit: true },
+        { role: 'Secondary Appraiser 1', view: true, edit: false },
+        { role: 'Secondary Appraiser 2', view: false, edit: false },
+        { role: 'HR / Department Head', view: true, edit: false },
+      ],
+    },
+    {
+      id: 'ds-2',
+      name: 'Overall Summary',
+      type: 'Overall Summary',
+      performanceTemplateId: 'pt-1',
+      ratingScale: 5,
+      permissions: [
+        { role: 'Worker', view: true, edit: false },
+        { role: 'Primary Appraiser', view: true, edit: true },
+        { role: 'Secondary Appraiser 1', view: true, edit: true },
+        { role: 'Secondary Appraiser 2', view: true, edit: true },
+        { role: 'HR / Department Head', view: true, edit: true },
+      ],
+    },
+  ],
+  evaluationFlows: [
+    {
+        id: 'flow-1',
+        name: 'Standard Annual Review Flow',
+        steps: [
+            { id: 'step-1', sequence: 1, task: 'Worker Self-Evaluation', role: 'Primary (Worker)', flowType: 'Start' },
+            { id: 'step-2', sequence: 2, task: 'Manager Evaluation', role: 'Secondary (Manager)', flowType: 'Sequential' },
+            { id: 'step-3', sequence: 3, task: 'Share Document', role: 'Secondary (Manager)', flowType: 'Sequential' },
+            { id: 'step-4', sequence: 4, task: 'Confirm Review Meeting', role: 'Primary (Worker)', flowType: 'Sequential' },
+        ]
+    }
+  ],
+  eligibility: [
+    {
+        id: 'elig-1',
+        name: 'Standard Exclusions',
+        rules: [
+            { id: 'rule-1', type: 'Person Type', values: ['Intern', 'Contractor'] }
+        ]
+    }
+  ],
   performanceDocuments: [],
   lovs: {
     personTypes: ['Full-Time', 'Part-Time', 'Intern', 'Contractor'],
