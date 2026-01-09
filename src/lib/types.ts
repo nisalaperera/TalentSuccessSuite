@@ -29,10 +29,22 @@ export type AccessPermission = {
   edit: boolean;
 };
 
+export type SectionType = 
+  // Performance
+  | 'Performance Goals' 
+  | 'Overall Summary' 
+  | 'Competencies'
+  // Survey
+  | 'Survey Question Group'
+  | 'Rating'
+  // Common
+  | 'Comment';
+
+
 export type PerformanceTemplateSection = {
   id: string;
   name: string;
-  type: 'Performance Goals' | 'Overall Summary' | 'Survey Question Group' | 'Rating Only' | 'Comment Only';
+  type: SectionType;
   performanceTemplateId: string;
   ratingScale?: number;
   permissions: AccessPermission[];
