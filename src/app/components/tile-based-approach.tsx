@@ -28,7 +28,7 @@ export function TileBasedApproach({ state }: TileBasedProps) {
             ]
         },
         {
-            groupTitle: "Performance Template & Performance Template Section",
+            groupTitle: "Performance Template Management",
             items: [
                  {
                     title: "Performance Templates",
