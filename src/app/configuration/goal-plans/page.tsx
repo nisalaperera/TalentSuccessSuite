@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useReducer, useState, useEffect } from 'react';
+import { useReducer, useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -13,7 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-export default function GoalPlansPage() {
+function GoalPlansContent() {
+    const searchParams = useSearchParams();
     const [state, dispatch] = useReducer(configReducer, initialState);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<GoalPlanType | null>(null);
@@ -23,15 +25,17 @@ export default function GoalPlansPage() {
     const [name, setName] = useState('');
     const [reviewPeriodId, setReviewPeriodId] = useState('');
 
+    const preselectedReviewPeriodId = searchParams.get('reviewPeriodId');
+
     useEffect(() => {
         if (editingPlan) {
             setName(editingPlan.name);
             setReviewPeriodId(editingPlan.reviewPeriodId);
         } else {
             setName('');
-            setReviewPeriodId('');
+            setReviewPeriodId(preselectedReviewPeriodId || '');
         }
-    }, [editingPlan]);
+    }, [editingPlan, preselectedReviewPeriodId]);
 
     const handleOpenDialog = (plan: GoalPlanType | null = null) => {
         setEditingPlan(plan);
@@ -77,6 +81,10 @@ export default function GoalPlansPage() {
     };
     
     const getReviewPeriodName = (id: string) => state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
+
+    const filteredData = preselectedReviewPeriodId
+        ? state.goalPlans.filter(plan => plan.reviewPeriodId === preselectedReviewPeriodId)
+        : state.goalPlans;
     
     const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getReviewPeriodName });
 
@@ -87,7 +95,7 @@ export default function GoalPlansPage() {
                 description="Manage all your goal plans here."
                 onAddNew={() => handleOpenDialog()}
             />
-            <DataTable columns={tableColumns} data={state.goalPlans} />
+            <DataTable columns={tableColumns} data={filteredData} />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
@@ -111,4 +119,12 @@ export default function GoalPlansPage() {
             </Dialog>
         </div>
     );
+}
+
+export default function GoalPlansPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <GoalPlansContent />
+        </Suspense>
+    )
 }

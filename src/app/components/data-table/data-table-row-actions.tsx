@@ -23,16 +23,24 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+interface CustomAction<TData> {
+    label: string;
+    icon?: React.ReactNode;
+    onClick: (data: TData) => void;
+    isDestructive?: boolean;
+}
+
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
-  onEdit: (data: TData) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (data: TData) => void;
+  onDelete?: (id: string) => void;
   onToggleStatus?: (data: TData) => void;
   isToggleable?: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  editTooltip: string;
-  deleteTooltip: string;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  editTooltip?: string;
+  deleteTooltip?: string;
+  customActions?: CustomAction<TData>[];
 }
 
 export function DataTableRowActions<TData extends { id: string, status?: 'Active' | 'Inactive' }>({
@@ -41,10 +49,11 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
   onDelete,
   onToggleStatus,
   isToggleable = true,
-  canEdit,
-  canDelete,
+  canEdit = true,
+  canDelete = true,
   editTooltip,
-  deleteTooltip
+  deleteTooltip,
+  customActions = []
 }: DataTableRowActionsProps<TData>) {
   const data = row.original;
 
@@ -61,12 +70,21 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[160px]">
-          <DropdownMenuItem onClick={() => onEdit(data)} disabled={!canEdit}>
-            <Pencil className="mr-2 h-3.5 w-3.5" />
-            Edit
-          </DropdownMenuItem>
+          {onEdit && (
+            <DropdownMenuItem onClick={() => onEdit(data)} disabled={!canEdit}>
+              <Pencil className="mr-2 h-3.5 w-3.5" />
+              Edit
+            </DropdownMenuItem>
+          )}
+
+          {customActions.map((action, index) => (
+             <DropdownMenuItem key={index} onClick={() => action.onClick(data)}>
+                {action.icon}
+                {action.label}
+             </DropdownMenuItem>
+          ))}
           
-          <DropdownMenuSeparator />
+          {(onEdit || customActions.length > 0) && <DropdownMenuSeparator />}
           
           {isToggleable && onToggleStatus && (
             <DropdownMenuItem onClick={() => onToggleStatus(data)}>
@@ -84,33 +102,35 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
             </DropdownMenuItem>
           )}
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm text-destructive outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                aria-disabled={!canDelete}
-                onClick={(e) => { if (!canDelete) e.preventDefault(); }}
-              >
-                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                Delete
-              </div>
-            </AlertDialogTrigger>
-            {canDelete && (
-                <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete this item.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onDelete(data.id)}>
+          {onDelete && (
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm text-destructive outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                    aria-disabled={!canDelete}
+                    onClick={(e) => { if (!canDelete) e.preventDefault(); }}
+                >
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
                     Delete
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-                </AlertDialogContent>
-            )}
-          </AlertDialog>
+                </div>
+                </AlertDialogTrigger>
+                {canDelete && (
+                    <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete this item.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onDelete(data.id)}>
+                        Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                    </AlertDialogContent>
+                )}
+            </AlertDialog>
+          )}
 
         </DropdownMenuContent>
       </DropdownMenu>

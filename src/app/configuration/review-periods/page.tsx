@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useReducer, useState, useEffect } from 'react';
+import { useReducer, useState, useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -14,7 +15,8 @@ import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/app/components/config-flow/shared/date-picker';
 import { PlusCircle } from 'lucide-react';
 
-export default function ReviewPeriodsPage() {
+function ReviewPeriodsContent() {
+    const router = useRouter();
     const [state, dispatch] = useReducer(configReducer, initialState);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPeriod, setEditingPeriod] = useState<ReviewPeriodType | null>(null);
@@ -84,7 +86,17 @@ export default function ReviewPeriodsPage() {
         toast({ title: 'Success', description: `Period status set to ${newStatus}.` });
     };
 
-    const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPeriodInUse });
+    const handleManageGoalPlans = (period: ReviewPeriodType) => {
+        router.push(`/configuration/goal-plans?reviewPeriodId=${period.id}`);
+    }
+
+    const tableColumns = columns({ 
+        onEdit: handleOpenDialog, 
+        onDelete: handleDelete, 
+        onToggleStatus: handleToggleStatus, 
+        isPeriodInUse,
+        onManageGoalPlans: handleManageGoalPlans,
+    });
 
     return (
         <div className="container mx-auto py-10">
@@ -115,4 +127,12 @@ export default function ReviewPeriodsPage() {
             </Dialog>
         </div>
     );
+}
+
+export default function ReviewPeriodsPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ReviewPeriodsContent />
+        </Suspense>
+    )
 }
