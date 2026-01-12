@@ -16,12 +16,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 interface GoalPlanProps extends StepProps {
-    selectedReviewPeriodId?: string;
+    selectedPerformanceCycleId?: string;
     selectedGoalPlanId?: string;
     setSelectedGoalPlanId: (id: string) => void;
 }
 
-export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, selectedGoalPlanId, setSelectedGoalPlanId }: GoalPlanProps) {
+export function GoalPlan({ state, dispatch, onComplete, selectedPerformanceCycleId, selectedGoalPlanId, setSelectedGoalPlanId }: GoalPlanProps) {
   const [name, setName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<GoalPlanType | null>(null);
@@ -48,10 +48,10 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
 
 
   const handleSave = () => {
-    if (!name || !selectedReviewPeriodId) {
+    if (!name || !selectedPerformanceCycleId) {
       toast({
         title: 'Missing Information',
-        description: 'Please provide a name and ensure a review period is selected.',
+        description: 'Please provide a name and ensure a performance cycle is selected.',
         variant: 'destructive',
       });
       return;
@@ -65,7 +65,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
       const newPlan: GoalPlanType = {
         id: `gp-${Date.now()}`,
         name,
-        reviewPeriodId: selectedReviewPeriodId,
+        performanceCycleId: selectedPerformanceCycleId,
         status: 'Active',
       };
       dispatch({ type: 'ADD_GOAL_PLAN', payload: newPlan });
@@ -92,8 +92,8 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
   };
 
 
-  const getReviewPeriodName = (id: string) => {
-    return state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
+  const getPerformanceCycleName = (id: string) => {
+    return state.performanceCycles.find(p => p.id === id)?.name || 'N/A';
   }
 
   const handleSelection = (id: string) => {
@@ -101,7 +101,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
     onComplete();
   }
   
-  const filteredGoalPlans = state.goalPlans.filter(gp => gp.reviewPeriodId === selectedReviewPeriodId);
+  const filteredGoalPlans = state.goalPlans.filter(gp => gp.performanceCycleId === selectedPerformanceCycleId);
 
   const isPlanInUse = (id: string) => {
     return state.performanceDocuments.some(pd => pd.goalPlanId === id);
@@ -114,7 +114,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle className="font-headline">Goal Plans</CardTitle>
-                    <CardDescription>Define goal containers and link them to the selected review period.</CardDescription>
+                    <CardDescription>Define goal containers and link them to the selected performance cycle.</CardDescription>
                 </div>
                 <DialogTrigger asChild>
                     <Button onClick={() => handleOpenDialog()}><PlusCircle className="mr-2" />Add New</Button>
@@ -128,7 +128,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
                         <TableRow>
                         <TableHead className="w-10"></TableHead>
                         <TableHead>Goal Plan Name</TableHead>
-                        <TableHead>Linked Review Period</TableHead>
+                        <TableHead>Linked Performance Cycle</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -143,7 +143,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
                                     <RadioGroupItem value={plan.id} id={plan.id} />
                                 </TableCell>
                                 <TableCell className="font-medium"><Label htmlFor={plan.id} className="cursor-pointer">{plan.name}</Label></TableCell>
-                                <TableCell>{getReviewPeriodName(plan.reviewPeriodId)}</TableCell>
+                                <TableCell>{getPerformanceCycleName(plan.performanceCycleId)}</TableCell>
                                 <TableCell>{plan.status}</TableCell>
                                 <TableCell className="text-right">
                                      <div className="flex justify-end items-center gap-2">
@@ -179,7 +179,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
                         })
                         ) : (
                         <TableRow>
-                            <TableCell colSpan={5} className="text-center">No goal plans created for this review period yet.</TableCell>
+                            <TableCell colSpan={5} className="text-center">No goal plans created for this performance cycle yet.</TableCell>
                         </TableRow>
                         )}
                     </TableBody>

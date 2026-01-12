@@ -26,19 +26,19 @@ function GoalPlansContent() {
 
     // Form state
     const [name, setName] = useState('');
-    const [reviewPeriodId, setReviewPeriodId] = useState('');
+    const [performanceCycleId, setPerformanceCycleId] = useState('');
     
-    const filterReviewPeriod = searchParams.get('reviewPeriodId') || '';
+    const filterPerformanceCycle = searchParams.get('performanceCycleId') || '';
 
     useEffect(() => {
         if (editingPlan) {
             setName(editingPlan.name);
-            setReviewPeriodId(editingPlan.reviewPeriodId);
+            setPerformanceCycleId(editingPlan.performanceCycleId);
         } else {
             setName('');
-            setReviewPeriodId(filterReviewPeriod || '');
+            setPerformanceCycleId(filterPerformanceCycle || '');
         }
-    }, [editingPlan, filterReviewPeriod]);
+    }, [editingPlan, filterPerformanceCycle]);
     
 
     const handleOpenDialog = (plan: GoalPlanType | null = null) => {
@@ -52,17 +52,17 @@ function GoalPlansContent() {
     };
 
     const handleSave = () => {
-        if (!name || !reviewPeriodId) {
-            toast({ title: 'Missing Information', description: 'Please provide a name and select a review period.', variant: 'destructive' });
+        if (!name || !performanceCycleId) {
+            toast({ title: 'Missing Information', description: 'Please provide a name and select a performance cycle.', variant: 'destructive' });
             return;
         }
 
         if (editingPlan) {
-            const updatedPlan = { ...editingPlan, name, reviewPeriodId };
+            const updatedPlan = { ...editingPlan, name, performanceCycleId };
             dispatch({ type: 'UPDATE_GOAL_PLAN', payload: updatedPlan });
             toast({ title: 'Success', description: `Goal plan "${name}" updated.` });
         } else {
-            const newPlan: GoalPlanType = { id: `gp-${Date.now()}`, name, reviewPeriodId, status: 'Active' };
+            const newPlan: GoalPlanType = { id: `gp-${Date.now()}`, name, performanceCycleId, status: 'Active' };
             dispatch({ type: 'ADD_GOAL_PLAN', payload: newPlan });
             toast({ title: 'Success', description: `Goal plan "${name}" created.` });
         }
@@ -84,32 +84,32 @@ function GoalPlansContent() {
         toast({ title: 'Success', description: `Plan status set to ${newStatus}.` });
     };
     
-    const getReviewPeriodName = (id: string) => state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
+    const getPerformanceCycleName = (id: string) => state.performanceCycles.find(p => p.id === id)?.name || 'N/A';
     
-    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getReviewPeriodName }), [state.reviewPeriods]);
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getPerformanceCycleName }), [state.performanceCycles]);
 
     const filteredData = useMemo(() => {
-        if (!filterReviewPeriod) return state.goalPlans;
-        return state.goalPlans.filter(plan => plan.reviewPeriodId === filterReviewPeriod);
-    }, [filterReviewPeriod, state.goalPlans]);
+        if (!filterPerformanceCycle) return state.goalPlans;
+        return state.goalPlans.filter(plan => plan.performanceCycleId === filterPerformanceCycle);
+    }, [filterPerformanceCycle, state.goalPlans]);
 
     const handleClearFilter = () => {
         router.push('/configuration/goal-plans');
     };
 
     const toolbarContent = useMemo(() => {
-        if (!filterReviewPeriod) return null;
+        if (!filterPerformanceCycle) return null;
 
-        const periodName = getReviewPeriodName(filterReviewPeriod);
+        const cycleName = getPerformanceCycleName(filterPerformanceCycle);
         return (
             <Badge variant="secondary" className="flex items-center gap-2">
-                Review Period: {periodName}
+                Performance Cycle: {cycleName}
                 <button onClick={handleClearFilter} className="rounded-full hover:bg-muted-foreground/20">
                     <X className="h-3 w-3"/>
                 </button>
             </Badge>
         );
-    }, [filterReviewPeriod]);
+    }, [filterPerformanceCycle]);
 
 
     return (
@@ -132,10 +132,10 @@ function GoalPlansContent() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <Input placeholder="e.g., FY26 Mid-Annual Goal Plan" value={name} onChange={(e) => setName(e.target.value)} />
-                        <Select onValueChange={setReviewPeriodId} value={reviewPeriodId}>
-                            <SelectTrigger><SelectValue placeholder="Select Review Period"/></SelectTrigger>
+                        <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}>
+                            <SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger>
                             <SelectContent>
-                                {state.reviewPeriods.filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {state.performanceCycles.filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>

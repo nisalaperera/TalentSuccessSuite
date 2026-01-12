@@ -14,12 +14,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { DatePicker } from './shared/date-picker';
 import { format } from 'date-fns';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 interface PerformanceCycleProps extends StepProps {
     selectedReviewPeriodId?: string;
+    selectedPerformanceCycleId?: string;
+    setSelectedPerformanceCycleId: (id: string) => void;
 }
 
-export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPeriodId }: PerformanceCycleProps) {
+export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPeriodId, selectedPerformanceCycleId, setSelectedPerformanceCycleId }: PerformanceCycleProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<PerformanceCycleType | null>(null);
   const { toast } = useToast();
@@ -57,7 +61,7 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
     if (!name || !startDate || !endDate || !selectedReviewPeriodId) {
       toast({
         title: 'Missing Information',
-        description: 'Please provide a name and select a review period.',
+        description: 'Please provide a name, dates, and ensure a review period is selected.',
         variant: 'destructive',
       });
       return;
@@ -104,7 +108,9 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
         status: 'Active',
       };
       dispatch({ type: 'ADD_PERFORMANCE_CYCLE', payload: newCycle });
+      setSelectedPerformanceCycleId(newCycle.id);
       toast({ title: 'Success', description: `Performance cycle "${name}" has been created.` });
+      onComplete();
     }
     
     handleCloseDialog();
@@ -126,6 +132,11 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
     return state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
   }
   
+  const handleSelection = (id: string) => {
+    setSelectedPerformanceCycleId(id);
+    onComplete();
+  };
+  
   const filteredCycles = state.performanceCycles.filter(gp => gp.reviewPeriodId === selectedReviewPeriodId);
 
   return (
@@ -135,69 +146,73 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle className="font-headline">Performance Cycles for "{getReviewPeriodName(selectedReviewPeriodId || '')}"</CardTitle>
-                    <CardDescription>Define specific evaluation cycles within this review period.</CardDescription>
+                    <CardDescription>Define and select specific evaluation cycles within this review period.</CardDescription>
                 </div>
                 <DialogTrigger asChild>
                     <Button onClick={() => handleOpenDialog()}><PlusCircle className="mr-2" />Add New Cycle</Button>
                 </DialogTrigger>
             </CardHeader>
             <CardContent>
-                <TooltipProvider>
-                    <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>Cycle Name</TableHead>
-                        <TableHead>Start Date</TableHead>
-                        <TableHead>End Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredCycles.length > 0 ? (
-                        filteredCycles.map((cycle) => (
-                            <TableRow key={cycle.id}>
-                            <TableCell className="font-medium">{cycle.name}</TableCell>
-                            <TableCell>{format(cycle.startDate, 'PPP')}</TableCell>
-                            <TableCell>{format(cycle.endDate, 'PPP')}</TableCell>
-                            <TableCell>{cycle.status}</TableCell>
-                            <TableCell className="text-right">
-                                 <div className="flex justify-end items-center gap-2">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleOpenDialog(cycle)}><Pencil className="h-4 w-4" /></Button></TooltipTrigger>
-                                        <TooltipContent><p>Edit Cycle</p></TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the performance cycle.</AlertDialogDescription></AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDelete(cycle.id)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Delete Cycle</p></TooltipContent>
-                                    </Tooltip>
-                                    <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(cycle)}>
-                                        {cycle.status === 'Active' ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                                        <span className="sr-only">{cycle.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                                    </Button>
-                                </div>
-                            </TableCell>
+                <RadioGroup value={selectedPerformanceCycleId} onValueChange={handleSelection}>
+                    <TooltipProvider>
+                        <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead className="w-10"></TableHead>
+                            <TableHead>Cycle Name</TableHead>
+                            <TableHead>Start Date</TableHead>
+                            <TableHead>End Date</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                        ))
-                        ) : (
-                        <TableRow>
-                            <TableCell colSpan={5} className="text-center">No performance cycles created for this review period yet.</TableCell>
-                        </TableRow>
-                        )}
-                    </TableBody>
-                    </Table>
-                </TooltipProvider>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredCycles.length > 0 ? (
+                            filteredCycles.map((cycle) => (
+                                <TableRow key={cycle.id} data-state={cycle.id === selectedPerformanceCycleId ? 'selected' : 'unselected'}>
+                                <TableCell><RadioGroupItem value={cycle.id} id={`cycle-${cycle.id}`} /></TableCell>
+                                <TableCell className="font-medium"><Label htmlFor={`cycle-${cycle.id}`} className="cursor-pointer">{cycle.name}</Label></TableCell>
+                                <TableCell>{format(cycle.startDate, 'PPP')}</TableCell>
+                                <TableCell>{format(cycle.endDate, 'PPP')}</TableCell>
+                                <TableCell>{cycle.status}</TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex justify-end items-center gap-2">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleOpenDialog(cycle)}><Pencil className="h-4 w-4" /></Button></TooltipTrigger>
+                                            <TooltipContent><p>Edit Cycle</p></TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button></AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the performance cycle.</AlertDialogDescription></AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(cycle.id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </TooltipTrigger>
+                                            <TooltipContent><p>Delete Cycle</p></TooltipContent>
+                                        </Tooltip>
+                                        <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(cycle)}>
+                                            {cycle.status === 'Active' ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                                            <span className="sr-only">{cycle.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                                </TableRow>
+                            ))
+                            ) : (
+                            <TableRow>
+                                <TableCell colSpan={6} className="text-center">No performance cycles created for this review period yet.</TableCell>
+                            </TableRow>
+                            )}
+                        </TableBody>
+                        </Table>
+                    </TooltipProvider>
+                </RadioGroup>
             </CardContent>
         </Card>
         <DialogContent>
@@ -217,16 +232,11 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
                  <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
                 <Button onClick={handleSave}>
                     <PlusCircle className="mr-2" />
-                    {editingCycle ? 'Save Changes' : 'Create Cycle'}
+                    {editingCycle ? 'Save Changes' : 'Create & Select'}
                 </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
-      {filteredCycles.length > 0 && (
-         <div className="flex justify-end mt-6">
-            <Button onClick={onComplete} variant="default">Next Step</Button>
-        </div>
-      )}
     </div>
   );
 }

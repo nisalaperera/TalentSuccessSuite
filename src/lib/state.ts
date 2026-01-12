@@ -12,8 +12,8 @@ export const initialState: ConfigState = {
     { id: 'pc-2', name: 'Q2 Check-in', reviewPeriodId: 'rp-1', status: 'Active', startDate: new Date('2024-04-01'), endDate: new Date('2024-06-30') },
   ],
   goalPlans: [
-    { id: 'gp-1', name: 'FY 2024 Goal Plan', reviewPeriodId: 'rp-1', status: 'Active' },
-    { id: 'gp-2', name: 'FY 2025 Mid-Year Goals', reviewPeriodId: 'rp-2', status: 'Active' },
+    { id: 'gp-1', name: 'FY 2024 Q1 Goal Plan', performanceCycleId: 'pc-1', status: 'Active' },
+    { id: 'gp-2', name: 'FY 2024 Q2 Goal Plan', performanceCycleId: 'pc-2', status: 'Active' },
   ],
   performanceTemplates: [
     { id: 'pt-1', name: 'Annual Performance Review', category: 'Performance', supportsRatings: true, supportsComments: true, status: 'Active' },

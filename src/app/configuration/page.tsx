@@ -23,6 +23,7 @@ export default function ConfigurationPage() {
   const [state, dispatch] = useReducer(configReducer, initialState);
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('item-1');
   const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string>();
+  const [selectedPerformanceCycleId, setSelectedPerformanceCycleId] = useState<string>();
   const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string>();
   const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string>();
   const [selectedEvaluationFlowId, setSelectedEvaluationFlowId] = useState<string>();
@@ -30,6 +31,7 @@ export default function ConfigurationPage() {
   const [isSinglePage, setIsSinglePage] = useState(false);
 
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
+  const selectedPerformanceCycle = state.performanceCycles.find(p => p.id === selectedPerformanceCycleId);
   const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
   const selectedPerformanceTemplate = state.performanceTemplates.find(p => p.id === selectedPerformanceTemplateId);
   const selectedTemplateSectionNames = state.performanceTemplateSections
@@ -57,15 +59,16 @@ export default function ConfigurationPage() {
         {
             id: 'item-2',
             title: 'Performance Cycle Setup',
+            selection: selectedPerformanceCycle?.name,
             disabled: !selectedReviewPeriodId,
-            content: <PerformanceCycle state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} />
+            content: <PerformanceCycle state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} selectedPerformanceCycleId={selectedPerformanceCycleId} setSelectedPerformanceCycleId={setSelectedPerformanceCycleId}/>
         },
         {
           id: 'item-3',
           title: 'Goal Plan Setup',
           selection: selectedGoalPlan?.name,
-          disabled: !selectedReviewPeriodId,
-          content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedReviewPeriodId={selectedReviewPeriodId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
+          disabled: !selectedPerformanceCycleId,
+          content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedPerformanceCycleId={selectedPerformanceCycleId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
         },
       ]
     },
