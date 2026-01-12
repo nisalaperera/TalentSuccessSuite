@@ -1,0 +1,307 @@
+
+'use client';
+
+import { useReducer, useState, useMemo, useEffect } from 'react';
+import { PageHeader } from '@/app/components/page-header';
+import { DataTable } from '@/app/components/data-table/data-table';
+import { columns } from './columns';
+import { configReducer, initialState } from '@/lib/state';
+import { useToast } from '@/hooks/use-toast';
+import type { PerformanceTemplateSection as PerformanceTemplateSectionType, SectionType, AccessPermission } from '@/lib/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StarRating } from '@/app/components/config-flow/shared/star-rating';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { GripVertical } from 'lucide-react';
+
+
+const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head'];
+const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary', 'Competencies', 'Comment'];
+const surveySectionTypes: SectionType[] = ['Survey Question Group', 'Rating', 'Comment'];
+
+
+export default function PerformanceTemplateSectionsPage() {
+    const [state, dispatch] = useReducer(configReducer, initialState);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [currentSection, setCurrentSection] = useState<Partial<PerformanceTemplateSectionType> | null>(null);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
+    const [sections, setSections] = useState<PerformanceTemplateSectionType[]>([]);
+    const { toast } = useToast();
+
+    const selectedTemplate = useMemo(() => 
+        state.performanceTemplates.find(t => t.id === selectedTemplateId),
+        [selectedTemplateId, state.performanceTemplates]
+    );
+
+    const handleSetupClick = (section: PerformanceTemplateSectionType) => {
+        setCurrentSection({...section});
+        setIsDialogOpen(true);
+    };
+
+    const handleDelete = (sectionId: string) => {
+        const newGlobalSections = state.performanceTemplateSections.filter(s => s.id !== sectionId);
+        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: newGlobalSections });
+        toast({ title: 'Success', description: 'Section deleted.'});
+    };
+
+    const getTemplateName = (id: string) => state.performanceTemplates.find(t => t.id === id)?.name || 'N/A';
+    
+    const tableColumns = columns({ onEdit: handleSetupClick, onDelete: handleDelete, getTemplateName });
+
+    const handleConfigChange = (key: keyof PerformanceTemplateSectionType, value: any) => {
+        if(!currentSection) return;
+        setCurrentSection(prev => prev ? { ...prev, [key]: value } : null);
+    }
+
+    const handlePermissionChange = (role: string, key: 'view' | 'edit', value: boolean) => {
+        if(!currentSection?.permissions) return;
+        const newPermissions = currentSection.permissions.map(p => p.role === role ? {...p, [key]: value} : p);
+        handleConfigChange('permissions', newPermissions);
+    };
+
+    const handleSaveSection = () => {
+        if (!currentSection || !currentSection.id) return;
+        const updatedGlobalSections = state.performanceTemplateSections.map(s => s.id === currentSection!.id ? currentSection as PerformanceTemplateSectionType : s);
+        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: updatedGlobalSections });
+
+        toast({ title: 'Success', description: `Configuration for "${currentSection.name}" has been saved.` });
+        setIsDialogOpen(false);
+        setCurrentSection(null);
+    };
+
+    // ----- Logic for Drag and Drop list view -----
+    
+    useEffect(() => {
+        if (selectedTemplateId) {
+        const templateSections = state.performanceTemplateSections
+            .filter(s => s.performanceTemplateId === selectedTemplateId)
+            .sort((a, b) => a.order - b.order);
+        setSections(templateSections);
+        } else {
+        setSections([]);
+        }
+    }, [selectedTemplateId, state.performanceTemplateSections]);
+    
+    const onDragEnd = (result: DropResult) => {
+        if (!result.destination) return;
+        
+        const items = Array.from(sections);
+        const [reorderedItem] = items.splice(result.source.index, 1);
+        items.splice(result.destination.index, 0, reorderedItem);
+
+        const updatedOrder = items.map((item, index) => ({ ...item, order: index + 1 }));
+        setSections(updatedOrder);
+
+        const otherSections = state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedTemplateId);
+        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...otherSections, ...updatedOrder] });
+    };
+
+    const availableSectionTypes = useMemo(() => {
+        if (!selectedTemplate) return [];
+        return selectedTemplate.category === 'Performance' ? performanceSectionTypes : surveySectionTypes;
+    }, [selectedTemplate]);
+    
+    const handleAddSection = (type: SectionType) => {
+        if (!type || !selectedTemplateId) return;
+
+        const newSection: PerformanceTemplateSectionType = {
+            id: `ds-${Date.now()}`,
+            name: type,
+            type: type,
+            performanceTemplateId: selectedTemplateId,
+            order: sections.length + 1,
+            ratingScale: 5,
+            permissions: ROLES.map(role => ({ role, view: true, edit: false })),
+            enableSectionRatings: true,
+            enableSectionComments: true,
+        };
+        
+        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections, newSection] });
+    };
+
+    return (
+        <div className="container mx-auto py-10">
+            <PageHeader
+                title="Performance Template Sections"
+                description="Manage all your performance template sections here."
+                showAddNew={false}
+            />
+            <div className="mb-4">
+                <Select onValueChange={setSelectedTemplateId} value={selectedTemplateId}>
+                    <SelectTrigger className="w-[300px]"><SelectValue placeholder="Select a template to add/view sections..." /></SelectTrigger>
+                    <SelectContent>
+                        {state.performanceTemplates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {selectedTemplateId ? (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline flex justify-between items-center">
+                            <span>Sections for: {selectedTemplate?.name}</span>
+                             <div className="flex gap-2">
+                                <Select onValueChange={(v: SectionType) => handleAddSection(v)} value="">
+                                    <SelectTrigger className="w-[250px]"><SelectValue placeholder="Select a section type to add..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {availableSectionTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </CardTitle>
+                        <CardDescription>Add and configure the content blocks for this performance template. You can drag and drop to reorder the sections.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <DragDropContext onDragEnd={onDragEnd}>
+                            <Droppable droppableId="sections">
+                            {(provided) => (
+                                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                                {sections.map((section, index) => (
+                                    <Draggable key={section.id} draggableId={section.id} index={index}>
+                                    {(provided, snapshot) => (
+                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className={`bg-card p-4 rounded-lg border shadow-sm flex items-center justify-between ${snapshot.isDragging ? 'opacity-80 shadow-lg' : ''}`}>
+                                            <div className="flex items-center gap-3">
+                                                <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                                <div>
+                                                    <p className="font-medium font-headline">{section.name}</p>
+                                                    <p className="text-sm text-muted-foreground">{section.type}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button size="sm" onClick={() => handleSetupClick(section)}>
+                                                    <Settings className="mr-2 h-4 w-4" />
+                                                    Setup
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(section.id)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+                                </div>
+                            )}
+                            </Droppable>
+                        </DragDropContext>
+                        {sections.length === 0 && <p className="text-center text-muted-foreground py-4">No sections for this template yet.</p>}
+                    </CardContent>
+                 </Card>
+            ) : (
+                <DataTable columns={tableColumns} data={state.performanceTemplateSections} />
+            )}
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle className="font-headline text-2xl">Configure: {currentSection?.name}</DialogTitle>
+                </DialogHeader>
+                {currentSection && (
+                    <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+                    
+                    <Card>
+                        <CardHeader><CardTitle>General</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                        <Label>Section Name</Label>
+                        <Input value={currentSection.name || ''} onChange={e => handleConfigChange('name', e.target.value)} />
+                        </CardContent>
+                    </Card>
+
+                    {currentSection.type === 'Performance Goals' && (
+                        <Card>
+                            <CardHeader><CardTitle>Goal Settings</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                                    <div className="flex items-center justify-between"><Label>Enable Section Ratings</Label><Switch checked={currentSection.enableSectionRatings} onCheckedChange={v => handleConfigChange('enableSectionRatings', v)} /></div>
+                                    <div className="flex items-center justify-between"><Label>Enable Section Comments</Label><Switch checked={currentSection.enableSectionComments} onCheckedChange={v => handleConfigChange('enableSectionComments', v)} /></div>
+                                    <div className="flex items-center justify-between"><Label>Section Rating Mandatory</Label><Switch checked={currentSection.sectionRatingMandatory} onCheckedChange={v => handleConfigChange('sectionRatingMandatory', v)} /></div>
+                                    <div className="flex items-center justify-between"><Label>Section Comment Mandatory</Label><Switch checked={currentSection.sectionCommentMandatory} onCheckedChange={v => handleConfigChange('sectionCommentMandatory', v)} /></div>
+                                    <div className="flex items-center justify-between"><Label>Enable Ratings for Items</Label><Switch checked={currentSection.enableItemRatings} onCheckedChange={v => handleConfigChange('enableItemRatings', v)} /></div>
+                                    <div className="flex items-center justify-between"><Label>Enable Item Comments</Label><Switch checked={currentSection.enableItemComments} onCheckedChange={v => handleConfigChange('enableItemComments', v)} /></div>
+                                    <div className="flex items-center justify-between"><Label>Item Rating Mandatory</Label><Switch checked={currentSection.itemRatingMandatory} onCheckedChange={v => handleConfigChange('itemRatingMandatory', v)} /></div>
+                                    <div className="flex items-center justify-between"><Label>Item Comment Mandatory</Label><Switch checked={currentSection.itemCommentMandatory} onCheckedChange={v => handleConfigChange('itemCommentMandatory', v)} /></div>
+                                    <div className="flex items-center justify-between col-span-2"><Label>Enable Section Weights</Label><Switch checked={currentSection.enableSectionWeights} onCheckedChange={v => handleConfigChange('enableSectionWeights', v)} /></div>
+                                    {currentSection.enableSectionWeights && (
+                                        <>
+                                            <div className="space-y-2"><Label>Section Weight %</Label><Input type="number" value={currentSection.sectionWeight} onChange={e => handleConfigChange('sectionWeight', e.target.valueAsNumber)} /></div>
+                                            <div className="space-y-2"><Label>Section Min. Weight %</Label><Input type="number" value={currentSection.sectionMinimumWeight} onChange={e => handleConfigChange('sectionMinimumWeight', e.target.valueAsNumber)} /></div>
+                                        </>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {['Performance Goals', 'Competencies', 'Survey Question Group', 'Rating'].includes(currentSection.type!) && (
+                        <Card>
+                            <CardHeader><CardTitle>Rating Scale</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <Label htmlFor="rating-scale">Star Rating Maximum (N)</Label>
+                                <Input id="rating-scale" type="number" value={currentSection.ratingScale || 5} onChange={e => handleConfigChange('ratingScale', parseInt(e.target.value, 10))} min="1" max="10"/>
+                                <Label>Example:</Label>
+                                <StarRating count={currentSection.ratingScale || 5} value={Math.ceil((currentSection.ratingScale || 5)/2)} onChange={()=>{}}/>
+                            </CardContent>
+                        </Card>
+                    )}
+                    
+                    {currentSection.type === 'Overall Summary' &&
+                        <Card>
+                            <CardHeader><CardTitle>Overall Normalized Rating Weights</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <p className="text-sm text-muted-foreground">Configure weights for blending scores.</p>
+                                <Label>Current Document Score Weights</Label>
+                                <div className="flex gap-4">
+                                    <Input type="number" placeholder="Primary Appraiser Weight % (e.g., 70)" />
+                                    <Input type="number" placeholder="Secondary Appraisers Weight % (e.g., 30)" />
+                                </div>
+                                <Label>Final Overall Normalized Rating Weights</Label>
+                                <div className="flex gap-4">
+                                    <Input type="number" placeholder="Current Performance Weight % (e.g., 70)" />
+                                    <Input type="number" placeholder="Historical Performance Weight % (e.g., 30)" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    }
+
+                    <Card>
+                        <CardHeader><CardTitle>Section Access & Permissions</CardTitle></CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Role</TableHead>
+                                        <TableHead className="text-center">View</TableHead>
+                                        <TableHead className="text-center">Rate / Edit</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {currentSection.permissions?.map(({role, view, edit}) => (
+                                        <TableRow key={role}>
+                                            <TableCell className="font-medium">{role}</TableCell>
+                                            <TableCell className="text-center"><Switch checked={view} onCheckedChange={(val) => handlePermissionChange(role, 'view', val)}/></TableCell>
+                                            <TableCell className="text-center"><Switch checked={edit} onCheckedChange={(val) => handlePermissionChange(role, 'edit', val)}/></TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+
+                    </div>
+                )}
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveSection}>Save Configuration</Button>
+                </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}

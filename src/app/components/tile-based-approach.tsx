@@ -28,6 +28,11 @@ export function TileBasedApproach({ state }: TileBasedProps) {
             href: "/configuration/performance-templates"
         },
         {
+            title: "Performance Template Sections",
+            description: "Add and configure the content blocks for this performance template.",
+            href: "/configuration/performance-template-sections"
+        },
+        {
             title: "Evaluation Flows",
             description: "Define who does what, when, and in what order for a document.",
             href: "/configuration/evaluation-flows"
