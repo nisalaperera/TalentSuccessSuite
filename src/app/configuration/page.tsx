@@ -16,6 +16,7 @@ import { TileBasedApproach } from '@/app/components/tile-based-approach';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { configReducer, initialState } from '@/lib/state';
+import { PerformanceCycle } from '@/app/components/config-flow/performance-cycle';
 
 
 export default function ConfigurationPage() {
@@ -57,7 +58,7 @@ export default function ConfigurationPage() {
             id: 'item-2',
             title: 'Performance Cycle Setup',
             disabled: !selectedReviewPeriodId,
-            content: <p>Performance Cycle component will be created in a future step.</p>
+            content: <PerformanceCycle state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} />
         },
         {
           id: 'item-3',
