@@ -106,15 +106,8 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
   
   const handleSelection = (id: string) => {
     setSelectedPerformanceTemplateId(id);
-    handleNext(); // to auto-open next step
+    onComplete();
   };
-
-  const handleNext = () => {
-    // This was causing premature closing, now it just opens the next section
-     if (selectedPerformanceTemplateId) {
-        onComplete();
-     }
-  }
 
   const isTemplateInUse = (id: string) => {
     return state.performanceDocuments.some(pd => pd.performanceTemplateId === id);
