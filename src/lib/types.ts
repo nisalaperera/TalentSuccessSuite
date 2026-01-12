@@ -13,6 +13,8 @@ export type PerformanceCycle = {
   name: string;
   reviewPeriodId: string;
   status: 'Active' | 'Inactive';
+  startDate: Date;
+  endDate: Date;
 };
 
 export type GoalPlan = {

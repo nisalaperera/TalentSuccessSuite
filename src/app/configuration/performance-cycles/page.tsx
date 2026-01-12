@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
+import { DatePicker } from '@/app/components/config-flow/shared/date-picker';
 
 function PerformanceCyclesContent() {
     const router = useRouter();
@@ -27,6 +28,8 @@ function PerformanceCyclesContent() {
     // Form state
     const [name, setName] = useState('');
     const [reviewPeriodId, setReviewPeriodId] = useState('');
+    const [startDate, setStartDate] = useState<Date>();
+    const [endDate, setEndDate] = useState<Date>();
     
     const filterReviewPeriod = searchParams.get('reviewPeriodId') || '';
 
@@ -34,9 +37,13 @@ function PerformanceCyclesContent() {
         if (editingCycle) {
             setName(editingCycle.name);
             setReviewPeriodId(editingCycle.reviewPeriodId);
+            setStartDate(editingCycle.startDate);
+            setEndDate(editingCycle.endDate);
         } else {
             setName('');
             setReviewPeriodId(filterReviewPeriod || '');
+            setStartDate(undefined);
+            setEndDate(undefined);
         }
     }, [editingCycle, filterReviewPeriod]);
     
@@ -52,17 +59,46 @@ function PerformanceCyclesContent() {
     };
 
     const handleSave = () => {
-        if (!name || !reviewPeriodId) {
-            toast({ title: 'Missing Information', description: 'Please provide a name and select a review period.', variant: 'destructive' });
+        if (!name || !reviewPeriodId || !startDate || !endDate) {
+            toast({ title: 'Missing Information', description: 'Please fill out all fields.', variant: 'destructive' });
             return;
         }
 
+        const parentReviewPeriod = state.reviewPeriods.find(p => p.id === reviewPeriodId);
+        if (!parentReviewPeriod) {
+            toast({ title: 'Invalid Review Period', description: 'The selected review period could not be found.', variant: 'destructive' });
+            return;
+        }
+
+        if (startDate < parentReviewPeriod.startDate || endDate > parentReviewPeriod.endDate) {
+            toast({ title: 'Invalid Dates', description: 'Cycle dates must be within the parent review period.', variant: 'destructive' });
+            return;
+        }
+        
+        if (endDate < startDate) {
+            toast({ title: 'Invalid Dates', description: 'End date cannot be before start date.', variant: 'destructive' });
+            return;
+        }
+        
+        const overlappingCycle = state.performanceCycles.find(cycle => {
+            if (cycle.reviewPeriodId !== reviewPeriodId) return false; // Only check cycles in the same review period
+            if (editingCycle && cycle.id === editingCycle.id) return false; // Don't check against the cycle being edited
+            // Check for overlap: (StartA <= EndB) and (EndA >= StartB)
+            return startDate <= cycle.endDate && endDate >= cycle.startDate;
+        });
+
+        if (overlappingCycle) {
+            toast({ title: 'Overlapping Dates', description: `Dates overlap with existing cycle: "${overlappingCycle.name}".`, variant: 'destructive' });
+            return;
+        }
+
+
         if (editingCycle) {
-            const updatedCycle = { ...editingCycle, name, reviewPeriodId };
+            const updatedCycle: PerformanceCycle = { ...editingCycle, name, reviewPeriodId, startDate, endDate };
             dispatch({ type: 'UPDATE_PERFORMANCE_CYCLE', payload: updatedCycle });
             toast({ title: 'Success', description: `Performance cycle "${name}" updated.` });
         } else {
-            const newCycle: PerformanceCycle = { id: `pc-${Date.now()}`, name, reviewPeriodId, status: 'Active' };
+            const newCycle: PerformanceCycle = { id: `pc-${Date.now()}`, name, reviewPeriodId, startDate, endDate, status: 'Active' };
             dispatch({ type: 'ADD_PERFORMANCE_CYCLE', payload: newCycle });
             toast({ title: 'Success', description: `Performance cycle "${name}" created.` });
         }
@@ -134,6 +170,8 @@ function PerformanceCyclesContent() {
                                 {state.reviewPeriods.filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
+                        <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
+                        <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" />
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>

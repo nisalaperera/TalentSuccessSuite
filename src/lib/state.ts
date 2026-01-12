@@ -8,8 +8,8 @@ export const initialState: ConfigState = {
     { id: 'rp-2', name: 'FY 2025 Mid-Year', startDate: new Date('2025-01-01'), endDate: new Date('2025-06-30'), status: 'Active' },
   ],
   performanceCycles: [
-    { id: 'pc-1', name: 'Q1 Check-in', reviewPeriodId: 'rp-1', status: 'Active' },
-    { id: 'pc-2', name: 'Q2 Check-in', reviewPeriodId: 'rp-1', status: 'Active' },
+    { id: 'pc-1', name: 'Q1 Check-in', reviewPeriodId: 'rp-1', status: 'Active', startDate: new Date('2024-01-01'), endDate: new Date('2024-03-31') },
+    { id: 'pc-2', name: 'Q2 Check-in', reviewPeriodId: 'rp-1', status: 'Active', startDate: new Date('2024-04-01'), endDate: new Date('2024-06-30') },
   ],
   goalPlans: [
     { id: 'gp-1', name: 'FY 2024 Goal Plan', reviewPeriodId: 'rp-1', status: 'Active' },

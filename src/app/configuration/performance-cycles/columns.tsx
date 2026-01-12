@@ -2,6 +2,7 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
+import { format } from 'date-fns';
 import type { PerformanceCycle } from '@/lib/types';
 import { DataTableColumnHeader } from '@/app/components/data-table/data-table-column-header';
 import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
@@ -29,6 +30,16 @@ export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName 
         filterFn: (row, id, value) => {
             return value.includes(row.getValue(id))
         },
+    },
+    {
+        accessorKey: 'startDate',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Start Date" />,
+        cell: ({ row }) => format(row.getValue('startDate'), 'PPP'),
+    },
+    {
+        accessorKey: 'endDate',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="End Date" />,
+        cell: ({ row }) => format(row.getValue('endDate'), 'PPP'),
     },
     {
         accessorKey: 'status',
