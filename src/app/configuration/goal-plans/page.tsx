@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
 
 function GoalPlansContent() {
     const router = useRouter();
@@ -28,17 +30,15 @@ function GoalPlansContent() {
     
     const filterReviewPeriod = searchParams.get('reviewPeriodId') || '';
 
-    const preselectedReviewPeriodId = searchParams.get('reviewPeriodId');
-
     useEffect(() => {
         if (editingPlan) {
             setName(editingPlan.name);
             setReviewPeriodId(editingPlan.reviewPeriodId);
         } else {
             setName('');
-            setReviewPeriodId(preselectedReviewPeriodId || '');
+            setReviewPeriodId(filterReviewPeriod || '');
         }
-    }, [editingPlan, preselectedReviewPeriodId]);
+    }, [editingPlan, filterReviewPeriod]);
     
 
     const handleOpenDialog = (plan: GoalPlanType | null = null) => {
@@ -93,6 +93,25 @@ function GoalPlansContent() {
         return state.goalPlans.filter(plan => plan.reviewPeriodId === filterReviewPeriod);
     }, [filterReviewPeriod, state.goalPlans]);
 
+    const handleClearFilter = () => {
+        router.push('/configuration/goal-plans');
+    };
+
+    const toolbarContent = useMemo(() => {
+        if (!filterReviewPeriod) return null;
+
+        const periodName = getReviewPeriodName(filterReviewPeriod);
+        return (
+            <Badge variant="secondary" className="flex items-center gap-2">
+                Review Period: {periodName}
+                <button onClick={handleClearFilter} className="rounded-full hover:bg-muted-foreground/20">
+                    <X className="h-3 w-3"/>
+                </button>
+            </Badge>
+        );
+    }, [filterReviewPeriod]);
+
+
     return (
         <div className="container mx-auto py-10">
             <PageHeader
@@ -103,6 +122,7 @@ function GoalPlansContent() {
             <DataTable 
               columns={tableColumns} 
               data={filteredData}
+              toolbarContent={toolbarContent}
             />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
