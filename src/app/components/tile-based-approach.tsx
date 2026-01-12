@@ -13,7 +13,7 @@ export function TileBasedApproach({ state }: TileBasedProps) {
 
     const groupedConfigItems = [
         {
-            groupTitle: "Foundation",
+            groupTitle: "Review Periods and Goal Plans",
             items: [
                 {
                     title: "Review Periods",
@@ -21,10 +21,30 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     href: "/configuration/review-periods"
                 },
                 {
+                    title: "Goal Plans",
+                    description: "Define goal containers and link them to review periods.",
+                    href: "/configuration/goal-plans"
+                },
+            ]
+        },
+        {
+            groupTitle: "Performance Template & Performance Template Section",
+            items: [
+                 {
                     title: "Performance Templates",
                     description: "Define what kind of document is being created and how it behaves.",
                     href: "/configuration/performance-templates"
                 },
+                {
+                    title: "Performance Template Sections",
+                    description: "Add and configure the content blocks for this performance template.",
+                    href: "/configuration/performance-template-sections"
+                },
+            ]
+        },
+        {
+            groupTitle: "Evaluation Flows and Eligilibilty",
+            items: [
                 {
                     title: "Evaluation Flows",
                     description: "Define who does what, when, and in what order for a document.",
@@ -38,22 +58,7 @@ export function TileBasedApproach({ state }: TileBasedProps) {
             ]
         },
         {
-            groupTitle: "Content & Structure",
-            items: [
-                {
-                    title: "Goal Plans",
-                    description: "Define goal containers and link them to review periods.",
-                    href: "/configuration/goal-plans"
-                },
-                {
-                    title: "Performance Template Sections",
-                    description: "Add and configure the content blocks for this performance template.",
-                    href: "/configuration/performance-template-sections"
-                },
-            ]
-        },
-        {
-            groupTitle: "Assembly",
+            groupTitle: "Performance Document",
             items: [
                  {
                     title: "Performance Documents",
