@@ -12,8 +12,9 @@ import { PerformanceTemplateSection } from '@/app/components/config-flow/perform
 import { EvaluationFlow } from '@/app/components/config-flow/evaluation-flow';
 import { EligibilityCriteria } from '@/app/components/config-flow/eligibility-criteria';
 import { PerformanceDocument } from '@/app/components/config-flow/performance-document';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TileBasedApproach } from '@/app/components/tile-based-approach';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const initialState: ConfigState = {
   reviewPeriods: [
@@ -194,6 +195,7 @@ export default function Home() {
   const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string>();
   const [selectedEvaluationFlowId, setSelectedEvaluationFlowId] = useState<string>();
   const [selectedEligibilityId, setSelectedEligibilityId] = useState<string>();
+  const [isSinglePage, setIsSinglePage] = useState(false);
 
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
   const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
@@ -259,48 +261,49 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:px-8 md:py-12">
-        <header className="mb-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-2 tracking-tight">EvalFlow</h1>
-          <p className="text-lg text-foreground/80 font-body">
-            Seamless Performance Management Configuration
-          </p>
+        <header className="mb-8">
+          <div className="flex justify-between items-center">
+             <div>
+                <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-2 tracking-tight">EvalFlow</h1>
+                <p className="text-lg text-foreground/80 font-body">
+                  Seamless Performance Management Configuration
+                </p>
+             </div>
+             <div className="flex items-center space-x-2">
+                <Switch id="view-mode-switch" checked={isSinglePage} onCheckedChange={setIsSinglePage} />
+                <Label htmlFor="view-mode-switch">Single Page View</Label>
+             </div>
+          </div>
         </header>
 
-         <Tabs defaultValue="single-page" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="single-page">Single Page Approach</TabsTrigger>
-            <TabsTrigger value="tile-based">Tile Based Approach</TabsTrigger>
-          </TabsList>
-          <TabsContent value="single-page">
-             <div className="max-w-5xl mx-auto">
-              <Accordion type="single" value={activeAccordionItem} onValueChange={setActiveAccordionItem} collapsible className="w-full">
-                {configSteps.map(step => (
-                  <AccordionItem value={step.id} key={step.id} disabled={step.disabled}>
-                    <AccordionTrigger>
-                      <div className="flex justify-between items-center w-full pr-4">
-                        <span className="text-lg font-headline">{step.title}</span>
-                        {step.selection && (
-                          <div className="flex-shrink w-1/2 text-right whitespace-normal">
-                             <Badge variant="secondary" className="text-sm font-normal">{step.selection}</Badge>
-                          </div>
-                        )}
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="p-4">
-                      {step.content}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </div>
-          </TabsContent>
-          <TabsContent value="tile-based">
-             <div className="max-w-5xl mx-auto py-6">
+         <div className="max-w-5xl mx-auto py-6">
+            {isSinglePage ? (
+                 <Accordion type="single" value={activeAccordionItem} onValueChange={setActiveAccordionItem} collapsible className="w-full">
+                    {configSteps.map(step => (
+                    <AccordionItem value={step.id} key={step.id} disabled={step.disabled}>
+                        <AccordionTrigger>
+                        <div className="flex justify-between items-center w-full pr-4">
+                            <span className="text-lg font-headline">{step.title}</span>
+                            {step.selection && (
+                            <div className="flex-shrink w-1/2 text-right whitespace-normal">
+                                <Badge variant="secondary" className="text-sm font-normal">{step.selection}</Badge>
+                            </div>
+                            )}
+                        </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4">
+                        {step.content}
+                        </AccordionContent>
+                    </AccordionItem>
+                    ))}
+                </Accordion>
+            ) : (
                 <TileBasedApproach state={state} />
-            </div>
-          </TabsContent>
-        </Tabs>
+            )}
+        </div>
       </main>
     </div>
   );
 }
+
+    
