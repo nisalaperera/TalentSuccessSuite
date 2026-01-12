@@ -15,37 +15,31 @@ export function TileBasedApproach({ state }: TileBasedProps) {
         {
             title: "Review Periods",
             description: "Define the time boundary for all performance-related activities.",
-            count: state.reviewPeriods.length,
             href: "/configuration/review-periods"
         },
         {
             title: "Goal Plans",
             description: "Define goal containers and link them to review periods.",
-            count: state.goalPlans.length,
             href: "/configuration/goal-plans"
         },
         {
             title: "Performance Templates",
             description: "Define what kind of document is being created and how it behaves.",
-            count: state.performanceTemplates.length,
             href: "/configuration/performance-templates"
         },
         {
             title: "Evaluation Flows",
             description: "Define who does what, when, and in what order for a document.",
-            count: state.evaluationFlows.length,
             href: "/configuration/evaluation-flows"
         },
         {
             title: "Eligibility Criteria",
             description: "Define named sets of exclusion rules for participants.",
-            count: state.eligibility.length,
             href: "/configuration/eligibility-criteria"
         },
         {
             title: "Performance Documents",
             description: "Assemble and create the final performance documents.",
-            count: state.performanceDocuments.length,
             href: "/configuration/performance-documents"
         }
     ];
@@ -60,7 +54,7 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                             <CardDescription>{item.description}</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-3xl font-bold">{item.count}</p>
+                           {/* Count removed as requested */}
                         </CardContent>
                     </Card>
                 </Link>
