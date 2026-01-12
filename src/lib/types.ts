@@ -152,12 +152,3 @@ export interface StepProps {
     dispatch: React.Dispatch<Action>;
     onComplete: () => void;
 }
-
-// Props for the new Tile-based view
-export interface TileBasedProps {
-  state: ConfigState;
-  dispatch: React.Dispatch<Action>;
-  dialogs: any; // Simplified for now
-  openDialog: (dialog: string, editing?: any) => void;
-  closeDialog: (dialog: string) => void;
-}
