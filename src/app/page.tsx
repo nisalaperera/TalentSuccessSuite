@@ -108,7 +108,9 @@ export default function Home() {
         </header>
 
          <div className="max-w-5xl mx-auto py-6">
-            {isSinglePage ? (
+            {!isSinglePage ? (
+                <TileBasedApproach state={state} />
+            ) : (
                  <Accordion type="single" value={activeAccordionItem} onValueChange={setActiveAccordionItem} collapsible className="w-full">
                     {configSteps.map(step => (
                     <AccordionItem value={step.id} key={step.id} disabled={step.disabled}>
@@ -128,8 +130,6 @@ export default function Home() {
                     </AccordionItem>
                     ))}
                 </Accordion>
-            ) : (
-                <TileBasedApproach state={state} />
             )}
         </div>
       </main>
