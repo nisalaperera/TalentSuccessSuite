@@ -43,49 +43,69 @@ export default function Home() {
     setActiveAccordionItem(nextItemId);
   };
   
-  const configSteps = [
+  const groupedConfigSteps = [
     {
-      id: 'item-1',
-      title: 'Review Period Setup',
-      selection: selectedReviewPeriod?.name,
-      content: <ReviewPeriod state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-2')} selectedReviewPeriodId={selectedReviewPeriodId} setSelectedReviewPeriodId={setSelectedReviewPeriodId} />
+      groupTitle: "Review Periods and Goal Plans",
+      steps: [
+        {
+          id: 'item-1',
+          title: 'Review Period Setup',
+          selection: selectedReviewPeriod?.name,
+          content: <ReviewPeriod state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-2')} selectedReviewPeriodId={selectedReviewPeriodId} setSelectedReviewPeriodId={setSelectedReviewPeriodId} />
+        },
+        {
+          id: 'item-2',
+          title: 'Goal Plan Setup',
+          selection: selectedGoalPlan?.name,
+          disabled: !selectedReviewPeriodId,
+          content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
+        },
+      ]
     },
     {
-      id: 'item-2',
-      title: 'Goal Plan Setup',
-      selection: selectedGoalPlan?.name,
-      disabled: !selectedReviewPeriodId,
-      content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
+      groupTitle: "Performance Template Management",
+      steps: [
+        {
+          id: 'item-3',
+          title: 'Performance Template',
+          selection: selectedPerformanceTemplate?.name,
+          content: <PerformanceTemplate state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} setSelectedPerformanceTemplateId={setSelectedPerformanceTemplateId} />
+        },
+        {
+          id: 'item-4',
+          title: 'Performance Template Section Setup',
+          selection: selectedTemplateSectionNames,
+          disabled: !selectedPerformanceTemplateId,
+          content: <PerformanceTemplateSection state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-5')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} />
+        },
+      ]
     },
     {
-      id: 'item-3',
-      title: 'Performance Template',
-      selection: selectedPerformanceTemplate?.name,
-      content: <PerformanceTemplate state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} setSelectedPerformanceTemplateId={setSelectedPerformanceTemplateId} />
+      groupTitle: "Evaluation Flows and Eligilibilty",
+      steps: [
+        {
+          id: 'item-5',
+          title: 'Evaluation Flow',
+          selection: selectedEvaluationFlow?.name,
+          content: <EvaluationFlow state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-6')} selectedEvaluationFlowId={selectedEvaluationFlowId} setSelectedEvaluationFlowId={setSelectedEvaluationFlowId} />
+        },
+         {
+          id: 'item-6',
+          title: 'Eligibility Criteria',
+          selection: selectedEligibility?.name,
+          content: <EligibilityCriteria state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-7')} selectedEligibilityId={selectedEligibilityId} setSelectedEligibilityId={setSelectedEligibilityId} />
+        },
+      ]
     },
     {
-      id: 'item-4',
-      title: 'Performance Template Section Setup',
-      selection: selectedTemplateSectionNames,
-      disabled: !selectedPerformanceTemplateId,
-      content: <PerformanceTemplateSection state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-5')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} />
-    },
-    {
-      id: 'item-5',
-      title: 'Evaluation Flow',
-      selection: selectedEvaluationFlow?.name,
-      content: <EvaluationFlow state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-6')} selectedEvaluationFlowId={selectedEvaluationFlowId} setSelectedEvaluationFlowId={setSelectedEvaluationFlowId} />
-    },
-     {
-      id: 'item-6',
-      title: 'Eligibility Criteria',
-      selection: selectedEligibility?.name,
-      content: <EligibilityCriteria state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-7')} selectedEligibilityId={selectedEligibilityId} setSelectedEligibilityId={setSelectedEligibilityId} />
-    },
-    {
-      id: 'item-7',
-      title: 'Performance Documents',
-      content: <PerformanceDocument state={state} dispatch={dispatch} onComplete={() => {}} />
+      groupTitle: "Performance Document",
+      steps: [
+        {
+          id: 'item-7',
+          title: 'Performance Documents',
+          content: <PerformanceDocument state={state} dispatch={dispatch} onComplete={() => {}} />
+        }
+      ]
     }
   ];
 
@@ -111,25 +131,30 @@ export default function Home() {
             {!isSinglePage ? (
                 <TileBasedApproach state={state} />
             ) : (
-                 <Accordion type="single" value={activeAccordionItem} onValueChange={setActiveAccordionItem} collapsible className="w-full">
-                    {configSteps.map(step => (
-                    <AccordionItem value={step.id} key={step.id} disabled={step.disabled}>
-                        <AccordionTrigger>
-                        <div className="flex justify-between items-center w-full pr-4">
-                            <span className="text-lg font-headline">{step.title}</span>
-                            {step.selection && (
-                            <div className="flex-shrink w-1/2 text-right whitespace-normal">
-                                <Badge variant="secondary" className="text-sm font-normal">{step.selection}</Badge>
-                            </div>
-                            )}
-                        </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="p-4">
-                        {step.content}
-                        </AccordionContent>
-                    </AccordionItem>
+                <Accordion type="single" value={activeAccordionItem} onValueChange={setActiveAccordionItem} collapsible className="w-full space-y-8">
+                {groupedConfigSteps.map(group => (
+                  <div key={group.groupTitle}>
+                    <h2 className="text-2xl font-headline font-semibold mb-4">{group.groupTitle}</h2>
+                    {group.steps.map(step => (
+                      <AccordionItem value={step.id} key={step.id} disabled={step.disabled}>
+                          <AccordionTrigger>
+                          <div className="flex justify-between items-center w-full pr-4">
+                              <span className="text-lg font-headline">{step.title}</span>
+                              {step.selection && (
+                              <div className="flex-shrink w-1/2 text-right whitespace-normal">
+                                  <Badge variant="secondary" className="text-sm font-normal">{step.selection}</Badge>
+                              </div>
+                              )}
+                          </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="p-4">
+                          {step.content}
+                          </AccordionContent>
+                      </AccordionItem>
                     ))}
-                </Accordion>
+                  </div>
+                ))}
+            </Accordion>
             )}
         </div>
       </main>
