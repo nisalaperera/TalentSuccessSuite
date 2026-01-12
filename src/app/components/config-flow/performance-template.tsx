@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Pencil, Trash2, Power, PowerOff } from 'lucide-react';
 import type { StepProps, PerformanceTemplate as PerformanceTemplateType } from '@/lib/types';
@@ -17,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Textarea } from '@/components/ui/textarea';
 
 
 interface PerformanceTemplateProps extends StepProps {
@@ -26,9 +26,8 @@ interface PerformanceTemplateProps extends StepProps {
 
 export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerformanceTemplateId, setSelectedPerformanceTemplateId }: PerformanceTemplateProps) {
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [category, setCategory] = useState<'Performance' | 'Survey' | undefined>();
-  const [supportsRatings, setSupportsRatings] = useState(true);
-  const [supportsComments, setSupportsComments] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<PerformanceTemplateType | null>(null);
   const { toast } = useToast();
@@ -36,15 +35,13 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
   useEffect(() => {
     if (editingTemplate) {
         setName(editingTemplate.name);
+        setDescription(editingTemplate.description);
         setCategory(editingTemplate.category);
-        setSupportsRatings(editingTemplate.supportsRatings);
-        setSupportsComments(editingTemplate.supportsComments);
         setIsDialogOpen(true);
     } else {
         setName('');
+        setDescription('');
         setCategory(undefined);
-        setSupportsRatings(true);
-        setSupportsComments(true);
     }
   }, [editingTemplate]);
 
@@ -59,26 +56,25 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
   };
 
   const handleSave = () => {
-    if (!name || !category) {
+    if (!name || !category || !description) {
        toast({
         title: 'Missing Information',
-        description: 'Please provide a name and select a category.',
+        description: 'Please provide a name, description, and select a category.',
         variant: 'destructive',
       });
       return;
     }
 
     if (editingTemplate) {
-        const updatedTemplate = { ...editingTemplate, name, category, supportsRatings, supportsComments };
+        const updatedTemplate = { ...editingTemplate, name, description, category };
         dispatch({ type: 'UPDATE_PERFORMANCE_TEMPLATE', payload: updatedTemplate });
         toast({ title: 'Success', description: `Template "${name}" updated.` });
     } else {
         const newTemplate: PerformanceTemplateType = {
             id: `pt-${Date.now()}`,
             name,
+            description,
             category,
-            supportsRatings,
-            supportsComments,
             status: 'Active',
         };
         dispatch({ type: 'ADD_PERFORMANCE_TEMPLATE', payload: newTemplate });
@@ -135,8 +131,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
                             <TableHead className="w-10"></TableHead>
                             <TableHead>Performance Template Name</TableHead>
                             <TableHead>Category</TableHead>
-                            <TableHead>Ratings</TableHead>
-                            <TableHead>Comments</TableHead>
+                            <TableHead>Description</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -152,8 +147,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
                                     </TableCell>
                                     <TableCell className="font-medium"><Label htmlFor={template.id} className="cursor-pointer">{template.name}</Label></TableCell>
                                     <TableCell>{template.category}</TableCell>
-                                    <TableCell>{template.supportsRatings ? 'Yes' : 'No'}</TableCell>
-                                    <TableCell>{template.supportsComments ? 'Yes' : 'No'}</TableCell>
+                                    <TableCell className="truncate max-w-xs">{template.description}</TableCell>
                                     <TableCell>{template.status}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end items-center gap-2">
@@ -188,7 +182,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
                             )})
                         ) : (
                             <TableRow>
-                            <TableCell colSpan={7} className="text-center">No performance templates created yet.</TableCell>
+                            <TableCell colSpan={6} className="text-center">No performance templates created yet.</TableCell>
                             </TableRow>
                         )}
                         </TableBody>
@@ -218,16 +212,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
                     </SelectContent>
                     </Select>
                 </div>
-                <div className="flex items-center space-x-4 pt-2">
-                    <div className="flex items-center space-x-2">
-                        <Switch id="ratings-switch" checked={supportsRatings} onCheckedChange={setSupportsRatings} />
-                        <Label htmlFor="ratings-switch">Supports Ratings</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Switch id="comments-switch" checked={supportsComments} onCheckedChange={setSupportsComments} />
-                        <Label htmlFor="comments-switch">Supports Comments</Label>
-                    </div>
-                </div>
+                <Textarea placeholder="Template description..." value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>

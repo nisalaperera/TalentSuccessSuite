@@ -21,18 +21,13 @@ export const columns = ({ onEdit, onDelete, onToggleStatus, isTemplateInUse, onM
         header: ({ column }) => <DataTableColumnHeader column={column} title="Template Name" />,
     },
     {
+        accessorKey: 'description',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Description" />,
+        cell: ({ row }) => <div className="truncate max-w-xs">{row.getValue('description')}</div>,
+    },
+    {
         accessorKey: 'category',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Category" />,
-    },
-    {
-        accessorKey: 'supportsRatings',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Ratings" />,
-        cell: ({ row }) => row.getValue('supportsRatings') ? 'Yes' : 'No',
-    },
-    {
-        accessorKey: 'supportsComments',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Comments" />,
-        cell: ({ row }) => row.getValue('supportsComments') ? 'Yes' : 'No',
     },
     {
         accessorKey: 'status',

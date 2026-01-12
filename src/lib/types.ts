@@ -27,9 +27,8 @@ export type GoalPlan = {
 export type PerformanceTemplate = {
   id: string;
   name: string;
+  description: string;
   category: 'Performance' | 'Survey';
-  supportsRatings: boolean;
-  supportsComments: boolean;
   status: 'Active' | 'Inactive';
 };
 

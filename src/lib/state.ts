@@ -16,8 +16,8 @@ export const initialState: ConfigState = {
     { id: 'gp-2', name: 'FY 2024 Q2 Goal Plan', performanceCycleId: 'pc-2', status: 'Active' },
   ],
   performanceTemplates: [
-    { id: 'pt-1', name: 'Annual Performance Review', category: 'Performance', supportsRatings: true, supportsComments: true, status: 'Active' },
-    { id: 'pt-2', name: 'Q3 Employee Engagement Survey', category: 'Survey', supportsRatings: true, supportsComments: true, status: 'Active' },
+    { id: 'pt-1', name: 'Annual Performance Review', description: 'Standard annual review template.', category: 'Performance', status: 'Active' },
+    { id: 'pt-2', name: 'Q3 Employee Engagement Survey', description: 'Quarterly survey to gauge employee sentiment.', category: 'Survey', status: 'Active' },
   ],
   performanceTemplateSections: [
     {

@@ -12,8 +12,7 @@ import type { PerformanceTemplate as PerformanceTemplateType } from '@/lib/types
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function PerformanceTemplatesContent() {
@@ -25,21 +24,18 @@ function PerformanceTemplatesContent() {
 
     // Form state
     const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
     const [category, setCategory] = useState<'Performance' | 'Survey' | undefined>();
-    const [supportsRatings, setSupportsRatings] = useState(true);
-    const [supportsComments, setSupportsComments] = useState(true);
 
     useEffect(() => {
         if (editingTemplate) {
             setName(editingTemplate.name);
+            setDescription(editingTemplate.description);
             setCategory(editingTemplate.category);
-            setSupportsRatings(editingTemplate.supportsRatings);
-            setSupportsComments(editingTemplate.supportsComments);
         } else {
             setName('');
+            setDescription('');
             setCategory(undefined);
-            setSupportsRatings(true);
-            setSupportsComments(true);
         }
     }, [editingTemplate]);
 
@@ -54,17 +50,17 @@ function PerformanceTemplatesContent() {
     };
 
     const handleSave = () => {
-        if (!name || !category) {
-            toast({ title: 'Missing Information', description: 'Please provide a name and select a category.', variant: 'destructive' });
+        if (!name || !category || !description) {
+            toast({ title: 'Missing Information', description: 'Please provide a name, description, and select a category.', variant: 'destructive' });
             return;
         }
 
         if (editingTemplate) {
-            const updatedTemplate = { ...editingTemplate, name, category, supportsRatings, supportsComments };
+            const updatedTemplate = { ...editingTemplate, name, description, category };
             dispatch({ type: 'UPDATE_PERFORMANCE_TEMPLATE', payload: updatedTemplate });
             toast({ title: 'Success', description: `Template "${name}" updated.` });
         } else {
-            const newTemplate: PerformanceTemplateType = { id: `pt-${Date.now()}`, name, category, supportsRatings, supportsComments, status: 'Active' };
+            const newTemplate: PerformanceTemplateType = { id: `pt-${Date.now()}`, name, description, category, status: 'Active' };
             dispatch({ type: 'ADD_PERFORMANCE_TEMPLATE', payload: newTemplate });
             toast({ title: 'Success', description: `Template "${name}" created.` });
         }
@@ -115,10 +111,7 @@ function PerformanceTemplatesContent() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex items-center space-x-4 pt-2">
-                            <div className="flex items-center space-x-2"><Switch id="ratings-switch" checked={supportsRatings} onCheckedChange={setSupportsRatings} /><Label htmlFor="ratings-switch">Supports Ratings</Label></div>
-                            <div className="flex items-center space-x-2"><Switch id="comments-switch" checked={supportsComments} onCheckedChange={setSupportsComments} /><Label htmlFor="comments-switch">Supports Comments</Label></div>
-                        </div>
+                        <Textarea placeholder="Template description..." value={description} onChange={(e) => setDescription(e.target.value)} />
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
