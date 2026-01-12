@@ -1,10 +1,15 @@
 
+
 import type { ConfigState, Action } from '@/lib/types';
 
 export const initialState: ConfigState = {
   reviewPeriods: [
     { id: 'rp-1', name: 'FY 2024 Annual', startDate: new Date('2024-01-01'), endDate: new Date('2024-12-31'), status: 'Active' },
     { id: 'rp-2', name: 'FY 2025 Mid-Year', startDate: new Date('2025-01-01'), endDate: new Date('2025-06-30'), status: 'Active' },
+  ],
+  performanceCycles: [
+    { id: 'pc-1', name: 'Q1 Check-in', reviewPeriodId: 'rp-1', status: 'Active' },
+    { id: 'pc-2', name: 'Q2 Check-in', reviewPeriodId: 'rp-1', status: 'Active' },
   ],
   goalPlans: [
     { id: 'gp-1', name: 'FY 2024 Goal Plan', reviewPeriodId: 'rp-1', status: 'Active' },
@@ -123,6 +128,13 @@ export function configReducer(state: ConfigState, action: Action): ConfigState {
       return { ...state, reviewPeriods: state.reviewPeriods.map(p => p.id === action.payload.id ? action.payload : p) };
     case 'DELETE_REVIEW_PERIOD':
       return { ...state, reviewPeriods: state.reviewPeriods.filter(p => p.id !== action.payload) };
+
+    case 'ADD_PERFORMANCE_CYCLE':
+      return { ...state, performanceCycles: [...state.performanceCycles, action.payload] };
+    case 'UPDATE_PERFORMANCE_CYCLE':
+      return { ...state, performanceCycles: state.performanceCycles.map(p => p.id === action.payload.id ? action.payload : p) };
+    case 'DELETE_PERFORMANCE_CYCLE':
+        return { ...state, performanceCycles: state.performanceCycles.filter(p => p.id !== action.payload) };
     
     case 'ADD_GOAL_PLAN':
       return { ...state, goalPlans: [...state.goalPlans, action.payload] };

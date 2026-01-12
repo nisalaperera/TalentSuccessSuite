@@ -90,12 +90,17 @@ function ReviewPeriodsContent() {
         router.push(`/configuration/goal-plans?reviewPeriodId=${period.id}`);
     }
 
+    const handleManageCycles = (period: ReviewPeriodType) => {
+        router.push(`/configuration/performance-cycles?reviewPeriodId=${period.id}`);
+    }
+
     const tableColumns = columns({ 
         onEdit: handleOpenDialog, 
         onDelete: handleDelete, 
         onToggleStatus: handleToggleStatus, 
         isPeriodInUse,
         onManageGoalPlans: handleManageGoalPlans,
+        onManageCycles: handleManageCycles,
     });
 
     return (

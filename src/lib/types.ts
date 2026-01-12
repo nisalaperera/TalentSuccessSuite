@@ -8,6 +8,13 @@ export type ReviewPeriod = {
   status: 'Active' | 'Inactive';
 };
 
+export type PerformanceCycle = {
+  id: string;
+  name: string;
+  reviewPeriodId: string;
+  status: 'Active' | 'Inactive';
+};
+
 export type GoalPlan = {
   id: string;
   name: string;
@@ -118,6 +125,7 @@ export type LOVs = {
 
 export type ConfigState = {
   reviewPeriods: ReviewPeriod[];
+  performanceCycles: PerformanceCycle[];
   goalPlans: GoalPlan[];
   performanceTemplates: PerformanceTemplate[];
   performanceTemplateSections: PerformanceTemplateSection[];
@@ -131,6 +139,9 @@ export type Action =
   | { type: 'ADD_REVIEW_PERIOD'; payload: ReviewPeriod }
   | { type: 'UPDATE_REVIEW_PERIOD'; payload: ReviewPeriod }
   | { type: 'DELETE_REVIEW_PERIOD'; payload: string }
+  | { type: 'ADD_PERFORMANCE_CYCLE'; payload: PerformanceCycle }
+  | { type: 'UPDATE_PERFORMANCE_CYCLE'; payload: PerformanceCycle }
+  | { type: 'DELETE_PERFORMANCE_CYCLE'; payload: string }
   | { type: 'ADD_GOAL_PLAN'; payload: GoalPlan }
   | { type: 'UPDATE_GOAL_PLAN'; payload: GoalPlan }
   | { type: 'DELETE_GOAL_PLAN'; payload: string }

@@ -13,12 +13,17 @@ export function TileBasedApproach({ state }: TileBasedProps) {
 
     const groupedConfigItems = [
         {
-            groupTitle: "Review Periods and Goal Plans",
+            groupTitle: "Review Periods, Cycles, and Goals",
             items: [
                 {
                     title: "Review Periods",
                     description: "Define the time boundary for all performance-related activities.",
                     href: "/configuration/review-periods"
+                },
+                {
+                    title: "Performance Cycles",
+                    description: "Define the specific evaluation cycles within a review period.",
+                    href: "/configuration/performance-cycles"
                 },
                 {
                     title: "Goal Plans",

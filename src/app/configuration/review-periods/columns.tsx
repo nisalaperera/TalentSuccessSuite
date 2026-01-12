@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import type { ReviewPeriod } from '@/lib/types';
 import { DataTableColumnHeader } from '@/app/components/data-table/data-table-column-header';
 import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
-import { BookMarked } from 'lucide-react';
+import { BookMarked, Recycle } from 'lucide-react';
 
 type ColumnsConfig = {
     onEdit: (period: ReviewPeriod) => void;
@@ -14,9 +14,10 @@ type ColumnsConfig = {
     onToggleStatus: (period: ReviewPeriod) => void;
     isPeriodInUse: (id: string) => boolean;
     onManageGoalPlans: (period: ReviewPeriod) => void;
+    onManageCycles: (period: ReviewPeriod) => void;
 }
 
-export const columns = ({ onEdit, onDelete, onToggleStatus, isPeriodInUse, onManageGoalPlans }: ColumnsConfig): ColumnDef<ReviewPeriod>[] => [
+export const columns = ({ onEdit, onDelete, onToggleStatus, isPeriodInUse, onManageGoalPlans, onManageCycles }: ColumnsConfig): ColumnDef<ReviewPeriod>[] => [
     {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -50,6 +51,11 @@ export const columns = ({ onEdit, onDelete, onToggleStatus, isPeriodInUse, onMan
             const period = row.original;
             const inUse = isPeriodInUse(period.id);
             const customActions = [
+                {
+                    label: "Manage Cycles",
+                    icon: <Recycle className="mr-2 h-3.5 w-3.5" />,
+                    onClick: onManageCycles
+                },
                 {
                     label: "Manage Goal Plans",
                     icon: <BookMarked className="mr-2 h-3.5 w-3.5" />,

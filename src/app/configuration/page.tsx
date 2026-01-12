@@ -45,7 +45,7 @@ export default function ConfigurationPage() {
   
   const groupedConfigSteps = [
     {
-      groupTitle: "Review Periods and Goal Plans",
+      groupTitle: "Review Periods, Cycles, and Goals",
       steps: [
         {
           id: 'item-1',
@@ -54,11 +54,17 @@ export default function ConfigurationPage() {
           content: <ReviewPeriod state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-2')} selectedReviewPeriodId={selectedReviewPeriodId} setSelectedReviewPeriodId={setSelectedReviewPeriodId} />
         },
         {
-          id: 'item-2',
+            id: 'item-2',
+            title: 'Performance Cycle Setup',
+            disabled: !selectedReviewPeriodId,
+            content: <p>Performance Cycle component will be created in a future step.</p>
+        },
+        {
+          id: 'item-3',
           title: 'Goal Plan Setup',
           selection: selectedGoalPlan?.name,
           disabled: !selectedReviewPeriodId,
-          content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
+          content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedReviewPeriodId={selectedReviewPeriodId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
         },
       ]
     },
@@ -66,17 +72,17 @@ export default function ConfigurationPage() {
       groupTitle: "Performance Template Management",
       steps: [
         {
-          id: 'item-3',
+          id: 'item-4',
           title: 'Performance Template',
           selection: selectedPerformanceTemplate?.name,
-          content: <PerformanceTemplate state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} setSelectedPerformanceTemplateId={setSelectedPerformanceTemplateId} />
+          content: <PerformanceTemplate state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-5')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} setSelectedPerformanceTemplateId={setSelectedPerformanceTemplateId} />
         },
         {
-          id: 'item-4',
+          id: 'item-5',
           title: 'Performance Template Section Setup',
           selection: selectedTemplateSectionNames,
           disabled: !selectedPerformanceTemplateId,
-          content: <PerformanceTemplateSection state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-5')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} />
+          content: <PerformanceTemplateSection state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-6')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} />
         },
       ]
     },
@@ -84,16 +90,16 @@ export default function ConfigurationPage() {
       groupTitle: "Evaluation Flows and Eligilibilty",
       steps: [
         {
-          id: 'item-5',
+          id: 'item-6',
           title: 'Evaluation Flow',
           selection: selectedEvaluationFlow?.name,
-          content: <EvaluationFlow state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-6')} selectedEvaluationFlowId={selectedEvaluationFlowId} setSelectedEvaluationFlowId={setSelectedEvaluationFlowId} />
+          content: <EvaluationFlow state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-7')} selectedEvaluationFlowId={selectedEvaluationFlowId} setSelectedEvaluationFlowId={setSelectedEvaluationFlowId} />
         },
          {
-          id: 'item-6',
+          id: 'item-7',
           title: 'Eligibility Criteria',
           selection: selectedEligibility?.name,
-          content: <EligibilityCriteria state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-7')} selectedEligibilityId={selectedEligibilityId} setSelectedEligibilityId={setSelectedEligibilityId} />
+          content: <EligibilityCriteria state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-8')} selectedEligibilityId={selectedEligibilityId} setSelectedEligibilityId={setSelectedEligibilityId} />
         },
       ]
     },
@@ -101,7 +107,7 @@ export default function ConfigurationPage() {
       groupTitle: "Performance Document",
       steps: [
         {
-          id: 'item-7',
+          id: 'item-8',
           title: 'Performance Documents',
           content: <PerformanceDocument state={state} dispatch={dispatch} onComplete={() => {}} />
         }
