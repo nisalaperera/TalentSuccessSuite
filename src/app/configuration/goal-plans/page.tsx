@@ -13,8 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
 
 function GoalPlansContent() {
     const router = useRouter();
@@ -28,7 +26,7 @@ function GoalPlansContent() {
     const [name, setName] = useState('');
     const [reviewPeriodId, setReviewPeriodId] = useState('');
     
-    const [filterReviewPeriod, setFilterReviewPeriod] = useState(searchParams.get('reviewPeriodId') || '');
+    const filterReviewPeriod = searchParams.get('reviewPeriodId') || '';
 
     const preselectedReviewPeriodId = searchParams.get('reviewPeriodId');
 
@@ -42,27 +40,6 @@ function GoalPlansContent() {
         }
     }, [editingPlan, preselectedReviewPeriodId]);
     
-    useEffect(() => {
-        // Sync table filter with URL param
-        const currentTable = table.getColumn('reviewPeriodId');
-        if (filterReviewPeriod) {
-            currentTable?.setFilterValue(filterReviewPeriod);
-        } else {
-            currentTable?.setFilterValue(undefined);
-        }
-        
-        // Update URL to reflect filter state
-        const params = new URLSearchParams(window.location.search);
-        if (filterReviewPeriod) {
-            params.set('reviewPeriodId', filterReviewPeriod);
-            router.replace(`${window.location.pathname}?${params.toString()}`);
-        } else {
-            params.delete('reviewPeriodId');
-            router.replace(`${window.location.pathname}?${params.toString()}`);
-        }
-
-    }, [filterReviewPeriod]);
-
 
     const handleOpenDialog = (plan: GoalPlanType | null = null) => {
         setEditingPlan(plan);
@@ -111,16 +88,6 @@ function GoalPlansContent() {
     
     const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getReviewPeriodName }), [state.reviewPeriods]);
 
-    const table = useMemo(() => {
-        return {
-            getColumn: (id: string) => ({
-                setFilterValue: (value: any) => {
-                    // This is a mock. The real filtering is done via useMemo on filteredData
-                }
-            })
-        }
-    }, []);
-
     const filteredData = useMemo(() => {
         if (!filterReviewPeriod) return state.goalPlans;
         return state.goalPlans.filter(plan => plan.reviewPeriodId === filterReviewPeriod);
@@ -136,27 +103,6 @@ function GoalPlansContent() {
             <DataTable 
               columns={tableColumns} 
               data={filteredData}
-              toolbarContent={
-                <div className="flex items-center gap-2">
-                    <Select value={filterReviewPeriod} onValueChange={(value) => setFilterReviewPeriod(value === 'all' ? '' : value)}>
-                        <SelectTrigger className="w-[250px] h-8">
-                            <SelectValue placeholder="Filter by Review Period..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Review Periods</SelectItem>
-                            {state.reviewPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {filterReviewPeriod && (
-                        <Badge variant="secondary" className="pl-2 pr-1 h-8 text-sm">
-                            {getReviewPeriodName(filterReviewPeriod)}
-                            <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" onClick={() => setFilterReviewPeriod('')}>
-                                <X className="h-3 w-3"/>
-                            </Button>
-                        </Badge>
-                    )}
-                </div>
-              }
             />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
