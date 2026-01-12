@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useReducer, useState, useEffect } from 'react';
+import { useReducer, useState, useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -15,7 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-export default function PerformanceTemplatesPage() {
+function PerformanceTemplatesContent() {
+    const router = useRouter();
     const [state, dispatch] = useReducer(configReducer, initialState);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<PerformanceTemplateType | null>(null);
@@ -82,7 +84,11 @@ export default function PerformanceTemplatesPage() {
         toast({ title: 'Success', description: `Template status set to ${newStatus}.` });
     };
 
-    const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isTemplateInUse });
+    const handleManageSections = (template: PerformanceTemplateType) => {
+        router.push(`/configuration/performance-template-sections?templateId=${template.id}`);
+    }
+
+    const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isTemplateInUse, onManageSections: handleManageSections });
 
     return (
         <div className="container mx-auto py-10">
@@ -122,4 +128,12 @@ export default function PerformanceTemplatesPage() {
             </Dialog>
         </div>
     );
+}
+
+export default function PerformanceTemplatesPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <PerformanceTemplatesContent />
+        </Suspense>
+    )
 }

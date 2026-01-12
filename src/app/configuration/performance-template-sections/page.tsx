@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useReducer, useState, useMemo, useEffect } from 'react';
+import { useReducer, useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -18,21 +19,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StarRating } from '@/app/components/config-flow/shared/star-rating';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, Settings } from 'lucide-react';
+import { GripVertical, Trash2, Settings, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head'];
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary', 'Competencies', 'Comment'];
 const surveySectionTypes: SectionType[] = ['Survey Question Group', 'Rating', 'Comment'];
 
-
-export default function PerformanceTemplateSectionsPage() {
+function PerformanceTemplateSectionsContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [state, dispatch] = useReducer(configReducer, initialState);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentSection, setCurrentSection] = useState<Partial<PerformanceTemplateSectionType> | null>(null);
-    const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
     const [sections, setSections] = useState<PerformanceTemplateSectionType[]>([]);
     const { toast } = useToast();
+
+    const selectedTemplateId = searchParams.get('templateId');
 
     const selectedTemplate = useMemo(() => 
         state.performanceTemplates.find(t => t.id === selectedTemplateId),
@@ -124,6 +128,14 @@ export default function PerformanceTemplateSectionsPage() {
         
         dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections, newSection] });
     };
+    
+    const handleTemplateSelection = (templateId: string) => {
+        router.push(`/configuration/performance-template-sections?templateId=${templateId}`);
+    };
+    
+    const handleClearFilter = () => {
+        router.push('/configuration/performance-template-sections');
+    };
 
     return (
         <div className="container mx-auto py-10">
@@ -132,13 +144,21 @@ export default function PerformanceTemplateSectionsPage() {
                 description="Manage all your performance template sections here."
                 showAddNew={false}
             />
-            <div className="mb-4">
-                <Select onValueChange={setSelectedTemplateId} value={selectedTemplateId}>
+            <div className="mb-4 flex items-center gap-4">
+                <Select onValueChange={handleTemplateSelection} value={selectedTemplateId || ''}>
                     <SelectTrigger className="w-[300px]"><SelectValue placeholder="Select a template to add/view sections..." /></SelectTrigger>
                     <SelectContent>
                         {state.performanceTemplates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
+                 {selectedTemplateId && (
+                    <Badge variant="secondary" className="flex items-center gap-2">
+                        Template: {getTemplateName(selectedTemplateId)}
+                        <button onClick={handleClearFilter} className="rounded-full hover:bg-muted-foreground/20">
+                            <X className="h-3 w-3"/>
+                        </button>
+                    </Badge>
+                )}
             </div>
 
             {selectedTemplateId ? (
@@ -304,4 +324,13 @@ export default function PerformanceTemplateSectionsPage() {
             </Dialog>
         </div>
     );
+}
+
+
+export default function PerformanceTemplateSectionsPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <PerformanceTemplateSectionsContent />
+        </Suspense>
+    )
 }
