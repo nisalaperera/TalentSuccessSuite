@@ -26,7 +26,6 @@ export const initialState: ConfigState = {
       type: 'Performance Goals',
       performanceTemplateId: 'pt-1',
       order: 1,
-      ratingScale: 5,
       permissions: [
         { role: 'Worker', view: true, edit: true },
         { role: 'Primary Appraiser', view: true, edit: true },
@@ -34,14 +33,20 @@ export const initialState: ConfigState = {
         { role: 'Secondary Appraiser 2', view: false, edit: false },
         { role: 'HR / Department Head', view: true, edit: false },
       ],
+      // Section Ratings
       enableSectionRatings: true,
-      enableSectionComments: true,
       sectionRatingMandatory: false,
+      ratingScale: 5,
+      ratingCalculationMethod: 'Manual Rating',
+      // Section Comments
+      enableSectionComments: false,
       sectionCommentMandatory: false,
-      enableSectionWeights: false,
-      enableItemRatings: true,
-      enableItemComments: true,
+      minLength: 0,
+      maxLength: 500,
+      // Item Ratings & Comments
+      enableItemRatings: false,
       itemRatingMandatory: false,
+      enableItemComments: false,
       itemCommentMandatory: false,
     },
     {

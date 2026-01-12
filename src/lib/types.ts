@@ -56,21 +56,30 @@ export type PerformanceTemplateSection = {
   type: SectionType;
   performanceTemplateId: string;
   order: number;
-  ratingScale?: number;
   permissions: AccessPermission[];
 
-  // Performance Goals Section Attributes
+  // Section Ratings & Comments
   enableSectionRatings?: boolean;
-  enableSectionComments?: boolean;
   sectionRatingMandatory?: boolean;
+  ratingScale?: number;
+  ratingCalculationMethod?: 'Manual Rating' | 'Mid Year Rating Calculation' | 'Annual Year RatingCalculation';
+  
+  enableSectionComments?: boolean;
   sectionCommentMandatory?: boolean;
+  maxLength?: number;
+  minLength?: number;
+
+  // Performance Goals Section Item Attributes
+  enableItemRatings?: boolean;
+  itemRatingMandatory?: boolean;
+  enableItemComments?: boolean;
+  itemCommentMandatory?: boolean;
+
+  // Section Weights
   enableSectionWeights?: boolean;
   sectionWeight?: number;
   sectionMinimumWeight?: number;
-  enableItemRatings?: boolean;
-  enableItemComments?: boolean;
-  itemRatingMandatory?: boolean;
-  itemCommentMandatory?: boolean;
+
 };
 
 export type EvaluationStep = {
