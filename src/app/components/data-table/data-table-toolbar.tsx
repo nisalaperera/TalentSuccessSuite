@@ -8,10 +8,12 @@ import { DataTableViewOptions } from './data-table-view-options';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
+  children?: React.ReactNode;
 }
 
 export function DataTableToolbar<TData>({
   table,
+  children,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
   const filterValue = (table.getColumn('name')?.getFilterValue() as string) ?? '';
@@ -27,7 +29,7 @@ export function DataTableToolbar<TData>({
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
-        
+        {children}
         {isFiltered && (
           <Button
             variant="ghost"

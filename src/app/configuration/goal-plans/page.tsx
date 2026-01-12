@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useReducer, useState, useEffect, Suspense } from 'react';
+import { useReducer, useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
@@ -24,6 +24,7 @@ function GoalPlansContent() {
     // Form state
     const [name, setName] = useState('');
     const [reviewPeriodId, setReviewPeriodId] = useState('');
+    const [filterReviewPeriod, setFilterReviewPeriod] = useState(searchParams.get('reviewPeriodId') || '');
 
     const preselectedReviewPeriodId = searchParams.get('reviewPeriodId');
 
@@ -82,11 +83,12 @@ function GoalPlansContent() {
     
     const getReviewPeriodName = (id: string) => state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
 
-    const filteredData = preselectedReviewPeriodId
-        ? state.goalPlans.filter(plan => plan.reviewPeriodId === preselectedReviewPeriodId)
-        : state.goalPlans;
-    
-    const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getReviewPeriodName });
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getReviewPeriodName }), [state.reviewPeriods]);
+
+    const filteredData = useMemo(() => {
+        if (!filterReviewPeriod) return state.goalPlans;
+        return state.goalPlans.filter(plan => plan.reviewPeriodId === filterReviewPeriod);
+    }, [filterReviewPeriod, state.goalPlans]);
 
     return (
         <div className="container mx-auto py-10">
@@ -95,7 +97,21 @@ function GoalPlansContent() {
                 description="Manage all your goal plans here."
                 onAddNew={() => handleOpenDialog()}
             />
-            <DataTable columns={tableColumns} data={filteredData} />
+            <DataTable 
+              columns={tableColumns} 
+              data={filteredData}
+              toolbarContent={
+                <Select value={filterReviewPeriod} onValueChange={(value) => setFilterReviewPeriod(value === 'all' ? '' : value)}>
+                    <SelectTrigger className="w-[250px] h-8">
+                        <SelectValue placeholder="Filter by Review Period..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Review Periods</SelectItem>
+                        {state.reviewPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+              }
+            />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
