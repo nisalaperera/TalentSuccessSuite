@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -103,93 +104,95 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="space-y-1.5">
-            <CardTitle className="font-headline">Review Periods</CardTitle>
-            <CardDescription>Define the time boundary for all performance-related activities.</CardDescription>
-          </div>
-          <Button onClick={() => handleOpenDialog()}><PlusCircle className="mr-2" />Add New</Button>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup value={selectedReviewPeriodId} onValueChange={handleSelection}>
-            <TooltipProvider>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10"></TableHead>
-                    <TableHead>Review Period Name</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {state.reviewPeriods.length > 0 ? (
-                    state.reviewPeriods.map((period) => {
-                      const inUse = isPeriodInUse(period.id);
-                      return (
-                        <TableRow key={period.id} data-state={period.id === selectedReviewPeriodId ? 'selected' : 'unselected'}>
-                          <TableCell><RadioGroupItem value={period.id} id={period.id} /></TableCell>
-                          <TableCell className="font-medium"><Label htmlFor={period.id} className="cursor-pointer">{period.name}</Label></TableCell>
-                          <TableCell>{format(period.startDate, 'PPP')}</TableCell>
-                          <TableCell>{format(period.endDate, 'PPP')}</TableCell>
-                          <TableCell>{period.status}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end items-center gap-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span tabIndex={0}>
-                                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(period)} disabled={inUse}>
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                  </span>
-                                </TooltipTrigger>
-                                {inUse && <TooltipContent><p>Cannot edit a period that is in use.</p></TooltipContent>}
-                              </Tooltip>
-
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span tabIndex={0}>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" disabled={inUse}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the review period.</AlertDialogDescription></AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(period.id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </span>
-                                </TooltipTrigger>
-                                {inUse && <TooltipContent><p>Cannot delete a period that is in use.</p></TooltipContent>}
-                              </Tooltip>
-                              
-                               <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(period)}>
-                                {period.status === 'Active' ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                                <span className="sr-only">{period.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                              </Button>
-
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  ) : (
-                    <TableRow><TableCell colSpan={6} className="text-center">No review periods created yet.</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TooltipProvider>
-          </RadioGroup>
-        </CardContent>
-      </Card>
-
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+            <div className="space-y-1.5">
+                <CardTitle className="font-headline">Review Periods</CardTitle>
+                <CardDescription>Define the time boundary for all performance-related activities.</CardDescription>
+            </div>
+            <DialogTrigger asChild>
+                <Button onClick={() => handleOpenDialog()}><PlusCircle className="mr-2" />Add New</Button>
+            </DialogTrigger>
+            </CardHeader>
+            <CardContent>
+            <RadioGroup value={selectedReviewPeriodId} onValueChange={handleSelection}>
+                <TooltipProvider>
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead>Review Period Name</TableHead>
+                        <TableHead>Start Date</TableHead>
+                        <TableHead>End Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {state.reviewPeriods.length > 0 ? (
+                        state.reviewPeriods.map((period) => {
+                        const inUse = isPeriodInUse(period.id);
+                        return (
+                            <TableRow key={period.id} data-state={period.id === selectedReviewPeriodId ? 'selected' : 'unselected'}>
+                            <TableCell><RadioGroupItem value={period.id} id={period.id} /></TableCell>
+                            <TableCell className="font-medium"><Label htmlFor={period.id} className="cursor-pointer">{period.name}</Label></TableCell>
+                            <TableCell>{format(period.startDate, 'PPP')}</TableCell>
+                            <TableCell>{format(period.endDate, 'PPP')}</TableCell>
+                            <TableCell>{period.status}</TableCell>
+                            <TableCell className="text-right">
+                                <div className="flex justify-end items-center gap-2">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                    <span tabIndex={0}>
+                                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(period)} disabled={inUse}>
+                                        <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </span>
+                                    </TooltipTrigger>
+                                    {inUse && <TooltipContent><p>Cannot edit a period that is in use.</p></TooltipContent>}
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span tabIndex={0}>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" disabled={inUse}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the review period.</AlertDialogDescription></AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDelete(period.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </span>
+                                    </TooltipTrigger>
+                                    {inUse && <TooltipContent><p>Cannot delete a period that is in use.</p></TooltipContent>}
+                                </Tooltip>
+                                
+                                <Button variant="ghost" size="icon" onClick={() => handleToggleStatus(period)}>
+                                    {period.status === 'Active' ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                                    <span className="sr-only">{period.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                </Button>
+
+                                </div>
+                            </TableCell>
+                            </TableRow>
+                        );
+                        })
+                    ) : (
+                        <TableRow><TableCell colSpan={6} className="text-center">No review periods created yet.</TableCell></TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+                </TooltipProvider>
+            </RadioGroup>
+            </CardContent>
+        </Card>
+
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-headline">{editingPeriod ? 'Edit' : 'Create New'} Review Period</DialogTitle>

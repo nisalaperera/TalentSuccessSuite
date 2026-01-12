@@ -4,8 +4,9 @@
 
 import { useReducer, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle2, Circle, Lock } from 'lucide-react';
-import type { ConfigState, Action } from '@/lib/types';
+import type { ConfigState, Action, ReviewPeriod as ReviewPeriodType, GoalPlan as GoalPlanType, PerformanceTemplate as PerformanceTemplateType, EvaluationFlow as EvaluationFlowType, Eligibility as EligibilityType, PerformanceTemplateSection as PerformanceTemplateSectionType } from '@/lib/types';
 import { format } from 'date-fns';
 
 import { ReviewPeriod } from '@/app/components/config-flow/review-period';
@@ -16,6 +17,7 @@ import { EvaluationFlow } from '@/app/components/config-flow/evaluation-flow';
 import { EligibilityCriteria } from '@/app/components/config-flow/eligibility-criteria';
 import { PerformanceDocument } from '@/app/components/config-flow/performance-document';
 import { Badge } from '@/components/ui/badge';
+import { TileBasedApproach } from '@/app/components/config-flow/tile-based-approach';
 
 const initialState: ConfigState = {
   reviewPeriods: [
@@ -191,6 +193,27 @@ function configReducer(state: ConfigState, action: Action): ConfigState {
 export default function Home() {
   const [state, dispatch] = useReducer(configReducer, initialState);
   const [openItem, setOpenItem] = useState('reviewPeriod');
+
+  // Dialog states
+  const [dialogs, setDialogs] = useState({
+      reviewPeriod: { open: false, editing: null as ReviewPeriodType | null },
+      goalPlan: { open: false, editing: null as GoalPlanType | null },
+      performanceTemplate: { open: false, editing: null as PerformanceTemplateType | null },
+      evaluationFlow: { open: false, editing: null as EvaluationFlowType | null },
+      eligibility: { open: false, editing: null as EligibilityType | null },
+      performanceDocument: { open: false, editing: null },
+      performanceTemplateSection: { open: false, editing: null as PerformanceTemplateSectionType | null }
+  });
+
+  const openDialog = (dialog: keyof typeof dialogs, editing: any = null) => {
+    setDialogs(prev => ({ ...prev, [dialog]: { open: true, editing } }));
+  }
+
+  const closeDialog = (dialog: keyof typeof dialogs) => {
+    setDialogs(prev => ({ ...prev, [dialog]: { open: false, editing: null } }));
+  }
+  
+
   const [selectedReviewPeriodId, setSelectedReviewPeriodId] = useState<string | undefined>();
   const [selectedGoalPlanId, setSelectedGoalPlanId] = useState<string | undefined>();
   const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string | undefined>();
@@ -325,6 +348,8 @@ export default function Home() {
     performanceDocument: { state, dispatch, onComplete: () => handleNext('performanceDocument') },
   };
 
+  const tileBasedProps = { state, dispatch, dialogs, openDialog, closeDialog };
+
   return (
     <div className="min-h-screen bg-background">
       <main className="container mx-auto px-4 py-8 md:px-8 md:py-12">
@@ -335,71 +360,82 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="max-w-4xl mx-auto space-y-8">
-            {flowStructure.map((group, index) => (
-                <div key={index}>
-                    <h2 className="text-2xl font-headline font-semibold mb-4 text-foreground/90">{group.title}</h2>
-                    <Accordion type="single" value={openItem} onValueChange={setOpenItem} className="w-full space-y-4">
-                        {group.steps.map(stepKey => {
-                        const stepInfo = stepComponents[stepKey as keyof typeof stepComponents];
-                        const isDisabled = isStepDisabled(stepKey);
-                        const StepComponent = stepInfo.Component;
-                        
-                        return (
-                            <AccordionItem value={stepKey} key={stepKey} className="border-none">
-                            <AccordionTrigger
-                                disabled={isDisabled}
-                                className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <div className="flex items-center justify-between w-full gap-4">
-                                  <div className="flex items-center gap-4 flex-shrink-0">
-                                    {getStepStatusIcon(stepKey)}
-                                    {stepInfo.title}
-                                  </div>
-                                  <div className="flex-shrink w-full text-right whitespace-normal">
-                                  {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
-                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
-                                        {selectedReviewPeriod.name} ({format(selectedReviewPeriod.startDate, 'MMM d')} - {format(selectedReviewPeriod.endDate, 'MMM d, yyyy')})
-                                      </Badge>
-                                  )}
-                                  {stepKey === 'goalPlan' && selectedGoalPlan && (
-                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
-                                        {selectedGoalPlan.name}
-                                      </Badge>
-                                  )}
-                                  {stepKey === 'performanceTemplate' && selectedPerformanceTemplate && (
-                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
-                                        {selectedPerformanceTemplate.name} ({selectedPerformanceTemplate.category})
-                                      </Badge>
-                                  )}
-                                  {stepKey === 'performanceTemplateSection' && configuredSections.length > 0 && (
-                                    <Badge variant="secondary" className="px-3 py-1 text-sm">
-                                      {configuredSections.map(s => s.name).join(', ')}
-                                    </Badge>
-                                  )}
-                                  {stepKey === 'evaluationFlow' && selectedEvaluationFlow && (
-                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
-                                        {selectedEvaluationFlow.name}
-                                      </Badge>
-                                  )}
-                                  {stepKey === 'eligibility' && selectedEligibility && (
-                                      <Badge variant="secondary" className="px-3 py-1 text-sm">
-                                        {selectedEligibility.name}
-                                      </Badge>
-                                  )}
-                                  </div>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
-                                <StepComponent {...componentProps[stepKey as keyof typeof componentProps]} />
-                            </AccordionContent>
-                            </AccordionItem>
-                        );
-                        })}
-                    </Accordion>
-                </div>
-            ))}
-        </div>
+        <Tabs defaultValue="single-page" className="max-w-4xl mx-auto">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="single-page">Single Page Approach</TabsTrigger>
+            <TabsTrigger value="tile-based">Tile Based Approach</TabsTrigger>
+          </TabsList>
+          <TabsContent value="single-page" className="mt-6">
+            <div className="w-full space-y-8">
+                {flowStructure.map((group, index) => (
+                    <div key={index}>
+                        <h2 className="text-2xl font-headline font-semibold mb-4 text-foreground/90">{group.title}</h2>
+                        <Accordion type="single" value={openItem} onValueChange={setOpenItem} className="w-full space-y-4">
+                            {group.steps.map(stepKey => {
+                            const stepInfo = stepComponents[stepKey as keyof typeof stepComponents];
+                            const isDisabled = isStepDisabled(stepKey);
+                            const StepComponent = stepInfo.Component;
+                            
+                            return (
+                                <AccordionItem value={stepKey} key={stepKey} className="border-none">
+                                <AccordionTrigger
+                                    disabled={isDisabled}
+                                    className="bg-card hover:bg-card/90 p-4 rounded-lg shadow-sm text-lg font-headline disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <div className="flex items-center justify-between w-full gap-4">
+                                    <div className="flex items-center gap-4 flex-shrink-0">
+                                        {getStepStatusIcon(stepKey)}
+                                        {stepInfo.title}
+                                    </div>
+                                    <div className="flex-shrink w-full text-right whitespace-normal">
+                                    {stepKey === 'reviewPeriod' && selectedReviewPeriod && (
+                                        <Badge variant="secondary" className="px-3 py-1 text-sm">
+                                            {selectedReviewPeriod.name} ({format(selectedReviewPeriod.startDate, 'MMM d')} - {format(selectedReviewPeriod.endDate, 'MMM d, yyyy')})
+                                        </Badge>
+                                    )}
+                                    {stepKey === 'goalPlan' && selectedGoalPlan && (
+                                        <Badge variant="secondary" className="px-3 py-1 text-sm">
+                                            {selectedGoalPlan.name}
+                                        </Badge>
+                                    )}
+                                    {stepKey === 'performanceTemplate' && selectedPerformanceTemplate && (
+                                        <Badge variant="secondary" className="px-3 py-1 text-sm">
+                                            {selectedPerformanceTemplate.name} ({selectedPerformanceTemplate.category})
+                                        </Badge>
+                                    )}
+                                    {stepKey === 'performanceTemplateSection' && configuredSections.length > 0 && (
+                                        <Badge variant="secondary" className="px-3 py-1 text-sm">
+                                        {configuredSections.map(s => s.name).join(', ')}
+                                        </Badge>
+                                    )}
+                                    {stepKey === 'evaluationFlow' && selectedEvaluationFlow && (
+                                        <Badge variant="secondary" className="px-3 py-1 text-sm">
+                                            {selectedEvaluationFlow.name}
+                                        </Badge>
+                                    )}
+                                    {stepKey === 'eligibility' && selectedEligibility && (
+                                        <Badge variant="secondary" className="px-3 py-1 text-sm">
+                                            {selectedEligibility.name}
+                                        </Badge>
+                                    )}
+                                    </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-4 bg-card rounded-b-lg shadow-sm mt-[-1px]">
+                                    <StepComponent {...componentProps[stepKey as keyof typeof componentProps]} />
+                                </AccordionContent>
+                                </AccordionItem>
+                            );
+                            })}
+                        </Accordion>
+                    </div>
+                ))}
+            </div>
+          </TabsContent>
+          <TabsContent value="tile-based" className="mt-6">
+            <TileBasedApproach {...tileBasedProps} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
