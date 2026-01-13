@@ -127,6 +127,20 @@ export type PerformanceDocument = {
   employeeCommentsEnabled: boolean;
 };
 
+export type Employee = {
+  id: string;
+  personNumber: string;
+  personEmail: string;
+  firstName: string;
+  lastName: string;
+  designation: string;
+  personType: string;
+  department: string;
+  entity: string;
+  workManager: string;
+  homeManager: string;
+};
+
 export type LOVs = {
   personTypes: string[];
   departments: string[];
@@ -142,6 +156,7 @@ export type ConfigState = {
   evaluationFlows: EvaluationFlow[] | DocumentData[];
   eligibility: Eligibility[] | DocumentData[];
   performanceDocuments: PerformanceDocument[] | DocumentData[];
+  employees: Employee[] | DocumentData[];
   lovs: LOVs;
 };
 

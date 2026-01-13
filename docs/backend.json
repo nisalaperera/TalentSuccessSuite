@@ -179,6 +179,24 @@
         "employeeCommentsEnabled": { "type": "boolean" }
       },
       "required": ["name", "reviewPeriodId", "goalPlanId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "type": "object",
+      "description": "Represents an employee in the organization.",
+      "properties": {
+        "personNumber": { "type": "string" },
+        "personEmail": { "type": "string", "format": "email" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "designation": { "type": "string" },
+        "personType": { "type": "string" },
+        "department": { "type": "string" },
+        "entity": { "type": "string" },
+        "workManager": { "type": "string" },
+        "homeManager": { "type": "string" }
+      },
+      "required": ["personNumber", "personEmail", "firstName", "lastName"]
     }
   },
   "auth": {
@@ -219,6 +237,10 @@
     "performance_documents": {
         "schema": { "$ref": "#/entities/PerformanceDocument" },
         "description": "Stores assembled performance documents."
+    },
+    "employees": {
+        "schema": { "$ref": "#/entities/Employee" },
+        "description": "Stores employee data."
     }
   }
 }

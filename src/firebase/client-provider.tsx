@@ -11,7 +11,7 @@ interface FirebaseClientProviderProps {
 }
 
 const seedData = async (firestore: any) => {
-    const collections = ['review_periods', 'performance_cycles', 'goal_plans', 'performance_templates', 'performance_template_sections', 'evaluation_flows', 'eligibility_criteria'];
+    const collections = ['review_periods', 'performance_cycles', 'goal_plans', 'performance_templates', 'performance_template_sections', 'evaluation_flows', 'eligibility_criteria', 'employees'];
     let shouldSeed = false;
 
     for (const coll of collections) {
@@ -88,6 +88,19 @@ const seedData = async (firestore: any) => {
             name: 'Standard Employee Eligibility',
             status: 'Active',
             rules: [{id: '1', type: 'Person Type', values: ['Intern', 'Contractor']}]
+        });
+
+        // Employees
+        const employees = [
+            { personNumber: '1001', personEmail: 'john.doe@example.com', firstName: 'John', lastName: 'Doe', designation: 'Software Engineer', personType: 'Full-Time', department: 'Engineering', entity: 'Global Corp', workManager: 'Jane Smith', homeManager: 'Jane Smith' },
+            { personNumber: '1002', personEmail: 'jane.smith@example.com', firstName: 'Jane', lastName: 'Smith', designation: 'Engineering Manager', personType: 'Full-Time', department: 'Engineering', entity: 'Global Corp', workManager: 'Alice Johnson', homeManager: 'Alice Johnson' },
+            { personNumber: '1003', personEmail: 'peter.jones@example.com', firstName: 'Peter', lastName: 'Jones', designation: 'Sales Associate', personType: 'Part-Time', department: 'Sales', entity: 'US Division', workManager: 'Sam Wilson', homeManager: 'Sam Wilson' },
+            { personNumber: '1004', personEmail: 'mary.white@example.com', firstName: 'Mary', lastName: 'White', designation: 'HR Intern', personType: 'Intern', department: 'HR', entity: 'EU Division', workManager: 'Robert Brown', homeManager: 'Robert Brown' },
+            { personNumber: '1005', personEmail: 'chris.green@example.com', firstName: 'Chris', lastName: 'Green', designation: 'Marketing Contractor', personType: 'Contractor', department: 'Marketing', entity: 'Global Corp', workManager: 'Patricia Black', homeManager: 'Patricia Black' }
+        ];
+        employees.forEach(emp => {
+            const empRef = doc(collection(firestore, 'employees'));
+            batch.set(empRef, emp);
         });
 
         await batch.commit();

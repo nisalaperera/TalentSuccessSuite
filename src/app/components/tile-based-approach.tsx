@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -69,6 +68,16 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     title: "Performance Documents",
                     description: "Assemble and create the final performance documents.",
                     href: "/configuration/performance-documents"
+                }
+            ]
+        },
+        {
+            groupTitle: "Temporary (To be Removed)",
+            items: [
+                 {
+                    title: "Employees",
+                    description: "Manage employee records.",
+                    href: "/configuration/employees"
                 }
             ]
         }
