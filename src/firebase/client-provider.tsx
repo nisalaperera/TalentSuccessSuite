@@ -7,7 +7,7 @@ import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth'
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 
 const seedData = async (firestore: any) => {
-    const collections = ['review_periods', 'performance_cycles', 'goal_plans', 'performance_templates', 'performance_template_sections', 'evaluation_flows', 'eligibility_criteria', 'employees'];
+    const collections = ['review_periods', 'performance_cycles', 'goal_plans', 'performance_templates', 'performance_template_sections', 'evaluation_flows', 'eligibility_criteria'];
     let shouldSeed = false;
 
     for (const coll of collections) {
@@ -85,57 +85,6 @@ const seedData = async (firestore: any) => {
             status: 'Active',
             rules: [{id: '1', type: 'Person Type', values: ['Intern', 'Contractor']}]
         });
-
-        // Employees
-        const personTypes = ['Full-Time', 'Part-Time', 'Intern', 'Contractor'];
-        const departments = ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'];
-        const entities = ['Global Corp', 'US Division', 'EU Division'];
-        
-        const generatedEmployees = [];
-        let personNumberCounter = 1001;
-
-        for (const personType of personTypes) {
-            for (const department of departments) {
-                for (const entity of entities) {
-                    const personNumber = String(personNumberCounter);
-                    const firstName = `FN_${personNumber}`;
-                    const lastName = `LN_${personNumber}`;
-                    
-                    generatedEmployees.push({
-                        personNumber: personNumber,
-                        personEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-                        firstName,
-                        lastName,
-                        designation: `${personType} ${department}`,
-                        personType,
-                        department,
-                        entity,
-                        workManager: '', // To be filled later
-                        homeManager: '', // To be filled later
-                    });
-                    personNumberCounter++;
-                }
-            }
-        }
-        
-        const employeePersonNumbers = generatedEmployees.map(e => e.personNumber);
-
-        generatedEmployees.forEach(emp => {
-            // Assign a random work manager, ensuring it's not the employee themselves
-            let potentialWorkManagers = employeePersonNumbers.filter(pn => pn !== emp.personNumber);
-            emp.workManager = potentialWorkManagers[Math.floor(Math.random() * potentialWorkManagers.length)];
-
-            // Assign a random home manager, ensuring it's not the employee or the work manager
-            let potentialHomeManagers = employeePersonNumbers.filter(pn => pn !== emp.personNumber && pn !== emp.workManager);
-            if(potentialHomeManagers.length === 0) { // Fallback if only one other employee exists
-                potentialHomeManagers = potentialWorkManagers;
-            }
-            emp.homeManager = potentialHomeManagers[Math.floor(Math.random() * potentialHomeManagers.length)];
-            
-            const empRef = doc(collection(firestore, 'employees'));
-            batch.set(empRef, emp);
-        });
-
 
         await batch.commit();
         console.log("Initial data seeded.");
