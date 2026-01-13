@@ -129,14 +129,39 @@ function PerformanceTemplateSectionsContent() {
             type: type,
             performanceTemplateId: selectedTemplateId,
             order: sections.length + 1,
-            permissions: ROLES.map(role => ({ 
-                role, 
-                view: true, 
-                rate: false,
-                viewWorkerRatings: false,
-                viewPrimaryAppraiserRatings: false,
-                viewSecondaryAppraiserRatings: false,
-            })),
+            permissions: ROLES.map(role => {
+                const defaults: AccessPermission = {
+                  role,
+                  view: true,
+                  rate: false,
+                  viewWorkerRatings: false,
+                  viewPrimaryAppraiserRatings: false,
+                  viewSecondaryAppraiserRatings: false,
+                };
+                switch(role) {
+                    case 'Worker':
+                        defaults.rate = true;
+                        defaults.viewWorkerRatings = true;
+                        break;
+                    case 'Primary Appraiser':
+                        defaults.rate = true;
+                        defaults.viewWorkerRatings = true;
+                        defaults.viewPrimaryAppraiserRatings = true;
+                        break;
+                    case 'Secondary Appraiser':
+                         defaults.rate = true;
+                         defaults.viewWorkerRatings = true;
+                         defaults.viewSecondaryAppraiserRatings = true;
+                        break;
+                    case 'HR':
+                        defaults.rate = false;
+                        defaults.viewWorkerRatings = true;
+                        defaults.viewPrimaryAppraiserRatings = true;
+                        defaults.viewSecondaryAppraiserRatings = true;
+                        break;
+                }
+                return defaults;
+            }),
             enableSectionRatings: true,
             sectionRatingMandatory: false,
             ratingScale: 5,
@@ -362,16 +387,23 @@ function PerformanceTemplateSectionsContent() {
                               </TableRow>
                           </TableHeader>
                           <TableBody>
-                              {currentSection.permissions?.map(({role, view, rate, viewWorkerRatings, viewPrimaryAppraiserRatings, viewSecondaryAppraiserRatings}) => (
-                                  <TableRow key={role}>
-                                      <TableCell className="font-medium">{role}</TableCell>
-                                      <TableCell className="text-center"><Switch checked={view} onCheckedChange={(val) => handlePermissionChange(role, 'view', val)}/></TableCell>
-                                      <TableCell className="text-center"><Switch checked={rate} onCheckedChange={(val) => handlePermissionChange(role, 'rate', val)}/></TableCell>
-                                      <TableCell className="text-center"><Switch checked={viewWorkerRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewWorkerRatings', val)}/></TableCell>
-                                      <TableCell className="text-center"><Switch checked={viewPrimaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewPrimaryAppraiserRatings', val)}/></TableCell>
-                                      <TableCell className="text-center"><Switch checked={viewSecondaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewSecondaryAppraiserRatings', val)}/></TableCell>
-                                  </TableRow>
-                              ))}
+                            {currentSection.permissions?.map((p) => {
+                                const role = p.role;
+                                const isWorker = role === 'Worker';
+                                const isPrimary = role === 'Primary Appraiser';
+                                const isSecondary = role === 'Secondary Appraiser';
+
+                                return (
+                                <TableRow key={role}>
+                                    <TableCell className="font-medium">{role}</TableCell>
+                                    <TableCell className="text-center"><Switch checked={p.view} onCheckedChange={(val) => handlePermissionChange(role, 'view', val)}/></TableCell>
+                                    <TableCell className="text-center"><Switch checked={p.rate} onCheckedChange={(val) => handlePermissionChange(role, 'rate', val)}/></TableCell>
+                                    <TableCell className="text-center"><Switch checked={p.viewWorkerRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewWorkerRatings', val)} disabled={isWorker} /></TableCell>
+                                    <TableCell className="text-center"><Switch checked={p.viewPrimaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewPrimaryAppraiserRatings', val)} disabled={isPrimary} /></TableCell>
+                                    <TableCell className="text-center"><Switch checked={p.viewSecondaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewSecondaryAppraiserRatings', val)} disabled={isSecondary} /></TableCell>
+                                </TableRow>
+                                );
+                            })}
                           </TableBody>
                       </Table>
                   </CardContent>
