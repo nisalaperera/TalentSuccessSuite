@@ -91,16 +91,37 @@ const seedData = async (firestore: any) => {
         });
 
         // Employees
-        const employees = [
-            { personNumber: '1001', personEmail: 'john.doe@example.com', firstName: 'John', lastName: 'Doe', designation: 'Software Engineer', personType: 'Full-Time', department: 'Engineering', entity: 'Global Corp', workManager: 'Jane Smith', homeManager: 'Jane Smith' },
-            { personNumber: '1002', personEmail: 'jane.smith@example.com', firstName: 'Jane', lastName: 'Smith', designation: 'Engineering Manager', personType: 'Full-Time', department: 'Engineering', entity: 'Global Corp', workManager: 'Alice Johnson', homeManager: 'Alice Johnson' },
-            { personNumber: '1003', personEmail: 'peter.jones@example.com', firstName: 'Peter', lastName: 'Jones', designation: 'Sales Associate', personType: 'Part-Time', department: 'Sales', entity: 'US Division', workManager: 'Sam Wilson', homeManager: 'Sam Wilson' },
-            { personNumber: '1004', personEmail: 'mary.white@example.com', firstName: 'Mary', lastName: 'White', designation: 'HR Intern', personType: 'Intern', department: 'HR', entity: 'EU Division', workManager: 'Robert Brown', homeManager: 'Robert Brown' },
-            { personNumber: '1005', personEmail: 'chris.green@example.com', firstName: 'Chris', lastName: 'Green', designation: 'Marketing Contractor', personType: 'Contractor', department: 'Marketing', entity: 'Global Corp', workManager: 'Patricia Black', homeManager: 'Patricia Black' }
-        ];
-        employees.forEach(emp => {
-            const empRef = doc(collection(firestore, 'employees'));
-            batch.set(empRef, emp);
+        const personTypes = ['Full-Time', 'Part-Time', 'Intern', 'Contractor'];
+        const departments = ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'];
+        const entities = ['Global Corp', 'US Division', 'EU Division'];
+        const managers = ['Jane Smith', 'Alice Johnson', 'Sam Wilson', 'Robert Brown', 'Patricia Black'];
+        let personNumberCounter = 1001;
+
+        personTypes.forEach(personType => {
+            departments.forEach(department => {
+                entities.forEach(entity => {
+                    const firstName = `FN_${personNumberCounter}`;
+                    const lastName = `LN_${personNumberCounter}`;
+                    const workManager = managers[personNumberCounter % managers.length];
+                    const homeManager = managers[(personNumberCounter + 1) % managers.length];
+
+                    const emp = {
+                        personNumber: String(personNumberCounter),
+                        personEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+                        firstName,
+                        lastName,
+                        designation: `${personType} ${department}`,
+                        personType,
+                        department,
+                        entity,
+                        workManager,
+                        homeManager,
+                    };
+                    const empRef = doc(collection(firestore, 'employees'));
+                    batch.set(empRef, emp);
+                    personNumberCounter++;
+                });
+            });
         });
 
         await batch.commit();
