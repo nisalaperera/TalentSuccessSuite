@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -32,12 +33,14 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   toolbarContent?: React.ReactNode;
+  filterColumn?: string;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
-  toolbarContent
+  toolbarContent,
+  filterColumn
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -71,7 +74,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table}>{toolbarContent}</DataTableToolbar>
+      <DataTableToolbar table={table} filterColumn={filterColumn}>{toolbarContent}</DataTableToolbar>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
