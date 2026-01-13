@@ -91,29 +91,17 @@ const seedData = async (firestore: any) => {
         const departments = ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'];
         const entities = ['Global Corp', 'US Division', 'EU Division'];
         
+        const generatedEmployees = [];
         let personNumberCounter = 1001;
-        const potentialManagers: {personNumber: string, name: string}[] = [];
-        
-        // Generate potential manager list
-        for (let i = 0; i < 10; i++) {
-            const personNumber = String(personNumberCounter + i);
-            const firstName = `ManagerFN_${personNumber}`;
-            const lastName = `ManagerLN_${personNumber}`;
-            potentialManagers.push({ personNumber, name: `${firstName} ${lastName}` });
-        }
 
-
-        personTypes.forEach(personType => {
-            departments.forEach(department => {
-                entities.forEach(entity => {
+        for (const personType of personTypes) {
+            for (const department of departments) {
+                for (const entity of entities) {
                     const personNumber = String(personNumberCounter);
                     const firstName = `FN_${personNumber}`;
                     const lastName = `LN_${personNumber}`;
                     
-                    const workManager = potentialManagers[personNumberCounter % potentialManagers.length];
-                    const homeManager = potentialManagers[(personNumberCounter + 1) % potentialManagers.length];
-
-                    const emp = {
+                    generatedEmployees.push({
                         personNumber: personNumber,
                         personEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
                         firstName,
@@ -122,15 +110,32 @@ const seedData = async (firestore: any) => {
                         personType,
                         department,
                         entity,
-                        workManager: workManager.personNumber,
-                        homeManager: homeManager.personNumber,
-                    };
-                    const empRef = doc(collection(firestore, 'employees'));
-                    batch.set(empRef, emp);
+                        workManager: '', // To be filled later
+                        homeManager: '', // To be filled later
+                    });
                     personNumberCounter++;
-                });
-            });
+                }
+            }
+        }
+        
+        const employeePersonNumbers = generatedEmployees.map(e => e.personNumber);
+
+        generatedEmployees.forEach(emp => {
+            // Assign a random work manager, ensuring it's not the employee themselves
+            let potentialWorkManagers = employeePersonNumbers.filter(pn => pn !== emp.personNumber);
+            emp.workManager = potentialWorkManagers[Math.floor(Math.random() * potentialWorkManagers.length)];
+
+            // Assign a random home manager, ensuring it's not the employee or the work manager
+            let potentialHomeManagers = employeePersonNumbers.filter(pn => pn !== emp.personNumber && pn !== emp.workManager);
+            if(potentialHomeManagers.length === 0) { // Fallback if only one other employee exists
+                potentialHomeManagers = potentialWorkManagers;
+            }
+            emp.homeManager = potentialHomeManagers[Math.floor(Math.random() * potentialHomeManagers.length)];
+            
+            const empRef = doc(collection(firestore, 'employees'));
+            batch.set(empRef, emp);
         });
+
 
         await batch.commit();
         console.log("Initial data seeded.");
