@@ -28,7 +28,7 @@ const seedData = async (firestore: any) => {
     }
 
     if (shouldSeed) {
-        console.log("Seeding initial data...");
+        console.log("Re-seeding initial data as requested...");
         const batch = writeBatch(firestore);
 
         // Review Periods
@@ -102,15 +102,16 @@ const seedData = async (firestore: any) => {
             const departments = ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'];
             const entities = ['Global Corp', 'US Division', 'EU Division'];
             let personNumberCounter = 1000;
-
-            const employees = [];
+            
+            const employeeShells = [];
+            
             for (const personType of personTypes) {
                 for (const department of departments) {
                     for (const entity of entities) {
                         const personNumber = String(personNumberCounter++);
                         const firstName = `User${personNumber}`;
                         const lastName = `Test`;
-                        employees.push({
+                        employeeShells.push({
                             personNumber,
                             personEmail: `${firstName}.${lastName}@example.com`.toLowerCase(),
                             firstName,
@@ -126,9 +127,9 @@ const seedData = async (firestore: any) => {
                 }
             }
 
-            const managerPersonNumbers = employees.map(e => e.personNumber);
+            const managerPersonNumbers = employeeShells.map(e => e.personNumber);
 
-            employees.forEach(employee => {
+            employeeShells.forEach(employee => {
                 let workManager = managerPersonNumbers[Math.floor(Math.random() * managerPersonNumbers.length)];
                 while (workManager === employee.personNumber) {
                     workManager = managerPersonNumbers[Math.floor(Math.random() * managerPersonNumbers.length)];
@@ -149,12 +150,12 @@ const seedData = async (firestore: any) => {
 
 
         await batch.commit();
-        console.log("Initial data seeded.");
+        console.log("Initial data seeding complete.");
     }
 };
 
 
-export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+export function FirebaseClientProvider({ children }: { children: ReactNode}) {
   const firebaseServices = useMemo(() => {
     return initializeFirebase();
   }, []);
