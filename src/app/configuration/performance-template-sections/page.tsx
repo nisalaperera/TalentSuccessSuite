@@ -26,7 +26,7 @@ import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlo
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser', 'HR'];
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary'];
-const surveySectionTypes: SectionType[] = ['Comment'];
+const surveySectionTypes: SectionType[] = [];
 
 function PerformanceTemplateSectionsContent() {
     const router = useRouter();
