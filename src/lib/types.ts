@@ -1,4 +1,4 @@
-
+import { DocumentData } from "firebase/firestore";
 
 export type ReviewPeriod = {
   id: string;
@@ -134,18 +134,19 @@ export type LOVs = {
 };
 
 export type ConfigState = {
-  reviewPeriods: ReviewPeriod[];
-  performanceCycles: PerformanceCycle[];
-  goalPlans: GoalPlan[];
-  performanceTemplates: PerformanceTemplate[];
-  performanceTemplateSections: PerformanceTemplateSection[];
-  evaluationFlows: EvaluationFlow[];
-  eligibility: Eligibility[];
-  performanceDocuments: PerformanceDocument[];
+  reviewPeriods: ReviewPeriod[] | DocumentData[];
+  performanceCycles: PerformanceCycle[] | DocumentData[];
+  goalPlans: GoalPlan[] | DocumentData[];
+  performanceTemplates: PerformanceTemplate[] | DocumentData[];
+  performanceTemplateSections: PerformanceTemplateSection[] | DocumentData[];
+  evaluationFlows: EvaluationFlow[] | DocumentData[];
+  eligibility: Eligibility[] | DocumentData[];
+  performanceDocuments: PerformanceDocument[] | DocumentData[];
   lovs: LOVs;
 };
 
 export type Action =
+  | { type: 'SET_DATA', payload: Partial<ConfigState> }
   | { type: 'ADD_REVIEW_PERIOD'; payload: ReviewPeriod }
   | { type: 'UPDATE_REVIEW_PERIOD'; payload: ReviewPeriod }
   | { type: 'DELETE_REVIEW_PERIOD'; payload: string }

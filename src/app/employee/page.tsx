@@ -1,24 +1,37 @@
 
 'use client';
 
-import { useReducer, useState } from 'react';
+import { useReducer, useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { configReducer, initialState } from '@/lib/state';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, Timestamp } from 'firebase/firestore';
+import type { PerformanceCycle, ReviewPeriod } from '@/lib/types';
+
 
 export default function EmployeePage() {
-  const [state] = useReducer(configReducer, initialState);
+  const firestore = useFirestore();
+
+  const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
+  const { data: reviewPeriods } = useCollection<ReviewPeriod>(reviewPeriodsQuery);
+  
+  const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
+  const { data: performanceCycles } = useCollection<PerformanceCycle>(performanceCyclesQuery);
+
+
   const [personNumber, setPersonNumber] = useState('');
   const [performanceCycleId, setPerformanceCycleId] = useState('');
 
   const canProceed = personNumber && performanceCycleId;
   
   const getReviewPeriodName = (id: string) => {
-    return state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
+    return reviewPeriods?.find(p => p.id === id)?.name || 'N/A';
   }
+
+  const activeCycles = useMemo(() => (performanceCycles || []).filter(p => p.status === 'Active'), [performanceCycles])
 
   return (
     <div className="container mx-auto py-10 flex items-center justify-center min-h-[calc(100vh-81px)]">
@@ -44,7 +57,7 @@ export default function EmployeePage() {
                         <SelectValue placeholder="Select a performance cycle" />
                     </SelectTrigger>
                     <SelectContent>
-                        {state.performanceCycles.filter(p => p.status === 'Active').map(p => 
+                        {activeCycles.map(p => 
                             <SelectItem key={p.id} value={p.id}>
                                 {p.name} ({getReviewPeriodName(p.reviewPeriodId)})
                             </SelectItem>

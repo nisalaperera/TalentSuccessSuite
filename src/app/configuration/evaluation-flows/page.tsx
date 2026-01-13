@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useReducer, useState, useEffect } from 'react';
+import { useReducer, useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
-import { configReducer, initialState } from '@/lib/state';
 import { useToast } from '@/hooks/use-toast';
 import type { EvaluationFlow as EvaluationFlowType, EvaluationStep } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -15,13 +14,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/app/components/config-flow/shared/date-picker';
 import { PlusCircle, Trash2 } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, Timestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { DocumentData } from 'firebase/firestore';
 
 const PROCESS_PHASES: EvaluationStep['task'][] = ['Worker Self-Evaluation', 'Manager Evaluation', 'Normalization', 'Share Document', 'Confirm Review Meeting', 'Provide Final Feedback', 'Close Document'];
 const ROLES: EvaluationStep['role'][] = ['Primary (Worker)', 'Secondary (Manager)', 'Sec. Appraiser 1', 'Sec. Appraiser 2', 'HR / Dept Head'];
 const SEQUENCE_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 export default function EvaluationFlowsPage() {
-    const [state, dispatch] = useReducer(configReducer, initialState);
+    const firestore = useFirestore();
+
+    const evaluationFlowsQuery = useMemoFirebase(() => collection(firestore, 'evaluation_flows'), [firestore]);
+    const { data: evaluationFlows } = useCollection<EvaluationFlowType>(evaluationFlowsQuery);
+
+    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: performanceDocuments } = useCollection<DocumentData>(performanceDocumentsQuery);
+
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingFlow, setEditingFlow] = useState<EvaluationFlowType | null>(null);
     const { toast } = useToast();
@@ -33,7 +44,11 @@ export default function EvaluationFlowsPage() {
     useEffect(() => {
         if (editingFlow) {
             setFlowName(editingFlow.name);
-            setSteps(editingFlow.steps);
+            setSteps(editingFlow.steps.map(s => ({
+                ...s,
+                startDate: s.startDate instanceof Timestamp ? s.startDate.toDate() : s.startDate,
+                endDate: s.endDate instanceof Timestamp ? s.endDate.toDate() : s.endDate,
+            })));
         } else {
             setFlowName('');
             setSteps([]);
@@ -58,8 +73,9 @@ export default function EvaluationFlowsPage() {
 
     const getFlowType = (sequence: number, index: number): EvaluationStep['flowType'] => {
         if (index === 0) return 'Start';
-        const prevStep = steps.filter(s => s.sequence).sort((a,b) => a.sequence! - b.sequence!)[index-1];
-        if (prevStep && sequence === prevStep.sequence) return 'Parallel';
+        const sortedSteps = steps.filter(s => s.sequence).sort((a,b) => a.sequence! - b.sequence!);
+        const currentSortedIndex = sortedSteps.findIndex(s => s.sequence === sequence);
+        if (currentSortedIndex > 0 && sequence === sortedSteps[currentSortedIndex - 1].sequence) return 'Parallel';
         return 'Sequential';
     }
 
@@ -73,34 +89,50 @@ export default function EvaluationFlowsPage() {
             return;
         }
 
-        const finalSteps: EvaluationStep[] = steps.map((s, index) => ({ ...s, sequence: s.sequence!, task: s.task!, role: s.role!, flowType: getFlowType(s.sequence!, index) } as EvaluationStep)).sort((a, b) => a.sequence - b.sequence);
+        const finalSteps: EvaluationStep[] = steps.map((s, index) => ({ 
+            ...s, 
+            sequence: s.sequence!, 
+            task: s.task!, 
+            role: s.role!, 
+            flowType: getFlowType(s.sequence!, index),
+            startDate: s.startDate ? Timestamp.fromDate(s.startDate) : undefined,
+            endDate: s.endDate ? Timestamp.fromDate(s.endDate) : undefined,
+        } as EvaluationStep)).sort((a, b) => a.sequence - b.sequence);
+
+        const flowData = {
+            name: flowName,
+            steps: finalSteps,
+            status: editingFlow?.status || 'Active'
+        }
 
         if (editingFlow) {
-            const updatedFlow = { ...editingFlow, name: flowName, steps: finalSteps };
-            dispatch({ type: 'UPDATE_EVALUATION_FLOW', payload: updatedFlow });
+            const docRef = doc(firestore, 'evaluation_flows', editingFlow.id);
+            updateDocumentNonBlocking(docRef, flowData);
             toast({ title: "Success", description: `Flow "${flowName}" updated.` });
         } else {
-            const newFlow: EvaluationFlowType = { id: `flow-${Date.now()}`, name: flowName, steps: finalSteps, status: 'Active' };
-            dispatch({ type: 'ADD_EVALUATION_FLOW', payload: newFlow });
+            const collRef = collection(firestore, 'evaluation_flows');
+            addDocumentNonBlocking(collRef, flowData);
             toast({ title: "Success", description: `Flow "${flowName}" created.` });
         }
         handleCloseDialog();
     };
 
-    const isFlowInUse = (id: string) => state.performanceDocuments.some(pd => pd.evaluationFlowId === id);
+    const isFlowInUse = (id: string) => (performanceDocuments || []).some(pd => pd.evaluationFlowId === id);
 
     const handleDelete = (id: string) => {
-        dispatch({ type: 'DELETE_EVALUATION_FLOW', payload: id });
+        const docRef = doc(firestore, 'evaluation_flows', id);
+        deleteDocumentNonBlocking(docRef);
         toast({ title: 'Success', description: 'Evaluation flow deleted.' });
     };
 
     const handleToggleStatus = (flow: EvaluationFlowType) => {
         const newStatus = flow.status === 'Active' ? 'Inactive' : 'Active';
-        dispatch({ type: 'UPDATE_EVALUATION_FLOW', payload: { ...flow, status: newStatus } });
+        const docRef = doc(firestore, 'evaluation_flows', flow.id);
+        updateDocumentNonBlocking(docRef, { status: newStatus });
         toast({ title: 'Success', description: `Flow status set to ${newStatus}.` });
     };
 
-    const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isFlowInUse });
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isFlowInUse }), [performanceDocuments]);
 
     return (
         <div className="container mx-auto py-10">
@@ -109,7 +141,7 @@ export default function EvaluationFlowsPage() {
                 description="Manage all your evaluation flows here."
                 onAddNew={() => handleOpenDialog()}
             />
-            <DataTable columns={tableColumns} data={state.evaluationFlows} />
+            <DataTable columns={tableColumns} data={evaluationFlows ?? []} />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-4xl">

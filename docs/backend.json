@@ -1,16 +1,11 @@
 {
   "entities": {
     "ReviewPeriod": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ReviewPeriod",
       "type": "object",
       "description": "Defines the time boundary for all performance-related activities.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Review Period entity."
-        },
-        "reviewPeriodName": {
+        "name": {
           "type": "string",
           "description": "Logical identifier for grouping cycles (e.g., FY25 Performance Cycle)"
         },
@@ -30,285 +25,160 @@
         }
       },
       "required": [
-        "id",
-        "reviewPeriodName",
+        "name",
         "startDate",
-        "endDate"
+        "endDate",
+        "status"
       ]
     },
+    "PerformanceCycle": {
+        "title": "PerformanceCycle",
+        "type": "object",
+        "description": "Defines a specific evaluation cycle within a review period.",
+        "properties": {
+            "name": { "type": "string" },
+            "reviewPeriodId": { "type": "string" },
+            "startDate": { "type": "string", "format": "date-time" },
+            "endDate": { "type": "string", "format": "date-time" },
+            "status": { "type": "string" }
+        },
+        "required": ["name", "reviewPeriodId", "startDate", "endDate", "status"]
+    },
     "GoalPlan": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "GoalPlan",
       "type": "object",
       "description": "Defines the goal container used inside performance documents.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Goal Plan entity."
-        },
-        "goalPlanName": {
+        "name": {
           "type": "string",
           "description": "Identifies the goal template"
         },
-        "reviewPeriodId": {
+        "performanceCycleId": {
           "type": "string",
-          "description": "Reference to ReviewPeriod. (Relationship: ReviewPeriod 1:N GoalPlan)"
-        }
+          "description": "Reference to PerformanceCycle."
+        },
+        "status": { "type": "string" }
       },
       "required": [
-        "id",
-        "goalPlanName",
-        "reviewPeriodId"
+        "name",
+        "performanceCycleId",
+        "status"
       ]
     },
-    "DocumentType": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DocumentType",
+    "PerformanceTemplate": {
+      "title": "PerformanceTemplate",
       "type": "object",
       "description": "Defines what kind of document is being created and how it behaves in the system.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Document Type entity."
-        },
-        "documentTypeName": {
-          "type": "string",
-          "description": "Business name of document"
-        },
-        "documentCategory": {
-          "type": "string",
-          "description": "Performance / Survey / Feedback"
-        },
-        "supportsRatings": {
-          "type": "boolean",
-          "description": "Enables rating fields"
-        },
-        "supportsComments": {
-          "type": "boolean",
-          "description": "Enables text feedback"
-        }
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string", "enum": ["Performance", "Survey"] },
+        "status": { "type": "string" }
       },
-      "required": [
-        "id",
-        "documentTypeName",
-        "documentCategory"
-      ]
+      "required": [ "name", "description", "category", "status" ]
     },
-    "DocumentSection": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DocumentSection",
+    "PerformanceTemplateSection": {
+        "title": "PerformanceTemplateSection",
+        "type": "object",
+        "description": "Defines the core components that will constitute the performance document.",
+        "properties": {
+            "name": { "type": "string" },
+            "type": { "type": "string" },
+            "performanceTemplateId": { "type": "string" },
+            "order": { "type": "number" },
+            "permissions": { 
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "role": { "type": "string" },
+                        "view": { "type": "boolean" },
+                        "edit": { "type": "boolean" }
+                    },
+                    "required": ["role", "view", "edit"]
+                }
+            },
+            "enableSectionRatings": { "type": "boolean" },
+            "sectionRatingMandatory": { "type": "boolean" },
+            "ratingScale": { "type": "number" },
+            "ratingCalculationMethod": { "type": "string" },
+            "enableSectionComments": { "type": "boolean" },
+            "sectionCommentMandatory": { "type": "boolean" },
+            "minLength": { "type": "number" },
+            "maxLength": { "type": "number" },
+            "enableItemRatings": { "type": "boolean" },
+            "itemRatingMandatory": { "type": "boolean" },
+            "enableItemComments": { "type": "boolean" },
+            "itemCommentMandatory": { "type": "boolean" }
+        },
+        "required": ["name", "type", "performanceTemplateId", "order", "permissions"]
+    },
+    "EvaluationFlow": {
+      "title": "EvaluationFlow",
       "type": "object",
-      "description": "Defines the core components that will constitute the performance document. Each component can be individually configured.",
+      "description": "Establishes the Performance Review lifecycle.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Document Section entity."
+        "name": { "type": "string" },
+        "steps": { 
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "sequence": { "type": "number" },
+                    "task": { "type": "string" },
+                    "role": { "type": "string" },
+                    "flowType": { "type": "string" },
+                    "startDate": { "type": "string", "format": "date-time" },
+                    "endDate": { "type": "string", "format": "date-time" }
+                },
+                "required": ["id", "sequence", "task", "role", "flowType"]
+            }
         },
-        "sectionName": {
-          "type": "string",
-          "description": "Display name shown to respondents (e.g., Manager Effectiveness)"
-        },
-        "sectionType": {
-          "type": "string",
-          "description": "Survey Question / Rating / Comment / Mixed"
-        },
-        "questionLayout": {
-          "type": "string",
-          "description": "Single question per page or grouped layout"
-        },
-        "ratingScale": {
-          "type": "number",
-          "description": "Maximum rating value (e.g., 5, 7, 10). Disabled for text-only sections"
-        },
-        "ratingLabels": {
-          "type": "string",
-          "description": "Label mapping for each rating value (e.g., 1 = Poor, 5 = Excellent)"
-        },
-        "mandatoryFlag": {
-          "type": "boolean",
-          "description": "Enforces completion before submission"
-        },
-        "allowComments": {
-          "type": "boolean",
-          "description": "Enables optional comment field with rating"
-        },
-        "commentCharacterLimit": {
-          "type": "number",
-          "description": "Max allowed text length"
-        },
-        "anonymousResponse": {
-          "type": "boolean",
-          "description": "Masks responder identity in UI and data model"
-        },
-        "applicableRoles": {
-          "type": "array",
-          "description": "Who can respond (Worker, Manager, Peers, HR)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "displayOrder": {
-          "type": "number",
-          "description": "Controls section sequence in document"
-        },
-        "documentTypeId": {
-          "type": "string",
-          "description": "Reference to DocumentType. (Relationship: DocumentType 1:N DocumentSection)"
-        }
+        "status": { "type": "string" }
       },
-      "required": [
-        "id",
-        "sectionName",
-        "sectionType",
-        "documentTypeId"
-      ]
+      "required": ["name", "steps", "status"]
     },
-    "EligibilityCriteria": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+     "EligibilityCriteria": {
       "title": "EligibilityCriteria",
       "type": "object",
       "description": "Defines rules for excluding employees from receiving the performance document.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Eligibility Criteria entity."
+        "name": { "type": "string" },
+        "rules": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "type": { "type": "string" },
+                    "values": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["id", "type", "values"]
+            }
         },
-        "exclusionRuleType": {
-          "type": "string",
-          "description": "The attribute on which the exclusion is based: Person Type, Department, Legal Entity."
-        },
-        "exclusionValues": {
-          "type": "array",
-          "description": "The specific values to exclude (e.g., 'Intern', 'Contract', 'HR').",
-          "items": {
-            "type": "string"
-          }
-        }
+        "status": { "type": "string" }
       },
-      "required": [
-        "id",
-        "exclusionRuleType",
-        "exclusionValues"
-      ]
+      "required": [ "name", "rules", "status" ]
     },
     "PerformanceDocument": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PerformanceDocument",
       "type": "object",
       "description": "Combines all previously defined components to create a live performance document.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Performance Document entity."
-        },
-        "reviewPeriodId": {
-          "type": "string",
-          "description": "Reference to ReviewPeriod. (Relationship: ReviewPeriod 1:N PerformanceDocument)"
-        },
-        "goalPlanId": {
-          "type": "string",
-          "description": "Reference to GoalPlan. (Relationship: GoalPlan 1:N PerformanceDocument)"
-        },
-        "documentTypeId": {
-          "type": "string",
-          "description": "Reference to DocumentType. (Relationship: DocumentType 1:N PerformanceDocument)"
-        },
-        "evaluationFlowId": {
-          "type": "string",
-          "description": "Reference to EvaluationFlow. (Relationship: EvaluationFlow 1:N PerformanceDocument)"
-        },
-        "eligibilityCriteriaId": {
-          "type": "string",
-          "description": "Reference to EligibilityCriteria. (Relationship: EligibilityCriteria 1:N PerformanceDocument)"
-        },
-        "enableRatings": {
-          "type": "boolean",
-          "description": "Enables ratings for the document"
-        },
-        "enableComments": {
-          "type": "boolean",
-          "description": "Enables comments for the document"
-        },
-        "enableSurveyAnonymity": {
-          "type": "boolean",
-          "description": "Enables survey anonymity (for survey types)"
-        }
+        "name": { "type": "string" },
+        "reviewPeriodId": { "type": "string" },
+        "goalPlanId": { "type": "string" },
+        "performanceTemplateId": { "type": "string" },
+        "sectionIds": { "type": "array", "items": { "type": "string" } },
+        "evaluationFlowId": { "type": "string" },
+        "eligibilityId": { "type": "string" },
+        "managerRatingEnabled": { "type": "boolean" },
+        "employeeRatingEnabled": { "type": "boolean" },
+        "managerCommentsEnabled": { "type": "boolean" },
+        "employeeCommentsEnabled": { "type": "boolean" }
       },
-      "required": [
-        "id",
-        "reviewPeriodId",
-        "goalPlanId",
-        "documentTypeId"
-      ]
-    },
-    "EvaluationFlow": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "EvaluationFlow",
-      "type": "object",
-      "description": "Establishes the Performance Review lifecycle by assigning specific tasks to defined organizational roles and controlling the flow.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Evaluation Flow entity."
-        },
-        "sequenceNo": {
-          "type": "number",
-          "description": "Defines the chronological order. Tasks with the same number run Parallel."
-        },
-        "processPhase": {
-          "type": "string",
-          "description": "Identifies the specific action required at this step."
-        },
-        "role": {
-          "type": "string",
-          "description": "Designates the individual(s) responsible for completing the task."
-        },
-        "flowType": {
-          "type": "string",
-          "description": "Automatically displays the parallel mode based on the Sequence No. configuration."
-        },
-        "timeBoundary": {
-          "type": "string",
-          "description": "Time boundary for evaluation stage sections",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "sequenceNo",
-        "processPhase",
-        "role"
-      ]
-    },
-    "DocumentSectionAccess": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DocumentSectionAccess",
-      "type": "object",
-      "description": "Governs the visibility, editability, and rating permissions for every content section within a performance document.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Document Section Access entity."
-        },
-        "role": {
-          "type": "string",
-          "description": "The role for whom access is being defined (Worker, Primary Appraiser, etc.)"
-        },
-        "accessState": {
-          "type": "string",
-          "description": "The access state for the role (View, Rate/Edit, No Access)"
-        },
-        "documentSectionId": {
-          "type": "string",
-          "description": "Reference to DocumentSection. (Relationship: DocumentSection 1:N DocumentSectionAccess)"
-        }
-      },
-      "required": [
-        "id",
-        "role",
-        "accessState",
-        "documentSectionId"
-      ]
+      "required": ["name", "reviewPeriodId", "goalPlanId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
     }
   },
   "auth": {
@@ -318,144 +188,37 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/review_periods/{reviewPeriodId}",
-        "definition": {
-          "entityName": "ReviewPeriod",
-          "schema": {
-            "$ref": "#/backend/entities/ReviewPeriod"
-          },
-          "description": "Stores review period data. Each document represents a unique review period.",
-          "params": [
-            {
-              "name": "reviewPeriodId",
-              "description": "Unique identifier for the review period."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/review_periods/{reviewPeriodId}/goal_plans/{goalPlanId}",
-        "definition": {
-          "entityName": "GoalPlan",
-          "schema": {
-            "$ref": "#/backend/entities/GoalPlan"
-          },
-          "description": "Stores goal plan data associated with a review period. Includes denormalized reviewPeriodId for authorization independence.",
-          "params": [
-            {
-              "name": "reviewPeriodId",
-              "description": "Unique identifier for the review period."
-            },
-            {
-              "name": "goalPlanId",
-              "description": "Unique identifier for the goal plan."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/document_types/{documentTypeId}",
-        "definition": {
-          "entityName": "DocumentType",
-          "schema": {
-            "$ref": "#/backend/entities/DocumentType"
-          },
-          "description": "Stores document type definitions (Performance, Survey, Feedback).",
-          "params": [
-            {
-              "name": "documentTypeId",
-              "description": "Unique identifier for the document type."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/document_types/{documentTypeId}/document_sections/{documentSectionId}",
-        "definition": {
-          "entityName": "DocumentSection",
-          "schema": {
-            "$ref": "#/backend/entities/DocumentSection"
-          },
-          "description": "Stores document sections associated with a document type. Includes denormalized documentTypeId for authorization independence.",
-          "params": [
-            {
-              "name": "documentTypeId",
-              "description": "Unique identifier for the document type."
-            },
-            {
-              "name": "documentSectionId",
-              "description": "Unique identifier for the document section."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/eligibility_criteria/{eligibilityCriteriaId}",
-        "definition": {
-          "entityName": "EligibilityCriteria",
-          "schema": {
-            "$ref": "#/backend/entities/EligibilityCriteria"
-          },
-          "description": "Stores eligibility criteria rules.",
-          "params": [
-            {
-              "name": "eligibilityCriteriaId",
-              "description": "Unique identifier for the eligibility criteria."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/performance_documents/{performanceDocumentId}",
-        "definition": {
-          "entityName": "PerformanceDocument",
-          "schema": {
-            "$ref": "#/backend/entities/PerformanceDocument"
-          },
-          "description": "Stores performance documents, referencing review periods, goal plans, document types, evaluation flows and eligibility criteria.",
-          "params": [
-            {
-              "name": "performanceDocumentId",
-              "description": "Unique identifier for the performance document."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/evaluation_flows/{evaluationFlowId}",
-        "definition": {
-          "entityName": "EvaluationFlow",
-          "schema": {
-            "$ref": "#/backend/entities/EvaluationFlow"
-          },
-          "description": "Stores evaluation flow definitions.",
-          "params": [
-            {
-              "name": "evaluationFlowId",
-              "description": "Unique identifier for the evaluation flow."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/document_section_access/{documentSectionAccessId}",
-        "definition": {
-          "entityName": "DocumentSectionAccess",
-          "schema": {
-            "$ref": "#/backend/entities/DocumentSectionAccess"
-          },
-          "description": "Stores access control settings for document sections.",
-          "params": [
-            {
-              "name": "documentSectionAccessId",
-              "description": "Unique identifier for the document section access rule."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to support the performance management application's requirements for configuring review cycles, goal plans, document types, sections, eligibility, evaluation flows, and access permissions. It adheres to the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database Authentication and Authorization Control), and QAPs (Rules are not Filters). This structure prioritizes a single-page configuration experience with a top-down dependency model as outlined in the user request.\n\n**Authorization Independence via Denormalization:**\nTo avoid hierarchical authorization dependencies and enable atomic operations, the structure denormalizes authorization context where necessary. For example, if access to `PerformanceDocument` depends on attributes of `ReviewPeriod`, these attributes are copied into `PerformanceDocument` documents.\n\n**Structural Segregation (Homogeneous Security Posture):**\nEach collection contains documents with similar access control needs, avoiding mixing data with different access requirements within the same collection. This simplifies security rules.\n\n**Access Modeling (Standardization and Consistency):**\nPath-based ownership (`/users/{userId}/...`) is used for user-owned data. Collaborative data uses the Membership Map pattern where appropriate (though not explicitly requested in this design). Global roles (DBAC) rely on the existence of documents in dedicated collections.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by ensuring that security rules can be applied without needing to filter data based on document content. Structural segregation and denormalization help achieve this.\n\n**Data Clarity and Predictability:**\nExplicit state modeling is used (e.g., `status` field in `ReviewPeriod`). Predictable schema is enforced by avoiding dynamic keys and using arrays of objects with static keys instead. Naming conventions are standardized for authorization fields (e.g., `ownerId`)."
+    "review_periods": {
+      "schema": { "$ref": "#/entities/ReviewPeriod" },
+      "description": "Stores review period data."
+    },
+    "performance_cycles": {
+      "schema": { "$ref": "#/entities/PerformanceCycle" },
+      "description": "Stores performance cycle data, linked to a review period."
+    },
+    "goal_plans": {
+      "schema": { "$ref": "#/entities/GoalPlan" },
+      "description": "Stores goal plan data, linked to a performance cycle."
+    },
+    "performance_templates": {
+        "schema": { "$ref": "#/entities/PerformanceTemplate" },
+        "description": "Stores performance template definitions."
+    },
+    "performance_template_sections": {
+        "schema": { "$ref": "#/entities/PerformanceTemplateSection" },
+        "description": "Stores sections for performance templates."
+    },
+    "evaluation_flows": {
+        "schema": { "$ref": "#/entities/EvaluationFlow" },
+        "description": "Stores evaluation flow definitions."
+    },
+    "eligibility_criteria": {
+        "schema": { "$ref": "#/entities/EligibilityCriteria" },
+        "description": "Stores eligibility criteria rules."
+    },
+    "performance_documents": {
+        "schema": { "$ref": "#/entities/PerformanceDocument" },
+        "description": "Stores assembled performance documents."
+    }
   }
 }

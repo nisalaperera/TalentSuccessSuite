@@ -1,12 +1,11 @@
 
 'use client';
 
-import { useReducer, useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
-import { configReducer, initialState } from '@/lib/state';
 import { useToast } from '@/hooks/use-toast';
 import type { PerformanceTemplate as PerformanceTemplateType } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -14,10 +13,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { DocumentData } from 'firebase/firestore';
 
 function PerformanceTemplatesContent() {
     const router = useRouter();
-    const [state, dispatch] = useReducer(configReducer, initialState);
+    const firestore = useFirestore();
+
+    const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
+    const { data: performanceTemplates } = useCollection<PerformanceTemplateType>(performanceTemplatesQuery);
+
+    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: performanceDocuments } = useCollection<DocumentData>(performanceDocumentsQuery);
+
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<PerformanceTemplateType | null>(null);
     const { toast } = useToast();
@@ -55,28 +66,37 @@ function PerformanceTemplatesContent() {
             return;
         }
 
+        const templateData = {
+            name,
+            description,
+            category,
+            status: editingTemplate?.status || 'Active'
+        };
+
         if (editingTemplate) {
-            const updatedTemplate = { ...editingTemplate, name, description, category };
-            dispatch({ type: 'UPDATE_PERFORMANCE_TEMPLATE', payload: updatedTemplate });
+            const docRef = doc(firestore, 'performance_templates', editingTemplate.id);
+            updateDocumentNonBlocking(docRef, templateData);
             toast({ title: 'Success', description: `Template "${name}" updated.` });
         } else {
-            const newTemplate: PerformanceTemplateType = { id: `pt-${Date.now()}`, name, description, category, status: 'Active' };
-            dispatch({ type: 'ADD_PERFORMANCE_TEMPLATE', payload: newTemplate });
+            const collRef = collection(firestore, 'performance_templates');
+            addDocumentNonBlocking(collRef, templateData);
             toast({ title: 'Success', description: `Template "${name}" created.` });
         }
         handleCloseDialog();
     };
     
-    const isTemplateInUse = (id: string) => state.performanceDocuments.some(pd => pd.performanceTemplateId === id);
+    const isTemplateInUse = (id: string) => (performanceDocuments || []).some(pd => pd.performanceTemplateId === id);
 
     const handleDelete = (id: string) => {
-        dispatch({ type: 'DELETE_PERFORMANCE_TEMPLATE', payload: id });
+        const docRef = doc(firestore, 'performance_templates', id);
+        deleteDocumentNonBlocking(docRef);
         toast({ title: 'Success', description: 'Performance template deleted.' });
     };
 
     const handleToggleStatus = (template: PerformanceTemplateType) => {
         const newStatus = template.status === 'Active' ? 'Inactive' : 'Active';
-        dispatch({ type: 'UPDATE_PERFORMANCE_TEMPLATE', payload: { ...template, status: newStatus } });
+        const docRef = doc(firestore, 'performance_templates', template.id);
+        updateDocumentNonBlocking(docRef, { status: newStatus });
         toast({ title: 'Success', description: `Template status set to ${newStatus}.` });
     };
 
@@ -84,7 +104,7 @@ function PerformanceTemplatesContent() {
         router.push(`/configuration/performance-template-sections?templateId=${template.id}`);
     }
 
-    const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isTemplateInUse, onManageSections: handleManageSections });
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isTemplateInUse, onManageSections: handleManageSections }), [performanceDocuments]);
 
     return (
         <div className="container mx-auto py-10">
@@ -93,7 +113,7 @@ function PerformanceTemplatesContent() {
                 description="Manage all your performance templates here."
                 onAddNew={() => handleOpenDialog()}
             />
-            <DataTable columns={tableColumns} data={state.performanceTemplates} />
+            <DataTable columns={tableColumns} data={performanceTemplates ?? []} />
             
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                  <DialogContent>

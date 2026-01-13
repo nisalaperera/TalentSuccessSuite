@@ -1,28 +1,43 @@
 
 'use client';
 
-import { useReducer, useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
-import { configReducer, initialState } from '@/lib/state';
 import { useToast } from '@/hooks/use-toast';
 import type { ReviewPeriod as ReviewPeriodType } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/app/components/config-flow/shared/date-picker';
-import { PlusCircle } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, Timestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { DocumentData } from 'firebase/firestore';
 
 function ReviewPeriodsContent() {
     const router = useRouter();
-    const [state, dispatch] = useReducer(configReducer, initialState);
+    const firestore = useFirestore();
+
+    const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
+    const { data: reviewPeriods, isLoading: isLoadingReviewPeriods } = useCollection<ReviewPeriodType>(reviewPeriodsQuery);
+    
+    const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
+    const { data: performanceCycles } = useCollection<DocumentData>(performanceCyclesQuery);
+
+    const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
+    const { data: goalPlans } = useCollection<DocumentData>(goalPlansQuery);
+
+    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: performanceDocuments } = useCollection<DocumentData>(performanceDocumentsQuery);
+
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPeriod, setEditingPeriod] = useState<ReviewPeriodType | null>(null);
     const { toast } = useToast();
     
-    // Form state
     const [name, setName] = useState('');
     const [startDate, setStartDate] = useState<Date>();
     const [endDate, setEndDate] = useState<Date>();
@@ -30,8 +45,8 @@ function ReviewPeriodsContent() {
     useEffect(() => {
         if (editingPeriod) {
             setName(editingPeriod.name);
-            setStartDate(editingPeriod.startDate);
-            setEndDate(editingPeriod.endDate);
+            setStartDate(editingPeriod.startDate instanceof Timestamp ? editingPeriod.startDate.toDate() : editingPeriod.startDate);
+            setEndDate(editingPeriod.endDate instanceof Timestamp ? editingPeriod.endDate.toDate() : editingPeriod.endDate);
         } else {
             setName('');
             setStartDate(undefined);
@@ -59,30 +74,39 @@ function ReviewPeriodsContent() {
           return;
         }
 
+        const periodData = { 
+            name, 
+            startDate: Timestamp.fromDate(startDate), 
+            endDate: Timestamp.fromDate(endDate),
+            status: editingPeriod?.status || 'Active'
+        };
+
         if (editingPeriod) {
-          const updatedPeriod = { ...editingPeriod, name, startDate, endDate };
-          dispatch({ type: 'UPDATE_REVIEW_PERIOD', payload: updatedPeriod });
+          const docRef = doc(firestore, 'review_periods', editingPeriod.id);
+          updateDocumentNonBlocking(docRef, periodData);
           toast({ title: 'Success', description: `Review period "${name}" has been updated.` });
         } else {
-          const newPeriod = { id: `rp-${Date.now()}`, name, startDate, endDate, status: 'Active' as const };
-          dispatch({ type: 'ADD_REVIEW_PERIOD', payload: newPeriod });
+          const collRef = collection(firestore, 'review_periods');
+          addDocumentNonBlocking(collRef, periodData);
           toast({ title: 'Success', description: `Review period "${name}" has been created.` });
         }
         handleCloseDialog();
     };
 
     const isPeriodInUse = (id: string) => {
-        return state.goalPlans.some(gp => gp.reviewPeriodId === id) || state.performanceDocuments.some(pd => pd.reviewPeriodId === id);
+        return (goalPlans || []).some(gp => gp.reviewPeriodId === id) || (performanceDocuments || []).some(pd => pd.reviewPeriodId === id);
     };
 
     const handleDelete = (id: string) => {
-        dispatch({ type: 'DELETE_REVIEW_PERIOD', payload: id });
+        const docRef = doc(firestore, 'review_periods', id);
+        deleteDocumentNonBlocking(docRef);
         toast({ title: 'Success', description: 'Review period has been deleted.' });
     };
 
     const handleToggleStatus = (period: ReviewPeriodType) => {
         const newStatus = period.status === 'Active' ? 'Inactive' : 'Active';
-        dispatch({ type: 'UPDATE_REVIEW_PERIOD', payload: { ...period, status: newStatus } });
+        const docRef = doc(firestore, 'review_periods', period.id);
+        updateDocumentNonBlocking(docRef, { status: newStatus });
         toast({ title: 'Success', description: `Period status set to ${newStatus}.` });
     };
 
@@ -94,14 +118,23 @@ function ReviewPeriodsContent() {
         router.push(`/configuration/performance-cycles?reviewPeriodId=${period.id}`);
     }
 
-    const tableColumns = columns({ 
+    const tableColumns = useMemo(() => columns({ 
         onEdit: handleOpenDialog, 
         onDelete: handleDelete, 
         onToggleStatus: handleToggleStatus, 
         isPeriodInUse,
         onManageGoalPlans: handleManageGoalPlans,
         onManageCycles: handleManageCycles,
-    });
+    }), [goalPlans, performanceDocuments]);
+
+    const displayData = useMemo(() => {
+        if (!reviewPeriods) return [];
+        return reviewPeriods.map(p => ({
+            ...p,
+            startDate: p.startDate instanceof Timestamp ? p.startDate.toDate() : p.startDate,
+            endDate: p.endDate instanceof Timestamp ? p.endDate.toDate() : p.endDate,
+        }))
+    }, [reviewPeriods])
 
     return (
         <div className="container mx-auto py-10">
@@ -110,7 +143,7 @@ function ReviewPeriodsContent() {
                 description="Manage all your review periods here."
                 onAddNew={() => handleOpenDialog()}
             />
-            <DataTable columns={tableColumns} data={state.reviewPeriods} />
+            <DataTable columns={tableColumns} data={displayData ?? []} />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>

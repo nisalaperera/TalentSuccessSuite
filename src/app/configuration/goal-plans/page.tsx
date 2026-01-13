@@ -6,20 +6,35 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
-import { configReducer, initialState } from '@/lib/state';
 import { useToast } from '@/hooks/use-toast';
-import type { GoalPlan as GoalPlanType } from '@/lib/types';
+import type { GoalPlan as GoalPlanType, PerformanceCycle } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { DocumentData } from 'firebase/firestore';
+
 
 function GoalPlansContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [state, dispatch] = useReducer(configReducer, initialState);
+    const firestore = useFirestore();
+
+    const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
+    const { data: performanceCycles } = useCollection<PerformanceCycle>(performanceCyclesQuery);
+
+    const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
+    const { data: goalPlans } = useCollection<GoalPlanType>(goalPlansQuery);
+
+    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: performanceDocuments } = useCollection<DocumentData>(performanceDocumentsQuery);
+
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<GoalPlanType | null>(null);
     const { toast } = useToast();
@@ -57,41 +72,50 @@ function GoalPlansContent() {
             return;
         }
 
+        const planData = {
+            name,
+            performanceCycleId,
+            status: editingPlan?.status || 'Active'
+        }
+
         if (editingPlan) {
-            const updatedPlan = { ...editingPlan, name, performanceCycleId };
-            dispatch({ type: 'UPDATE_GOAL_PLAN', payload: updatedPlan });
+            const docRef = doc(firestore, 'goal_plans', editingPlan.id);
+            updateDocumentNonBlocking(docRef, planData);
             toast({ title: 'Success', description: `Goal plan "${name}" updated.` });
         } else {
-            const newPlan: GoalPlanType = { id: `gp-${Date.now()}`, name, performanceCycleId, status: 'Active' };
-            dispatch({ type: 'ADD_GOAL_PLAN', payload: newPlan });
+            const collRef = collection(firestore, 'goal_plans');
+            addDocumentNonBlocking(collRef, planData);
             toast({ title: 'Success', description: `Goal plan "${name}" created.` });
         }
         handleCloseDialog();
     };
 
     const isPlanInUse = (id: string) => {
-        return state.performanceDocuments.some(pd => pd.goalPlanId === id);
+        return (performanceDocuments || []).some(pd => pd.goalPlanId === id);
     };
 
     const handleDelete = (id: string) => {
-        dispatch({ type: 'DELETE_GOAL_PLAN', payload: id });
+        const docRef = doc(firestore, 'goal_plans', id);
+        deleteDocumentNonBlocking(docRef);
         toast({ title: 'Success', description: 'Goal plan deleted.' });
     };
 
     const handleToggleStatus = (plan: GoalPlanType) => {
         const newStatus = plan.status === 'Active' ? 'Inactive' : 'Active';
-        dispatch({ type: 'UPDATE_GOAL_PLAN', payload: { ...plan, status: newStatus } });
+        const docRef = doc(firestore, 'goal_plans', plan.id);
+        updateDocumentNonBlocking(docRef, { status: newStatus });
         toast({ title: 'Success', description: `Plan status set to ${newStatus}.` });
     };
     
-    const getPerformanceCycleName = (id: string) => state.performanceCycles.find(p => p.id === id)?.name || 'N/A';
+    const getPerformanceCycleName = (id: string) => performanceCycles?.find(p => p.id === id)?.name || 'N/A';
     
-    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getPerformanceCycleName }), [state.performanceCycles]);
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getPerformanceCycleName }), [performanceCycles, performanceDocuments]);
 
     const filteredData = useMemo(() => {
-        if (!filterPerformanceCycle) return state.goalPlans;
-        return state.goalPlans.filter(plan => plan.performanceCycleId === filterPerformanceCycle);
-    }, [filterPerformanceCycle, state.goalPlans]);
+        if (!goalPlans) return [];
+        if (!filterPerformanceCycle) return goalPlans;
+        return goalPlans.filter(plan => plan.performanceCycleId === filterPerformanceCycle);
+    }, [filterPerformanceCycle, goalPlans]);
 
     const handleClearFilter = () => {
         router.push('/configuration/goal-plans');
@@ -109,7 +133,7 @@ function GoalPlansContent() {
                 </button>
             </Badge>
         );
-    }, [filterPerformanceCycle]);
+    }, [filterPerformanceCycle, performanceCycles]);
 
 
     return (
@@ -135,7 +159,7 @@ function GoalPlansContent() {
                         <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}>
                             <SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger>
                             <SelectContent>
-                                {state.performanceCycles.filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {(performanceCycles || []).filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>

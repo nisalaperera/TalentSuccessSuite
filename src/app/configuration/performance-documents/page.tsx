@@ -1,13 +1,12 @@
 
 'use client';
 
-import { useReducer, useState } from 'react';
+import { useReducer, useState, useMemo } from 'react';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
-import { configReducer, initialState } from '@/lib/state';
 import { useToast } from '@/hooks/use-toast';
-import type { PerformanceDocument as PerfDocType } from '@/lib/types';
+import type { PerformanceDocument as PerfDocType, ReviewPeriod, GoalPlan, PerformanceTemplate, EvaluationFlow, Eligibility, PerformanceTemplateSection } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,15 +14,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trash2 } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 export default function PerformanceDocumentsPage() {
-    const [state, dispatch] = useReducer(configReducer, initialState);
+    const firestore = useFirestore();
+    
+    const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
+    const { data: reviewPeriods } = useCollection<ReviewPeriod>(reviewPeriodsQuery);
+    
+    const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
+    const { data: goalPlans } = useCollection<GoalPlan>(goalPlansQuery);
+
+    const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
+    const { data: performanceTemplates } = useCollection<PerformanceTemplate>(performanceTemplatesQuery);
+
+    const evaluationFlowsQuery = useMemoFirebase(() => collection(firestore, 'evaluation_flows'), [firestore]);
+    const { data: evaluationFlows } = useCollection<EvaluationFlow>(evaluationFlowsQuery);
+
+    const eligibilityQuery = useMemoFirebase(() => collection(firestore, 'eligibility_criteria'), [firestore]);
+    const { data: eligibilityCriteria } = useCollection<Eligibility>(eligibilityQuery);
+
+    const performanceTemplateSectionsQuery = useMemoFirebase(() => collection(firestore, 'performance_template_sections'), [firestore]);
+    const { data: performanceTemplateSections } = useCollection<PerformanceTemplateSection>(performanceTemplateSectionsQuery);
+    
+    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: performanceDocuments } = useCollection<PerfDocType>(performanceDocumentsQuery);
+
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    // Editing is not implemented for Performance Documents as requested.
-    // const [editingDoc, setEditingDoc] = useState<PerfDocType | null>(null);
     const { toast } = useToast();
 
     // Form state
@@ -53,8 +74,7 @@ export default function PerformanceDocumentsPage() {
         setEmployeeComments(true);
     }
     
-    const handleOpenDialog = (doc: PerfDocType | null = null) => {
-        // Editing not implemented
+    const handleOpenDialog = () => {
         resetForm();
         setIsDialogOpen(true);
     };
@@ -71,8 +91,7 @@ export default function PerformanceDocumentsPage() {
           return;
         }
 
-        const newDoc: PerfDocType = {
-          id: `pd-${Date.now()}`,
+        const newDoc: Omit<PerfDocType, 'id'> = {
           name,
           reviewPeriodId: reviewPeriodId!,
           goalPlanId: goalPlanId!,
@@ -85,24 +104,27 @@ export default function PerformanceDocumentsPage() {
           managerCommentsEnabled: managerComments,
           employeeCommentsEnabled: employeeComments,
         };
-
-        dispatch({ type: 'ADD_PERFORMANCE_DOCUMENT', payload: newDoc });
+        
+        const collRef = collection(firestore, 'performance_documents');
+        addDocumentNonBlocking(collRef, newDoc);
         toast({ title: "Success", description: `Performance document "${name}" has been created.` });
         handleCloseDialog();
     };
 
     const getLookUpName = (type: 'reviewPeriod' | 'goalPlan' | 'performanceTemplate', id: string) => {
         switch(type) {
-            case 'reviewPeriod': return state.reviewPeriods.find(p => p.id === id)?.name || '';
-            case 'goalPlan': return state.goalPlans.find(p => p.id === id)?.name || '';
-            case 'performanceTemplate': return state.performanceTemplates.find(p => p.id === id)?.name || '';
+            case 'reviewPeriod': return reviewPeriods?.find(p => p.id === id)?.name || '';
+            case 'goalPlan': return goalPlans?.find(p => p.id === id)?.name || '';
+            case 'performanceTemplate': return performanceTemplates?.find(p => p.id === id)?.name || '';
             default: return '';
         }
     }
-    const availableSections = state.performanceTemplateSections.filter(s => s.performanceTemplateId === performanceTemplateId);
+    const availableSections = useMemo(() => 
+        (performanceTemplateSections || []).filter(s => s.performanceTemplateId === performanceTemplateId),
+        [performanceTemplateId, performanceTemplateSections]
+    );
 
-
-    const tableColumns = columns({ getLookUpName });
+    const tableColumns = useMemo(() => columns({ getLookUpName }), [reviewPeriods, goalPlans, performanceTemplates]);
 
     return (
         <div className="container mx-auto py-10">
@@ -111,7 +133,7 @@ export default function PerformanceDocumentsPage() {
                 description="Manage all your performance documents here."
                 onAddNew={handleOpenDialog}
             />
-            <DataTable columns={tableColumns} data={state.performanceDocuments} />
+            <DataTable columns={tableColumns} data={performanceDocuments ?? []} />
             
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-3xl">
@@ -122,11 +144,11 @@ export default function PerformanceDocumentsPage() {
                     <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                         <Input placeholder="Performance Document Name" value={name} onChange={e => setName(e.target.value)} />
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <Select onValueChange={setReviewPeriodId} value={reviewPeriodId}><SelectTrigger><SelectValue placeholder="Select Review Period"/></SelectTrigger><SelectContent>{state.reviewPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                            <Select onValueChange={setGoalPlanId} value={goalPlanId}><SelectTrigger><SelectValue placeholder="Select Goal Plan"/></SelectTrigger><SelectContent>{state.goalPlans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                            <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{state.performanceTemplates.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                            <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{state.evaluationFlows.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                            <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{state.eligibility.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={setReviewPeriodId} value={reviewPeriodId}><SelectTrigger><SelectValue placeholder="Select Review Period"/></SelectTrigger><SelectContent>{(reviewPeriods || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={setGoalPlanId} value={goalPlanId}><SelectTrigger><SelectValue placeholder="Select Goal Plan"/></SelectTrigger><SelectContent>{(goalPlans || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{(performanceTemplates || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{(evaluationFlows || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{(eligibilityCriteria || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                         </div>
 
                         {performanceTemplateId && availableSections.length > 0 && (

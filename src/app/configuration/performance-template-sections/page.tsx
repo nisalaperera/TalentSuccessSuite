@@ -6,9 +6,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
-import { configReducer, initialState } from '@/lib/state';
 import { useToast } from '@/hooks/use-toast';
-import type { PerformanceTemplateSection as PerformanceTemplateSectionType, SectionType, AccessPermission } from '@/lib/types';
+import type { PerformanceTemplateSection as PerformanceTemplateSectionType, SectionType, AccessPermission, PerformanceTemplate } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +20,9 @@ import { StarRating } from '@/app/components/config-flow/shared/star-rating';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { GripVertical, Trash2, Settings, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head'];
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary', 'Competencies', 'Comment'];
@@ -30,7 +31,14 @@ const surveySectionTypes: SectionType[] = ['Survey Question Group', 'Rating', 'C
 function PerformanceTemplateSectionsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [state, dispatch] = useReducer(configReducer, initialState);
+    const firestore = useFirestore();
+
+    const templatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
+    const { data: performanceTemplates } = useCollection<PerformanceTemplate>(templatesQuery);
+
+    const sectionsQuery = useMemoFirebase(() => collection(firestore, 'performance_template_sections'), [firestore]);
+    const { data: allSections, isLoading } = useCollection<PerformanceTemplateSectionType>(sectionsQuery);
+    
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentSection, setCurrentSection] = useState<Partial<PerformanceTemplateSectionType> | null>(null);
     const [sections, setSections] = useState<PerformanceTemplateSectionType[]>([]);
@@ -39,8 +47,8 @@ function PerformanceTemplateSectionsContent() {
     const selectedTemplateId = searchParams.get('templateId');
 
     const selectedTemplate = useMemo(() => 
-        state.performanceTemplates.find(t => t.id === selectedTemplateId),
-        [selectedTemplateId, state.performanceTemplates]
+        performanceTemplates?.find(t => t.id === selectedTemplateId),
+        [selectedTemplateId, performanceTemplates]
     );
 
     const handleSetupClick = (section: PerformanceTemplateSectionType) => {
@@ -49,12 +57,12 @@ function PerformanceTemplateSectionsContent() {
     };
 
     const handleDelete = (sectionId: string) => {
-        const newGlobalSections = state.performanceTemplateSections.filter(s => s.id !== sectionId);
-        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: newGlobalSections });
+        const docRef = doc(firestore, 'performance_template_sections', sectionId);
+        deleteDocumentNonBlocking(docRef);
         toast({ title: 'Success', description: 'Section deleted.'});
     };
 
-    const getTemplateName = (id: string) => state.performanceTemplates.find(t => t.id === id)?.name || 'N/A';
+    const getTemplateName = (id: string) => performanceTemplates?.find(t => t.id === id)?.name || 'N/A';
     
     const tableColumns = columns({ onEdit: handleSetupClick, onDelete: handleDelete, getTemplateName });
 
@@ -71,26 +79,26 @@ function PerformanceTemplateSectionsContent() {
 
     const handleSaveSection = () => {
         if (!currentSection || !currentSection.id) return;
-        const updatedGlobalSections = state.performanceTemplateSections.map(s => s.id === currentSection!.id ? currentSection as PerformanceTemplateSectionType : s);
-        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: updatedGlobalSections });
+        
+        const docRef = doc(firestore, 'performance_template_sections', currentSection.id);
+        const { id, ...sectionData } = currentSection;
+        updateDocumentNonBlocking(docRef, sectionData);
 
         toast({ title: 'Success', description: `Configuration for "${currentSection.name}" has been saved.` });
         setIsDialogOpen(false);
         setCurrentSection(null);
     };
 
-    // ----- Logic for Drag and Drop list view -----
-    
     useEffect(() => {
-        if (selectedTemplateId) {
-        const templateSections = state.performanceTemplateSections
+        if (selectedTemplateId && allSections) {
+        const templateSections = allSections
             .filter(s => s.performanceTemplateId === selectedTemplateId)
             .sort((a, b) => a.order - b.order);
         setSections(templateSections);
         } else {
         setSections([]);
         }
-    }, [selectedTemplateId, state.performanceTemplateSections]);
+    }, [selectedTemplateId, allSections]);
     
     const onDragEnd = (result: DropResult) => {
         if (!result.destination) return;
@@ -102,8 +110,10 @@ function PerformanceTemplateSectionsContent() {
         const updatedOrder = items.map((item, index) => ({ ...item, order: index + 1 }));
         setSections(updatedOrder);
 
-        const otherSections = state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedTemplateId);
-        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...otherSections, ...updatedOrder] });
+        updatedOrder.forEach(section => {
+            const docRef = doc(firestore, 'performance_template_sections', section.id);
+            updateDocumentNonBlocking(docRef, { order: section.order });
+        });
     };
 
     const availableSectionTypes = useMemo(() => {
@@ -114,31 +124,29 @@ function PerformanceTemplateSectionsContent() {
     const handleAddSection = (type: SectionType) => {
         if (!type || !selectedTemplateId) return;
 
-        const newSection: PerformanceTemplateSectionType = {
-            id: `ds-${Date.now()}`,
+        const newSection: Omit<PerformanceTemplateSectionType, 'id'> = {
             name: type,
             type: type,
             performanceTemplateId: selectedTemplateId,
             order: sections.length + 1,
             permissions: ROLES.map(role => ({ role, view: true, edit: false })),
-            // Section Ratings
             enableSectionRatings: true,
             sectionRatingMandatory: false,
             ratingScale: 5,
             ratingCalculationMethod: 'Manual Rating',
-            // Section Comments
             enableSectionComments: false,
             sectionCommentMandatory: false,
             minLength: 0,
             maxLength: 500,
-            // Item Ratings & Comments
             enableItemRatings: false,
             itemRatingMandatory: false,
             enableItemComments: false,
             itemCommentMandatory: false,
         };
         
-        dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections, newSection] });
+        const collRef = collection(firestore, 'performance_template_sections');
+        addDocumentNonBlocking(collRef, newSection);
+        toast({ title: "Success", description: `Section "${type}" added.`});
     };
     
     const handleTemplateSelection = (templateId: string) => {
@@ -160,7 +168,7 @@ function PerformanceTemplateSectionsContent() {
                 <Select onValueChange={handleTemplateSelection} value={selectedTemplateId || ''}>
                     <SelectTrigger className="w-[300px]"><SelectValue placeholder="Select a template to add/view sections..." /></SelectTrigger>
                     <SelectContent>
-                        {state.performanceTemplates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                        {(performanceTemplates || []).map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
                  {selectedTemplateId && (
@@ -227,7 +235,7 @@ function PerformanceTemplateSectionsContent() {
                     </CardContent>
                  </Card>
             ) : (
-                <DataTable columns={tableColumns} data={state.performanceTemplateSections} />
+                <DataTable columns={tableColumns} data={allSections ?? []} />
             )}
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

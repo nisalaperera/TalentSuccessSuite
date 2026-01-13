@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useReducer, useState, useEffect } from 'react';
+import { useReducer, useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -15,11 +15,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Trash2, Upload, X } from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { DocumentData } from 'firebase/firestore';
 
 type RuleType = 'Person Type' | 'Department' | 'Legal Entity';
 
 export default function EligibilityCriteriaPage() {
     const [state, dispatch] = useReducer(configReducer, initialState);
+    const firestore = useFirestore();
+    
+    const eligibilityQuery = useMemoFirebase(() => collection(firestore, 'eligibility_criteria'), [firestore]);
+    const { data: eligibilityCriteria } = useCollection<EligibilityType>(eligibilityQuery);
+
+    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: performanceDocuments } = useCollection<DocumentData>(performanceDocumentsQuery);
+
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingEligibility, setEditingEligibility] = useState<EligibilityType | null>(null);
     const { toast } = useToast();
@@ -80,28 +93,37 @@ export default function EligibilityCriteriaPage() {
             toast({ title: "Eligibility configuration name is required", variant: "destructive" });
             return;
         }
+
+        const eligibilityData = {
+            name: eligibilityName,
+            rules,
+            status: editingEligibility?.status || 'Active'
+        }
+        
         if (editingEligibility) {
-            const updatedEligibility = { ...editingEligibility, name: eligibilityName, rules };
-            dispatch({ type: 'UPDATE_ELIGIBILITY', payload: updatedEligibility });
+            const docRef = doc(firestore, 'eligibility_criteria', editingEligibility.id);
+            updateDocumentNonBlocking(docRef, eligibilityData);
             toast({ title: "Success", description: `Eligibility "${eligibilityName}" updated.` });
         } else {
-            const newEligibility: EligibilityType = { id: `elig-${Date.now()}`, name: eligibilityName, rules, status: 'Active' };
-            dispatch({ type: 'ADD_ELIGIBILITY', payload: newEligibility });
+            const collRef = collection(firestore, 'eligibility_criteria');
+            addDocumentNonBlocking(collRef, eligibilityData);
             toast({ title: "Success", description: `Eligibility configuration "${eligibilityName}" saved.` });
         }
         handleCloseDialog();
     };
 
-    const isEligibilityInUse = (id: string) => state.performanceDocuments.some(pd => pd.eligibilityId === id);
+    const isEligibilityInUse = (id: string) => (performanceDocuments || []).some(pd => pd.eligibilityId === id);
 
     const handleDelete = (id: string) => {
-        dispatch({ type: 'DELETE_ELIGIBILITY', payload: id });
+        const docRef = doc(firestore, 'eligibility_criteria', id);
+        deleteDocumentNonBlocking(docRef);
         toast({ title: 'Success', description: 'Eligibility criteria deleted.' });
     };
 
     const handleToggleStatus = (eligibility: EligibilityType) => {
         const newStatus = eligibility.status === 'Active' ? 'Inactive' : 'Active';
-        dispatch({ type: 'UPDATE_ELIGIBILITY', payload: { ...eligibility, status: newStatus } });
+        const docRef = doc(firestore, 'eligibility_criteria', eligibility.id);
+        updateDocumentNonBlocking(docRef, { status: newStatus });
         toast({ title: 'Success', description: `Eligibility status set to ${newStatus}.` });
     };
 
@@ -111,7 +133,7 @@ export default function EligibilityCriteriaPage() {
         return map[type];
     };
 
-    const tableColumns = columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isEligibilityInUse });
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isEligibilityInUse }), [performanceDocuments]);
 
     return (
         <div className="container mx-auto py-10">
@@ -120,7 +142,7 @@ export default function EligibilityCriteriaPage() {
                 description="Manage all your eligibility criteria here."
                 onAddNew={() => handleOpenDialog()}
             />
-            <DataTable columns={tableColumns} data={state.eligibility} />
+            <DataTable columns={tableColumns} data={eligibilityCriteria ?? []} />
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-3xl">
