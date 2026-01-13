@@ -16,7 +16,7 @@ import { StarRating } from './shared/star-rating';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
-const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head', 'Secondary Appraiser', 'HR'];
+const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser', 'HR'];
 
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary'];
 const surveySectionTypes: SectionType[] = ['Comment'];
@@ -278,18 +278,6 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
                     </CardContent>
                 </Card>
                 </>
-              )}
-
-              {['Competencies', 'Survey Question Group', 'Rating'].includes(currentSection.type!) && (
-                <Card>
-                    <CardHeader><CardTitle>Rating Scale</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <Label htmlFor="rating-scale">Star Rating Maximum (N)</Label>
-                        <Input id="rating-scale" type="number" value={currentSection.ratingScale || 5} onChange={e => handleConfigChange('ratingScale', parseInt(e.target.value, 10))} min="1" max="10"/>
-                        <Label>Example:</Label>
-                        <StarRating count={currentSection.ratingScale || 5} value={Math.ceil((currentSection.ratingScale || 5)/2)} onChange={()=>{}}/>
-                    </CardContent>
-                </Card>
               )}
               
               {currentSection.type === 'Overall Summary' &&
