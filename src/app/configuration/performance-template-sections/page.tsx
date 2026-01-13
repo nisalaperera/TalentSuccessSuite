@@ -235,7 +235,11 @@ function PerformanceTemplateSectionsContent() {
                     </CardContent>
                  </Card>
             ) : (
-                <DataTable columns={tableColumns} data={allSections ?? []} />
+                <Card>
+                    <CardContent className="pt-6">
+                        <p className="text-center text-muted-foreground">Please select a Performance Template above to see its sections.</p>
+                    </CardContent>
+                </Card>
             )}
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
