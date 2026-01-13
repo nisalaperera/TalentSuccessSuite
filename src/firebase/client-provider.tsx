@@ -11,7 +11,7 @@ interface FirebaseClientProviderProps {
 }
 
 const seedData = async (firestore: any) => {
-    const collections = ['review_periods', 'performance_cycles', 'goal_plans'];
+    const collections = ['review_periods', 'performance_cycles', 'goal_plans', 'performance_templates', 'performance_template_sections', 'evaluation_flows', 'eligibility_criteria'];
     let shouldSeed = false;
 
     for (const coll of collections) {
@@ -49,6 +49,46 @@ const seedData = async (firestore: any) => {
         
         const gpRef2 = doc(collection(firestore, 'goal_plans'));
         batch.set(gpRef2, { name: 'Q2 2024 Engineering Goals', performanceCycleId: pcRef2.id, status: 'Active' });
+
+        // Performance Templates
+        const ptRef1 = doc(collection(firestore, 'performance_templates'));
+        batch.set(ptRef1, { name: 'Annual Performance Review', description: 'Standard annual review template.', category: 'Performance', status: 'Active' });
+
+        const ptRef2 = doc(collection(firestore, 'performance_templates'));
+        batch.set(ptRef2, { name: 'Employee Engagement Survey', description: 'Quarterly survey for employee feedback.', category: 'Survey', status: 'Active' });
+
+        // Performance Template Sections
+        const ptsRef1 = doc(collection(firestore, 'performance_template_sections'));
+        batch.set(ptsRef1, { 
+            name: 'Performance Goals',
+            type: 'Performance Goals',
+            performanceTemplateId: ptRef1.id,
+            order: 1,
+            permissions: [{role: 'Worker', view: true, edit: true}, {role: 'Primary Appraiser', view: true, edit: true}],
+            enableSectionRatings: true,
+            sectionRatingMandatory: true,
+            ratingScale: 5,
+            ratingCalculationMethod: 'Manual Rating'
+        });
+
+        // Evaluation Flows
+        const efRef1 = doc(collection(firestore, 'evaluation_flows'));
+        batch.set(efRef1, {
+            name: 'Standard Evaluation Flow',
+            status: 'Active',
+            steps: [
+                {id: '1', sequence: 1, task: 'Worker Self-Evaluation', role: 'Primary (Worker)', flowType: 'Start'},
+                {id: '2', sequence: 2, task: 'Manager Evaluation', role: 'Secondary (Manager)', flowType: 'Sequential'}
+            ]
+        });
+
+        // Eligibility Criteria
+        const ecRef1 = doc(collection(firestore, 'eligibility_criteria'));
+        batch.set(ecRef1, {
+            name: 'Standard Employee Eligibility',
+            status: 'Active',
+            rules: [{id: '1', type: 'Person Type', values: ['Intern', 'Contractor']}]
+        });
 
         await batch.commit();
         console.log("Initial data seeded.");
