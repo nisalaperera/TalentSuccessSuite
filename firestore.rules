@@ -7,8 +7,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Allow reads for any signed-in user (including anonymous)
     match /{document=**} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+    }
+    
+    // For writes, you might want stricter rules, e.g., only non-anonymous users.
+    // This example keeps it simple: any authenticated user can write.
+    // You can refine this later (e.g., check request.auth.token.firebase.sign_in_provider != 'anonymous')
+    match /{document=**} {
+      allow write: if isSignedIn();
     }
   }
 }
