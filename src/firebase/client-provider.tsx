@@ -4,7 +4,7 @@ import React, { useMemo, type ReactNode, useEffect } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
-import { collection, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 
 interface FirebaseClientProviderProps {
   children: React.ReactNode;
