@@ -35,16 +35,16 @@ export type PerformanceTemplate = {
 export type AccessPermission = {
   role: string;
   view: boolean;
-  edit: boolean;
+  rate: boolean;
+  viewWorkerRatings: boolean;
+  viewPrimaryAppraiserRatings: boolean;
+  viewSecondaryAppraiserRatings: boolean;
 };
 
 export type SectionType = 
   // Performance
   | 'Performance Goals' 
-  | 'Overall Summary' 
-  // Survey
-  // Common
-  | 'Comment';
+  | 'Overall Summary';
 
 
 export type PerformanceTemplateSection = {

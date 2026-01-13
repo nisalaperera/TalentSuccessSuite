@@ -71,7 +71,7 @@ function PerformanceTemplateSectionsContent() {
         setCurrentSection(prev => prev ? { ...prev, [key]: value } : null);
     }
 
-    const handlePermissionChange = (role: string, key: 'view' | 'edit', value: boolean) => {
+    const handlePermissionChange = (role: string, key: keyof Omit<AccessPermission, 'role'>, value: boolean) => {
         if(!currentSection?.permissions) return;
         const newPermissions = currentSection.permissions.map(p => p.role === role ? {...p, [key]: value} : p);
         handleConfigChange('permissions', newPermissions);
@@ -129,7 +129,14 @@ function PerformanceTemplateSectionsContent() {
             type: type,
             performanceTemplateId: selectedTemplateId,
             order: sections.length + 1,
-            permissions: ROLES.map(role => ({ role, view: true, edit: false })),
+            permissions: ROLES.map(role => ({ 
+                role, 
+                view: true, 
+                rate: false,
+                viewWorkerRatings: false,
+                viewPrimaryAppraiserRatings: false,
+                viewSecondaryAppraiserRatings: false,
+            })),
             enableSectionRatings: true,
             sectionRatingMandatory: false,
             ratingScale: 5,
@@ -243,7 +250,7 @@ function PerformanceTemplateSectionsContent() {
             )}
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-5xl">
                 <DialogHeader>
                     <DialogTitle className="font-headline text-2xl">Configure: {currentSection?.name}</DialogTitle>
                 </DialogHeader>
@@ -348,15 +355,21 @@ function PerformanceTemplateSectionsContent() {
                               <TableRow>
                                   <TableHead>Role</TableHead>
                                   <TableHead className="text-center">View</TableHead>
-                                  <TableHead className="text-center">Rate / Edit</TableHead>
+                                  <TableHead className="text-center">Rate</TableHead>
+                                  <TableHead className="text-center">View Worker Ratings</TableHead>
+                                  <TableHead className="text-center">View Primary Appraiser Ratings</TableHead>
+                                  <TableHead className="text-center">View Secondary Appraiser Ratings</TableHead>
                               </TableRow>
                           </TableHeader>
                           <TableBody>
-                              {currentSection.permissions?.map(({role, view, edit}) => (
+                              {currentSection.permissions?.map(({role, view, rate, viewWorkerRatings, viewPrimaryAppraiserRatings, viewSecondaryAppraiserRatings}) => (
                                   <TableRow key={role}>
                                       <TableCell className="font-medium">{role}</TableCell>
                                       <TableCell className="text-center"><Switch checked={view} onCheckedChange={(val) => handlePermissionChange(role, 'view', val)}/></TableCell>
-                                      <TableCell className="text-center"><Switch checked={edit} onCheckedChange={(val) => handlePermissionChange(role, 'edit', val)}/></TableCell>
+                                      <TableCell className="text-center"><Switch checked={rate} onCheckedChange={(val) => handlePermissionChange(role, 'rate', val)}/></TableCell>
+                                      <TableCell className="text-center"><Switch checked={viewWorkerRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewWorkerRatings', val)}/></TableCell>
+                                      <TableCell className="text-center"><Switch checked={viewPrimaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewPrimaryAppraiserRatings', val)}/></TableCell>
+                                      <TableCell className="text-center"><Switch checked={viewSecondaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewSecondaryAppraiserRatings', val)}/></TableCell>
                                   </TableRow>
                               ))}
                           </TableBody>
