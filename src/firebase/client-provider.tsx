@@ -7,10 +7,19 @@ import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth'
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 
 const seedData = async (firestore: any) => {
-    const collections = ['review_periods', 'performance_cycles', 'goal_plans', 'performance_templates', 'performance_template_sections', 'evaluation_flows', 'eligibility_criteria'];
-    let shouldSeed = false;
+    const collectionsToSeed = {
+        review_periods: true,
+        performance_cycles: true,
+        goal_plans: true,
+        performance_templates: true,
+        performance_template_sections: true,
+        evaluation_flows: true,
+        eligibility_criteria: true,
+        employees: true,
+    };
 
-    for (const coll of collections) {
+    let shouldSeed = false;
+    for (const coll of Object.keys(collectionsToSeed)) {
         const snapshot = await getDocs(collection(firestore, coll));
         if (snapshot.empty) {
             shouldSeed = true;
@@ -85,6 +94,59 @@ const seedData = async (firestore: any) => {
             status: 'Active',
             rules: [{id: '1', type: 'Person Type', values: ['Intern', 'Contractor']}]
         });
+
+        // Employees
+        const employeeSnapshot = await getDocs(collection(firestore, 'employees'));
+        if (employeeSnapshot.empty) {
+            const personTypes = ['Full-Time', 'Part-Time', 'Intern', 'Contractor'];
+            const departments = ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'];
+            const entities = ['Global Corp', 'US Division', 'EU Division'];
+            let personNumberCounter = 1000;
+
+            const employees = [];
+            for (const personType of personTypes) {
+                for (const department of departments) {
+                    for (const entity of entities) {
+                        const personNumber = String(personNumberCounter++);
+                        const firstName = `User${personNumber}`;
+                        const lastName = `Test`;
+                        employees.push({
+                            personNumber,
+                            personEmail: `${firstName}.${lastName}@example.com`.toLowerCase(),
+                            firstName,
+                            lastName,
+                            designation: `Sr. ${department.slice(0, 4)}`,
+                            personType,
+                            department,
+                            entity,
+                            workManager: '',
+                            homeManager: ''
+                        });
+                    }
+                }
+            }
+
+            const managerPersonNumbers = employees.map(e => e.personNumber);
+
+            employees.forEach(employee => {
+                let workManager = managerPersonNumbers[Math.floor(Math.random() * managerPersonNumbers.length)];
+                while (workManager === employee.personNumber) {
+                    workManager = managerPersonNumbers[Math.floor(Math.random() * managerPersonNumbers.length)];
+                }
+
+                let homeManager = managerPersonNumbers[Math.floor(Math.random() * managerPersonNumbers.length)];
+                while (homeManager === employee.personNumber) {
+                    homeManager = managerPersonNumbers[Math.floor(Math.random() * managerPersonNumbers.length)];
+                }
+
+                employee.workManager = workManager;
+                employee.homeManager = homeManager;
+
+                const employeeRef = doc(collection(firestore, 'employees'));
+                batch.set(employeeRef, employee);
+            });
+        }
+
 
         await batch.commit();
         console.log("Initial data seeded.");
