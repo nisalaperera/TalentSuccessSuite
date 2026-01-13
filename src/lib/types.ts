@@ -42,10 +42,7 @@ export type SectionType =
   // Performance
   | 'Performance Goals' 
   | 'Overall Summary' 
-  | 'Competencies'
   // Survey
-  | 'Survey Question Group'
-  | 'Rating'
   // Common
   | 'Comment';
 

@@ -18,8 +18,8 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser 1', 'Secondary Appraiser 2', 'HR / Department Head', 'Secondary Appraiser', 'HR'];
 
-const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary', 'Competencies', 'Comment'];
-const surveySectionTypes: SectionType[] = ['Survey Question Group', 'Rating', 'Comment'];
+const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary'];
+const surveySectionTypes: SectionType[] = ['Comment'];
 
 interface PerformanceTemplateSectionProps extends StepProps {
     selectedPerformanceTemplateId?: string;
