@@ -6,10 +6,6 @@ import { initializeFirebase } from '@/firebase';
 import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 
-interface FirebaseClientProviderProps {
-  children: React.ReactNode;
-}
-
 const seedData = async (firestore: any) => {
     const collections = ['review_periods', 'performance_cycles', 'goal_plans', 'performance_templates', 'performance_template_sections', 'evaluation_flows', 'eligibility_criteria', 'employees'];
     let shouldSeed = false;
@@ -94,19 +90,31 @@ const seedData = async (firestore: any) => {
         const personTypes = ['Full-Time', 'Part-Time', 'Intern', 'Contractor'];
         const departments = ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'];
         const entities = ['Global Corp', 'US Division', 'EU Division'];
-        const managers = ['Jane Smith', 'Alice Johnson', 'Sam Wilson', 'Robert Brown', 'Patricia Black'];
+        
         let personNumberCounter = 1001;
+        const potentialManagers: {personNumber: string, name: string}[] = [];
+        
+        // Generate potential manager list
+        for (let i = 0; i < 10; i++) {
+            const personNumber = String(personNumberCounter + i);
+            const firstName = `ManagerFN_${personNumber}`;
+            const lastName = `ManagerLN_${personNumber}`;
+            potentialManagers.push({ personNumber, name: `${firstName} ${lastName}` });
+        }
+
 
         personTypes.forEach(personType => {
             departments.forEach(department => {
                 entities.forEach(entity => {
-                    const firstName = `FN_${personNumberCounter}`;
-                    const lastName = `LN_${personNumberCounter}`;
-                    const workManager = managers[personNumberCounter % managers.length];
-                    const homeManager = managers[(personNumberCounter + 1) % managers.length];
+                    const personNumber = String(personNumberCounter);
+                    const firstName = `FN_${personNumber}`;
+                    const lastName = `LN_${personNumber}`;
+                    
+                    const workManager = potentialManagers[personNumberCounter % potentialManagers.length];
+                    const homeManager = potentialManagers[(personNumberCounter + 1) % potentialManagers.length];
 
                     const emp = {
-                        personNumber: String(personNumberCounter),
+                        personNumber: personNumber,
                         personEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
                         firstName,
                         lastName,
@@ -114,8 +122,8 @@ const seedData = async (firestore: any) => {
                         personType,
                         department,
                         entity,
-                        workManager,
-                        homeManager,
+                        workManager: workManager.personNumber,
+                        homeManager: homeManager.personNumber,
                     };
                     const empRef = doc(collection(firestore, 'employees'));
                     batch.set(empRef, emp);
