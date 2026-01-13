@@ -50,10 +50,10 @@ const seedData = async (firestore: any) => {
 
         // Goal Plans
         const gpRef1 = doc(collection(firestore, 'goal_plans'));
-        batch.set(gpRef1, { name: 'Q1 2024 Engineering Goals', performanceCycleId: pcRef1.id, status: 'Active' });
+        batch.set(gpRef1, { name: 'FY25 Engineering Goals', reviewPeriodId: rpRef1.id, status: 'Active' });
         
         const gpRef2 = doc(collection(firestore, 'goal_plans'));
-        batch.set(gpRef2, { name: 'Q2 2024 Engineering Goals', performanceCycleId: pcRef2.id, status: 'Active' });
+        batch.set(gpRef2, { name: 'FY26 Engineering Goals', reviewPeriodId: rpRef2.id, status: 'Active' });
 
         // Performance Templates
         const ptRef1 = doc(collection(firestore, 'performance_templates'));

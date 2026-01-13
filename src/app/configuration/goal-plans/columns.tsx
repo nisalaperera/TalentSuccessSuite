@@ -11,10 +11,10 @@ type ColumnsConfig = {
     onDelete: (id: string) => void;
     onToggleStatus: (plan: GoalPlan) => void;
     isPlanInUse: (id: string) => boolean;
-    getPerformanceCycleName: (id: string) => string;
+    getReviewPeriodName: (id: string) => string;
 }
 
-export const columns = ({ onEdit, onDelete, onToggleStatus, isPlanInUse, getPerformanceCycleName }: ColumnsConfig): ColumnDef<GoalPlan>[] => [
+export const columns = ({ onEdit, onDelete, onToggleStatus, isPlanInUse, getReviewPeriodName }: ColumnsConfig): ColumnDef<GoalPlan>[] => [
     {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -22,11 +22,11 @@ export const columns = ({ onEdit, onDelete, onToggleStatus, isPlanInUse, getPerf
         ),
     },
     {
-        accessorKey: 'performanceCycleId',
+        accessorKey: 'reviewPeriodId',
         header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Performance Cycle" />
+            <DataTableColumnHeader column={column} title="Review Period" />
         ),
-        cell: ({ row }) => getPerformanceCycleName(row.getValue('performanceCycleId')),
+        cell: ({ row }) => getReviewPeriodName(row.getValue('reviewPeriodId')),
         filterFn: (row, id, value) => {
             return value.includes(row.getValue(id))
         },

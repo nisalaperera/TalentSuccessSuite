@@ -7,7 +7,7 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useToast } from '@/hooks/use-toast';
-import type { GoalPlan as GoalPlanType, PerformanceCycle } from '@/lib/types';
+import type { GoalPlan as GoalPlanType, ReviewPeriod } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +25,8 @@ function GoalPlansContent() {
     const searchParams = useSearchParams();
     const firestore = useFirestore();
 
-    const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
-    const { data: performanceCycles } = useCollection<PerformanceCycle>(performanceCyclesQuery);
+    const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
+    const { data: reviewPeriods } = useCollection<ReviewPeriod>(reviewPeriodsQuery);
 
     const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
     const { data: goalPlans } = useCollection<GoalPlanType>(goalPlansQuery);
@@ -41,19 +41,19 @@ function GoalPlansContent() {
 
     // Form state
     const [name, setName] = useState('');
-    const [performanceCycleId, setPerformanceCycleId] = useState('');
+    const [reviewPeriodId, setReviewPeriodId] = useState('');
     
-    const filterPerformanceCycle = searchParams.get('performanceCycleId') || '';
+    const filterReviewPeriod = searchParams.get('reviewPeriodId') || '';
 
     useEffect(() => {
         if (editingPlan) {
             setName(editingPlan.name);
-            setPerformanceCycleId(editingPlan.performanceCycleId);
+            setReviewPeriodId(editingPlan.reviewPeriodId);
         } else {
             setName('');
-            setPerformanceCycleId(filterPerformanceCycle || '');
+            setReviewPeriodId(filterReviewPeriod || '');
         }
-    }, [editingPlan, filterPerformanceCycle]);
+    }, [editingPlan, filterReviewPeriod]);
     
 
     const handleOpenDialog = (plan: GoalPlanType | null = null) => {
@@ -67,14 +67,14 @@ function GoalPlansContent() {
     };
 
     const handleSave = () => {
-        if (!name || !performanceCycleId) {
-            toast({ title: 'Missing Information', description: 'Please provide a name and select a performance cycle.', variant: 'destructive' });
+        if (!name || !reviewPeriodId) {
+            toast({ title: 'Missing Information', description: 'Please provide a name and select a review period.', variant: 'destructive' });
             return;
         }
 
         const planData = {
             name,
-            performanceCycleId,
+            reviewPeriodId,
             status: editingPlan?.status || 'Active'
         }
 
@@ -107,33 +107,33 @@ function GoalPlansContent() {
         toast({ title: 'Success', description: `Plan status set to ${newStatus}.` });
     };
     
-    const getPerformanceCycleName = (id: string) => performanceCycles?.find(p => p.id === id)?.name || 'N/A';
+    const getReviewPeriodName = (id: string) => reviewPeriods?.find(p => p.id === id)?.name || 'N/A';
     
-    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getPerformanceCycleName }), [performanceCycles, performanceDocuments]);
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isPlanInUse, getReviewPeriodName }), [reviewPeriods, performanceDocuments]);
 
     const filteredData = useMemo(() => {
         if (!goalPlans) return [];
-        if (!filterPerformanceCycle) return goalPlans;
-        return goalPlans.filter(plan => plan.performanceCycleId === filterPerformanceCycle);
-    }, [filterPerformanceCycle, goalPlans]);
+        if (!filterReviewPeriod) return goalPlans;
+        return goalPlans.filter(plan => plan.reviewPeriodId === filterReviewPeriod);
+    }, [filterReviewPeriod, goalPlans]);
 
     const handleClearFilter = () => {
         router.push('/configuration/goal-plans');
     };
 
     const toolbarContent = useMemo(() => {
-        if (!filterPerformanceCycle) return null;
+        if (!filterReviewPeriod) return null;
 
-        const cycleName = getPerformanceCycleName(filterPerformanceCycle);
+        const periodName = getReviewPeriodName(filterReviewPeriod);
         return (
             <Badge variant="secondary" className="flex items-center gap-2">
-                Performance Cycle: {cycleName}
+                Review Period: {periodName}
                 <button onClick={handleClearFilter} className="rounded-full hover:bg-muted-foreground/20">
                     <X className="h-3 w-3"/>
                 </button>
             </Badge>
         );
-    }, [filterPerformanceCycle, performanceCycles]);
+    }, [filterReviewPeriod, reviewPeriods]);
 
 
     return (
@@ -155,11 +155,11 @@ function GoalPlansContent() {
                         <DialogTitle className="font-headline">{editingPlan ? 'Edit' : 'Create New'} Goal Plan</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <Input placeholder="e.g., FY26 Mid-Annual Goal Plan" value={name} onChange={(e) => setName(e.target.value)} />
-                        <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}>
-                            <SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger>
+                        <Input placeholder="e.g., FY26 Annual Goal Plan" value={name} onChange={(e) => setName(e.target.value)} />
+                        <Select onValueChange={setReviewPeriodId} value={reviewPeriodId}>
+                            <SelectTrigger><SelectValue placeholder="Select Review Period"/></SelectTrigger>
                             <SelectContent>
-                                {(performanceCycles || []).filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                {(reviewPeriods || []).filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>

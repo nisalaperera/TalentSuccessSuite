@@ -53,15 +53,15 @@
           "type": "string",
           "description": "Identifies the goal template"
         },
-        "performanceCycleId": {
+        "reviewPeriodId": {
           "type": "string",
-          "description": "Reference to PerformanceCycle."
+          "description": "Reference to ReviewPeriod."
         },
         "status": { "type": "string" }
       },
       "required": [
         "name",
-        "performanceCycleId",
+        "reviewPeriodId",
         "status"
       ]
     },
@@ -222,7 +222,7 @@
     },
     "goal_plans": {
       "schema": { "$ref": "#/entities/GoalPlan" },
-      "description": "Stores goal plan data, linked to a performance cycle."
+      "description": "Stores goal plan data, linked to a review period."
     },
     "performance_templates": {
         "schema": { "$ref": "#/entities/PerformanceTemplate" },

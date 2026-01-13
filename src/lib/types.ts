@@ -20,7 +20,7 @@ export type PerformanceCycle = {
 export type GoalPlan = {
   id: string;
   name: string;
-  performanceCycleId: string;
+  reviewPeriodId: string;
   status: 'Active' | 'Inactive';
 };
 

@@ -31,8 +31,8 @@ export default function AdminPage() {
   const [isSinglePage, setIsSinglePage] = useState(false);
 
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
-  const selectedPerformanceCycle = state.performanceCycles.find(p => p.id === selectedPerformanceCycleId);
   const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
+  const selectedPerformanceCycle = state.performanceCycles.find(p => p.id === selectedPerformanceCycleId);
   const selectedPerformanceTemplate = state.performanceTemplates.find(p => p.id === selectedPerformanceTemplateId);
   const selectedTemplateSectionNames = state.performanceTemplateSections
     .filter(s => s.performanceTemplateId === selectedPerformanceTemplateId)
@@ -57,18 +57,18 @@ export default function AdminPage() {
           content: <ReviewPeriod state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-2')} selectedReviewPeriodId={selectedReviewPeriodId} setSelectedReviewPeriodId={setSelectedReviewPeriodId} />
         },
         {
-            id: 'item-2',
+          id: 'item-2',
+          title: 'Goal Plan Setup',
+          selection: selectedGoalPlan?.name,
+          disabled: !selectedReviewPeriodId,
+          content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
+        },
+        {
+            id: 'item-3',
             title: 'Performance Cycle Setup',
             selection: selectedPerformanceCycle?.name,
             disabled: !selectedReviewPeriodId,
-            content: <PerformanceCycle state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-3')} selectedReviewPeriodId={selectedReviewPeriodId} selectedPerformanceCycleId={selectedPerformanceCycleId} setSelectedPerformanceCycleId={setSelectedPerformanceCycleId}/>
-        },
-        {
-          id: 'item-3',
-          title: 'Goal Plan Setup',
-          selection: selectedGoalPlan?.name,
-          disabled: !selectedPerformanceCycleId,
-          content: <GoalPlan state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedPerformanceCycleId={selectedPerformanceCycleId} selectedGoalPlanId={selectedGoalPlanId} setSelectedGoalPlanId={setSelectedGoalPlanId} />
+            content: <PerformanceCycle state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-4')} selectedReviewPeriodId={selectedReviewPeriodId} selectedPerformanceCycleId={selectedPerformanceCycleId} setSelectedPerformanceCycleId={setSelectedPerformanceCycleId}/>
         },
       ]
     },
@@ -79,6 +79,7 @@ export default function AdminPage() {
           id: 'item-4',
           title: 'Performance Template',
           selection: selectedPerformanceTemplate?.name,
+          disabled: !selectedGoalPlanId,
           content: <PerformanceTemplate state={state} dispatch={dispatch} onComplete={() => handleStepComplete('item-5')} selectedPerformanceTemplateId={selectedPerformanceTemplateId} setSelectedPerformanceTemplateId={setSelectedPerformanceTemplateId} />
         },
         {
