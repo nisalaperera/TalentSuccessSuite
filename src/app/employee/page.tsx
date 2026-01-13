@@ -15,6 +15,10 @@ export default function EmployeePage() {
   const [performanceCycleId, setPerformanceCycleId] = useState('');
 
   const canProceed = personNumber && performanceCycleId;
+  
+  const getReviewPeriodName = (id: string) => {
+    return state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
+  }
 
   return (
     <div className="container mx-auto py-10 flex items-center justify-center min-h-[calc(100vh-81px)]">
@@ -40,7 +44,11 @@ export default function EmployeePage() {
                         <SelectValue placeholder="Select a performance cycle" />
                     </SelectTrigger>
                     <SelectContent>
-                        {state.performanceCycles.filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        {state.performanceCycles.filter(p => p.status === 'Active').map(p => 
+                            <SelectItem key={p.id} value={p.id}>
+                                {p.name} ({getReviewPeriodName(p.reviewPeriodId)})
+                            </SelectItem>
+                        )}
                     </SelectContent>
                 </Select>
             </div>
