@@ -1,0 +1,144 @@
+/**
+ * @file firestore.rules
+ * @description Firestore Security Rules for a performance management configuration application.
+ *
+ * ## Core Philosophy
+ * This ruleset establishes a secure "Authenticated Read-Only" model for all system configuration data.
+ * The primary goal is to allow any authenticated user to read the necessary configuration (e.g., review periods,
+ * document types) to render the application UI, while strictly prohibiting all write operations (create, update, delete)
+ * by default. This ensures that critical system settings cannot be modified until a proper administrative role and
+ * associated security rules are explicitly implemented.
+ *
+ * ## Data Structure
+ * The data is organized into top-level collections representing different facets of performance management configuration,
+ * such as `review_periods`, `document_types`, and `performance_documents`. Subcollections are used to logically
+ * group related child configurations, like `goal_plans` within a `review_period`. This structure is designed for
+ * clarity and to support a single-page configuration experience.
+ *
+ * ## Key Security Decisions
+ * - **Default Deny for Writes:** All write operations are universally denied (`if false;`). This provides a secure-by-default
+ *   posture, requiring a deliberate change to enable administrative modifications.
+ * - **Authenticated Reads:** All read operations (`get`, `list`) are permitted for any signed-in user (`request.auth != null`).
+ *   This is safe as the collections store non-sensitive template and configuration data.
+ * - **No User-Specific Data:** The ruleset does not manage user-owned data (e.g., `/users/{userId}`). All data is treated
+ *   as global system configuration.
+ * - **No Data Validation:** In line with the prototyping philosophy, these rules do not validate the shape or type of data
+ *   being written, as all write access is currently disabled.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Manages Review Period configurations. These are readable by any authenticated user but cannot be modified directly.
+     * @path /review_periods/{reviewPeriodId}
+     * @allow (get) A signed-in user reads a specific review period.
+     * @deny (create) Any user, signed-in or not, attempts to create a new review period.
+     * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+     */
+    match /review_periods/{reviewPeriodId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+
+      /**
+       * @description Manages Goal Plan configurations nested within a Review Period.
+       * @path /review_periods/{reviewPeriodId}/goal_plans/{goalPlanId}
+       * @allow (list) A signed-in user lists all goal plans for a given review period.
+       * @deny (update) Any user attempts to modify an existing goal plan.
+       * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+       */
+      match /goal_plans/{goalPlanId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+      }
+    }
+
+    /**
+     * @description Manages Document Type configurations (e.g., Performance, Survey). Readable by any authenticated user.
+     * @path /document_types/{documentTypeId}
+     * @allow (get) A signed-in user reads a specific document type definition.
+     * @deny (create) Any user attempts to create a new document type.
+     * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+     */
+    match /document_types/{documentTypeId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+
+      /**
+       * @description Manages Document Section configurations nested within a Document Type.
+       * @path /document_types/{documentTypeId}/document_sections/{documentSectionId}
+       * @allow (list) A signed-in user lists all sections for a document type.
+       * @deny (delete) Any user attempts to delete a document section.
+       * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+       */
+      match /document_sections/{documentSectionId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+      }
+    }
+
+    /**
+     * @description Manages Eligibility Criteria configurations. Readable by any authenticated user.
+     * @path /eligibility_criteria/{eligibilityCriteriaId}
+     * @allow (get) A signed-in user reads a specific eligibility rule.
+     * @deny (update) Any user attempts to modify an eligibility rule.
+     * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+     */
+    match /eligibility_criteria/{eligibilityCriteriaId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+    }
+
+    /**
+     * @description Manages Performance Document configurations. Readable by any authenticated user.
+     * @path /performance_documents/{performanceDocumentId}
+     * @allow (list) A signed-in user lists all performance document configurations.
+     * @deny (create) Any user attempts to create a new performance document configuration.
+     * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+     */
+    match /performance_documents/{performanceDocumentId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+    }
+
+    /**
+     * @description Manages Evaluation Flow configurations. Readable by any authenticated user.
+     * @path /evaluation_flows/{evaluationFlowId}
+     * @allow (get) A signed-in user reads a specific evaluation flow.
+     * @deny (delete) Any user attempts to delete an evaluation flow.
+     * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+     */
+    match /evaluation_flows/{evaluationFlowId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+    }
+
+    /**
+     * @description Manages Document Section Access configurations. Readable by any authenticated user.
+     * @path /document_section_access/{documentSectionAccessId}
+     * @allow (list) A signed-in user lists all section access rules.
+     * @deny (create) Any user attempts to create a new section access rule.
+     * @principle Protects system-wide configuration data. Allows authenticated reads for UI population while blocking all writes until an admin role is defined.
+     */
+    match /document_section_access/{documentSectionAccessId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false; // TODO: Implement admin-only access for configuration data.
+    }
+  }
+}
