@@ -30,10 +30,6 @@ function ReviewPeriodsContent() {
     const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
     const { data: goalPlans } = useCollection<DocumentData>(goalPlansQuery);
 
-    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
-    const { data: performanceDocuments } = useCollection<DocumentData>(performanceDocumentsQuery);
-
-
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingPeriod, setEditingPeriod] = useState<ReviewPeriodType | null>(null);
     const { toast } = useToast();
@@ -94,7 +90,9 @@ function ReviewPeriodsContent() {
     };
 
     const isPeriodInUse = (id: string) => {
-        return (goalPlans || []).some(gp => gp.reviewPeriodId === id) || (performanceDocuments || []).some(pd => pd.reviewPeriodId === id);
+        const isUsedInCycles = (performanceCycles || []).some(cycle => cycle.reviewPeriodId === id);
+        const isUsedInGoalPlans = (goalPlans || []).some(gp => gp.reviewPeriodId === id);
+        return isUsedInCycles || isUsedInGoalPlans;
     };
 
     const handleDelete = (id: string) => {
@@ -125,7 +123,7 @@ function ReviewPeriodsContent() {
         isPeriodInUse,
         onManageGoalPlans: handleManageGoalPlans,
         onManageCycles: handleManageCycles,
-    }), [goalPlans, performanceDocuments]);
+    }), [goalPlans, performanceCycles]);
 
     const displayData = useMemo(() => {
         if (!reviewPeriods) return [];
