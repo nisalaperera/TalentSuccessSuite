@@ -1,4 +1,5 @@
 
+
 import { DocumentData } from "firebase/firestore";
 
 export type ReviewPeriod = {
@@ -118,7 +119,18 @@ export type PerformanceDocument = {
   sectionIds: string[];
   evaluationFlowId: string;
   eligibilityId: string;
+  isLaunched?: boolean;
 };
+
+export type EmployeePerformanceDocument = {
+    id: string;
+    performanceDocumentId: string;
+    employeeId: string;
+    performanceCycleId: string;
+    performanceTemplateId: string;
+    evaluationFlowId: string;
+    status: 'Not Started' | 'In Progress' | 'Completed';
+}
 
 export type Employee = {
   id: string;

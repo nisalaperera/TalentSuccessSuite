@@ -172,9 +172,24 @@
         "performanceTemplateId": { "type": "string" },
         "sectionIds": { "type": "array", "items": { "type": "string" } },
         "evaluationFlowId": { "type": "string" },
-        "eligibilityId": { "type": "string" }
+        "eligibilityId": { "type": "string" },
+        "isLaunched": { "type": "boolean", "description": "Indicates if the document has been launched to employees."}
       },
       "required": ["name", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
+    },
+    "EmployeePerformanceDocument": {
+        "title": "EmployeePerformanceDocument",
+        "type": "object",
+        "description": "An individual performance document assigned to a specific employee.",
+        "properties": {
+            "performanceDocumentId": { "type": "string" },
+            "employeeId": { "type": "string" },
+            "performanceCycleId": { "type": "string" },
+            "performanceTemplateId": { "type": "string" },
+            "evaluationFlowId": { "type": "string" },
+            "status": { "type": "string", "enum": ["Not Started", "In Progress", "Completed"] }
+        },
+        "required": ["performanceDocumentId", "employeeId", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "status"]
     },
     "Employee": {
       "title": "Employee",
@@ -239,6 +254,10 @@
     "performance_documents": {
         "schema": { "$ref": "#/entities/PerformanceDocument" },
         "description": "Stores assembled performance documents."
+    },
+    "employee_performance_documents": {
+        "schema": { "$ref": "#/entities/EmployeePerformanceDocument" },
+        "description": "Stores individual performance documents for each employee."
     },
     "employees": {
         "schema": { "$ref": "#/entities/Employee" },
