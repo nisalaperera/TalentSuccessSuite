@@ -11,9 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -53,11 +50,6 @@ export default function PerformanceDocumentsPage() {
     const [performanceTemplateId, setPerformanceTemplateId] = useState<string>();
     const [evaluationFlowId, setEvaluationFlowId] = useState<string>();
     const [eligibilityId, setEligibilityId] = useState<string>();
-    const [selectedSections, setSelectedSections] = useState<string[]>([]);
-    const [managerRating, setManagerRating] = useState(true);
-    const [employeeRating, setEmployeeRating] = useState(true);
-    const [managerComments, setManagerComments] = useState(true);
-    const [employeeComments, setEmployeeComments] = useState(true);
 
     const resetForm = () => {
         setName('');
@@ -65,11 +57,6 @@ export default function PerformanceDocumentsPage() {
         setPerformanceTemplateId(undefined);
         setEvaluationFlowId(undefined);
         setEligibilityId(undefined);
-        setSelectedSections([]);
-        setManagerRating(true);
-        setEmployeeRating(true);
-        setManagerComments(true);
-        setEmployeeComments(true);
     }
     
     const handleOpenDialog = () => {
@@ -89,17 +76,17 @@ export default function PerformanceDocumentsPage() {
           return;
         }
 
+        const allSectionIdsForTemplate = (performanceTemplateSections || [])
+            .filter(s => s.performanceTemplateId === performanceTemplateId)
+            .map(s => s.id);
+
         const newDoc: Omit<PerfDocType, 'id'> = {
           name,
           performanceCycleId: performanceCycleId!,
           performanceTemplateId: performanceTemplateId!,
-          sectionIds: selectedSections,
+          sectionIds: allSectionIdsForTemplate,
           evaluationFlowId: evaluationFlowId!,
           eligibilityId: eligibilityId!,
-          managerRatingEnabled: managerRating,
-          employeeRatingEnabled: employeeRating,
-          managerCommentsEnabled: managerComments,
-          employeeCommentsEnabled: employeeComments,
         };
         
         const collRef = collection(firestore, 'performance_documents');
@@ -120,11 +107,7 @@ export default function PerformanceDocumentsPage() {
             default: return '';
         }
     }
-    const availableSections = useMemo(() => 
-        (performanceTemplateSections || []).filter(s => s.performanceTemplateId === performanceTemplateId),
-        [performanceTemplateId, performanceTemplateSections]
-    );
-
+    
     const tableColumns = useMemo(() => columns({ getLookUpName }), [reviewPeriods, performanceCycles, performanceTemplates]);
 
     return (
@@ -144,35 +127,11 @@ export default function PerformanceDocumentsPage() {
                     </DialogHeader>
                     <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                         <Input placeholder="Performance Document Name" value={name} onChange={e => setName(e.target.value)} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                             <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{(performanceCycles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({getLookUpName('reviewPeriod', p.reviewPeriodId)})</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{(performanceTemplates || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{(evaluationFlows || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{(eligibilityCriteria || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                        </div>
-
-                        {performanceTemplateId && availableSections.length > 0 && (
-                            <div className="space-y-2 pt-4 border-t">
-                            <h4 className="font-semibold">Select Performance Template Sections for "{getLookUpName('performanceTemplate', performanceTemplateId)}"</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                {availableSections.map(section => (
-                                <div key={section.id} className="flex items-center space-x-2">
-                                    <Checkbox id={section.id} checked={selectedSections.includes(section.id)} onCheckedChange={(checked) => { return checked ? setSelectedSections([...selectedSections, section.id]) : setSelectedSections(selectedSections.filter((id) => id !== section.id)); }} />
-                                    <Label htmlFor={section.id}>{section.name}</Label>
-                                </div>
-                                ))}
-                            </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-2 pt-4 border-t">
-                            <h4 className="font-semibold">Additional Configuration</h4>
-                            <div className="flex flex-wrap gap-4">
-                                <div className="flex items-center space-x-2"><Switch id="mgr-rating" checked={managerRating} onCheckedChange={setManagerRating} /><Label htmlFor="mgr-rating">Manager Rating</Label></div>
-                                <div className="flex items-center space-x-2"><Switch id="emp-rating" checked={employeeRating} onCheckedChange={setEmployeeRating} /><Label htmlFor="emp-rating">Employee Rating</Label></div>
-                                <div className="flex items-center space-x-2"><Switch id="mgr-comment" checked={managerComments} onCheckedChange={setManagerComments} /><Label htmlFor="mgr-comment">Manager Comments</Label></div>
-                                <div className="flex items-center space-x-2"><Switch id="emp-comment" checked={employeeComments} onCheckedChange={setEmployeeComments} /><Label htmlFor="emp-comment">Employee Comments</Label></div>
-                            </div>
                         </div>
                     </div>
                     <DialogFooter>

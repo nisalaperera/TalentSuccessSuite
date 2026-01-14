@@ -172,11 +172,7 @@
         "performanceTemplateId": { "type": "string" },
         "sectionIds": { "type": "array", "items": { "type": "string" } },
         "evaluationFlowId": { "type": "string" },
-        "eligibilityId": { "type": "string" },
-        "managerRatingEnabled": { "type": "boolean" },
-        "employeeRatingEnabled": { "type": "boolean" },
-        "managerCommentsEnabled": { "type": "boolean" },
-        "employeeCommentsEnabled": { "type": "boolean" }
+        "eligibilityId": { "type": "string" }
       },
       "required": ["name", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
     },
