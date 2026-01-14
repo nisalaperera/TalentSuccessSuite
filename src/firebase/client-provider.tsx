@@ -109,14 +109,14 @@ const seedData = async (firestore: any) => {
                 for (const department of departments) {
                     for (const entity of entities) {
                         const personNumber = String(personNumberCounter++);
-                        const firstName = `User${personNumber}`;
+                        const firstName = `User${'\'\'\''}personNumber${'\'\'\''}`;
                         const lastName = `Test`;
                         employeeShells.push({
                             personNumber,
-                            personEmail: `${firstName}.${lastName}@example.com`.toLowerCase(),
+                            personEmail: `${'\'\'\''}firstName${'\'\'\''}.${'\'\'\''}lastName${'\'\'\''}@example.com`.toLowerCase(),
                             firstName,
                             lastName,
-                            designation: `Sr. ${department.slice(0, 4)}`,
+                            designation: `Sr. ${'\'\'\''}department.slice(0, 4)${'\'\'\''}`,
                             personType,
                             department,
                             entity,
