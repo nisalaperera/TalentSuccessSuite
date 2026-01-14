@@ -68,7 +68,7 @@ export default function AdminPage() {
   const [selectedPerformanceTemplateId, setSelectedPerformanceTemplateId] = useState<string>();
   const [selectedEvaluationFlowId, setSelectedEvaluationFlowId] = useState<string>();
   const [selectedEligibilityId, setSelectedEligibilityId] = useState<string>();
-  const [isSinglePage, setIsSinglePage] = useState(true);
+  const [isSinglePage, setIsSinglePage] = useState(false);
 
   const selectedReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
   const selectedGoalPlan = state.goalPlans.find(p => p.id === selectedGoalPlanId);
@@ -199,3 +199,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
