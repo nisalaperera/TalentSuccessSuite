@@ -10,10 +10,9 @@ type ColumnsConfig = {
     getEmployeeName: (id: string) => string;
     getCycleName: (id: string) => string;
     getTemplateName: (id: string) => string;
-    getGoalPlanName: (id: string) => string;
 }
 
-export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getGoalPlanName }: ColumnsConfig): ColumnDef<EmployeePerformanceDocument>[] => [
+export const columns = ({ getEmployeeName, getCycleName, getTemplateName }: ColumnsConfig): ColumnDef<EmployeePerformanceDocument>[] => [
     {
         accessorKey: 'employeeId',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Employee" />,
@@ -23,11 +22,6 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getGoa
         accessorKey: 'performanceCycleId',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Performance Cycle" />,
         cell: ({ row }) => getCycleName(row.getValue('performanceCycleId')),
-    },
-    {
-        accessorKey: 'goalPlanId',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Goal Plan" />,
-        cell: ({ row }) => getGoalPlanName(row.getValue('goalPlanId')),
     },
     {
         accessorKey: 'performanceTemplateId',
@@ -47,5 +41,3 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getGoa
         }
     },
 ];
-
-    

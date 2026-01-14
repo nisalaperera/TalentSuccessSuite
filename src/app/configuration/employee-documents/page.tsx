@@ -33,9 +33,6 @@ function EmployeeDocumentsContent() {
     const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
     const { data: performanceTemplates } = useCollection<PerformanceTemplate>(performanceTemplatesQuery);
 
-    const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
-    const { data: goalPlans } = useCollection<GoalPlan>(goalPlansQuery);
-
     const cycleFilter = searchParams.get('cycleId');
     const employeeFilter = searchParams.get('employeeId');
 
@@ -67,9 +64,7 @@ function EmployeeDocumentsContent() {
     
     const getTemplateName = (id: string) => performanceTemplates?.find(t => t.id === id)?.name || 'N/A';
 
-    const getGoalPlanName = (id: string) => goalPlans?.find(gp => gp.id === id)?.name || 'N/A';
-
-    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getGoalPlanName }), [employees, performanceCycles, reviewPeriods, performanceTemplates, goalPlans]);
+    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName }), [employees, performanceCycles, reviewPeriods, performanceTemplates]);
 
     const filteredData = useMemo(() => {
         if (!employeeDocuments) return [];
@@ -134,5 +129,3 @@ export default function EmployeeDocumentsPage() {
         </Suspense>
     )
 }
-
-    

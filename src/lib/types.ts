@@ -2,6 +2,7 @@
 
 
 
+
 import { DocumentData } from "firebase/firestore";
 
 export type ReviewPeriod = {
@@ -130,7 +131,6 @@ export type EmployeePerformanceDocument = {
     id: string;
     performanceDocumentId: string;
     employeeId: string;
-    goalPlanId: string;
     performanceCycleId: string;
     performanceTemplateId: string;
     evaluationFlowId: string;
@@ -199,5 +199,3 @@ export interface StepProps {
     dispatch: React.Dispatch<Action>;
     onComplete: () => void;
 }
-
-    
