@@ -8,16 +8,23 @@ import { Badge } from '@/components/ui/badge';
 import type { Employee, EmployeePerformanceDocument, PerformanceDocument, PerformanceTemplate } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MyTeamPerformanceCyclesProps {
-    data: EmployeePerformanceDocument[] | null;
+    workTeamData: EmployeePerformanceDocument[] | null;
+    homeTeamData: EmployeePerformanceDocument[] | null;
     allEmployees: Employee[] | null;
     allPerformanceDocuments: PerformanceDocument[] | null;
     allPerformanceTemplates: PerformanceTemplate[] | null;
 }
 
-export function MyTeamPerformanceCycles({ data, allEmployees, allPerformanceDocuments, allPerformanceTemplates }: MyTeamPerformanceCyclesProps) {
+interface TeamTableProps {
+    data: EmployeePerformanceDocument[] | null;
+    allEmployees: Employee[] | null;
+    allPerformanceDocuments: PerformanceDocument[] | null;
+}
 
+function TeamTable({ data, allEmployees, allPerformanceDocuments }: TeamTableProps) {
     const getEmployeeName = (employeeId: string) => {
         const emp = allEmployees?.find(e => e.id === employeeId);
         return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
@@ -36,7 +43,44 @@ export function MyTeamPerformanceCycles({ data, allEmployees, allPerformanceDocu
         }));
     }, [data, allEmployees, allPerformanceDocuments]);
 
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Document Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {tableData.length > 0 ? (
+                    tableData.map(cycle => (
+                        <TableRow key={cycle.id}>
+                            <TableCell className="font-medium">{cycle.employeeName}</TableCell>
+                            <TableCell>{cycle.documentName}</TableCell>
+                            <TableCell><Badge variant="secondary">{cycle.status}</Badge></TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="outline" size="sm">
+                                    Evaluate
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center h-24">
+                            No performance documents found for this team view.
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    );
+}
 
+export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmployees, allPerformanceDocuments }: MyTeamPerformanceCyclesProps) {
     return (
         <Card>
             <CardHeader>
@@ -44,39 +88,26 @@ export function MyTeamPerformanceCycles({ data, allEmployees, allPerformanceDocu
                 <CardDescription>Performance documents for your direct reports in the selected cycle.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Employee</TableHead>
-                            <TableHead>Document Name</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {tableData.length > 0 ? (
-                            tableData.map(cycle => (
-                                <TableRow key={cycle.id}>
-                                    <TableCell className="font-medium">{cycle.employeeName}</TableCell>
-                                    <TableCell>{cycle.documentName}</TableCell>
-                                    <TableCell><Badge variant="secondary">{cycle.status}</Badge></TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm">
-                                            Evaluate
-                                            <ArrowRight className="ml-2 h-4 w-4" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24">
-                                    No performance documents found for your team in this cycle.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                <Tabs defaultValue="work">
+                    <TabsList>
+                        <TabsTrigger value="work">Work Manager</TabsTrigger>
+                        <TabsTrigger value="home">Home Manager</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="work">
+                        <TeamTable 
+                            data={workTeamData}
+                            allEmployees={allEmployees}
+                            allPerformanceDocuments={allPerformanceDocuments}
+                        />
+                    </TabsContent>
+                    <TabsContent value="home">
+                        <TeamTable 
+                            data={homeTeamData}
+                            allEmployees={allEmployees}
+                            allPerformanceDocuments={allPerformanceDocuments}
+                        />
+                    </TabsContent>
+                </Tabs>
             </CardContent>
         </Card>
     );

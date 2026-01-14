@@ -47,22 +47,38 @@ export default function PerformancePage() {
   const { data: myPerformanceCycles, isLoading: isLoadingMyCycles } = useCollection<EmployeePerformanceDocument>(myPerformanceCyclesQuery);
   
   // My Team Performance Cycles Data
-  const myTeamIds = useMemo(() => {
-    if (!selectedEmployee || !allEmployees) return [];
-    return allEmployees.filter(e => e.workManager === selectedEmployee.personNumber).map(e => e.id);
+  const { workTeamIds, homeTeamIds } = useMemo(() => {
+    if (!selectedEmployee || !allEmployees) return { workTeamIds: [], homeTeamIds: [] };
+    const workTeamIds = allEmployees
+      .filter(e => e.workManager === selectedEmployee.personNumber)
+      .map(e => e.id);
+    const homeTeamIds = allEmployees
+      .filter(e => e.homeManager === selectedEmployee.personNumber)
+      .map(e => e.id);
+    return { workTeamIds, homeTeamIds };
   }, [selectedEmployee, allEmployees]);
 
-  const teamPerformanceCyclesQuery = useMemoFirebase(() => {
-    if (myTeamIds.length === 0 || !performanceCycleId) return null;
+  const workTeamPerformanceCyclesQuery = useMemoFirebase(() => {
+    if (workTeamIds.length === 0 || !performanceCycleId) return null;
     return query(
       collection(firestore, 'employee_performance_documents'),
-      where('employeeId', 'in', myTeamIds),
+      where('employeeId', 'in', workTeamIds),
       where('performanceCycleId', '==', performanceCycleId)
     );
-  }, [firestore, myTeamIds, performanceCycleId]);
-  const { data: myTeamPerformanceCycles, isLoading: isLoadingTeamCycles } = useCollection<EmployeePerformanceDocument>(teamPerformanceCyclesQuery);
+  }, [firestore, workTeamIds, performanceCycleId]);
+  const { data: workTeamPerformanceCycles, isLoading: isLoadingWorkTeamCycles } = useCollection<EmployeePerformanceDocument>(workTeamPerformanceCyclesQuery);
+
+  const homeTeamPerformanceCyclesQuery = useMemoFirebase(() => {
+    if (homeTeamIds.length === 0 || !performanceCycleId) return null;
+    return query(
+      collection(firestore, 'employee_performance_documents'),
+      where('employeeId', 'in', homeTeamIds),
+      where('performanceCycleId', '==', performanceCycleId)
+    );
+  }, [firestore, homeTeamIds, performanceCycleId]);
+  const { data: homeTeamPerformanceCycles, isLoading: isLoadingHomeTeamCycles } = useCollection<EmployeePerformanceDocument>(homeTeamPerformanceCyclesQuery);
   
-  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingTeamCycles;
+  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingWorkTeamCycles || isLoadingHomeTeamCycles;
 
   if (!personNumber || !performanceCycleId) {
     return (
@@ -93,7 +109,8 @@ export default function PerformancePage() {
           allPerformanceTemplates={allPerformanceTemplates}
           />
         <MyTeamPerformanceCycles 
-          data={myTeamPerformanceCycles}
+          workTeamData={workTeamPerformanceCycles}
+          homeTeamData={homeTeamPerformanceCycles}
           allEmployees={allEmployees}
           allPerformanceDocuments={allPerformanceDocuments}
           allPerformanceTemplates={allPerformanceTemplates}
