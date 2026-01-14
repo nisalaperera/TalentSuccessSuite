@@ -91,7 +91,6 @@ function EmployeeDocumentsContent() {
                         <SelectValue placeholder="Filter by Performance Cycle..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">All Cycles</SelectItem>
                         {(performanceCycles || []).map(cycle => (
                             <SelectItem key={cycle.id} value={cycle.id}>{getCycleName(cycle.id)}</SelectItem>
                         ))}
@@ -102,7 +101,6 @@ function EmployeeDocumentsContent() {
                         <SelectValue placeholder="Filter by Employee..." />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">All Employees</SelectItem>
                         {(employees || []).map(emp => (
                             <SelectItem key={emp.id} value={emp.id}>{getEmployeeName(emp.id)}</SelectItem>
                         ))}
