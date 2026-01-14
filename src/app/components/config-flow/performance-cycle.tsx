@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Pencil, Trash2, Power, PowerOff } from 'lucide-react';
-import type { StepProps, PerformanceCycle as PerformanceCycleType } from '@/lib/types';
+import type { StepProps, PerformanceCycle as PerformanceCycleType, ReviewPeriod } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -16,6 +16,9 @@ import { DatePicker } from './shared/date-picker';
 import { format } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { useFirestore } from '@/firebase';
+import { collection, doc, Timestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface PerformanceCycleProps extends StepProps {
     selectedReviewPeriodId?: string;
@@ -27,6 +30,7 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCycle, setEditingCycle] = useState<PerformanceCycleType | null>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   // Form state
   const [name, setName] = useState('');
@@ -67,7 +71,7 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
       return;
     }
     
-    const parentReviewPeriod = state.reviewPeriods.find(p => p.id === selectedReviewPeriodId);
+    const parentReviewPeriod = (state.reviewPeriods as ReviewPeriod[]).find(p => p.id === selectedReviewPeriodId);
     if (!parentReviewPeriod) {
         toast({ title: 'Invalid Review Period', description: 'The selected review period could not be found.', variant: 'destructive' });
         return;
@@ -83,7 +87,7 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
         return;
     }
 
-    const overlappingCycle = state.performanceCycles.find(cycle => {
+    const overlappingCycle = (state.performanceCycles as PerformanceCycleType[]).find(cycle => {
         if (cycle.reviewPeriodId !== selectedReviewPeriodId) return false;
         if (editingCycle && cycle.id === editingCycle.id) return false;
         return startDate <= cycle.endDate && endDate >= cycle.startDate;
@@ -94,21 +98,24 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
         return;
     }
 
-    if (editingCycle) {
-      const updatedCycle = { ...editingCycle, name, startDate, endDate };
-      dispatch({ type: 'UPDATE_PERFORMANCE_CYCLE', payload: updatedCycle });
-      toast({ title: 'Success', description: `Performance cycle "${name}" updated.` });
-    } else {
-      const newCycle: PerformanceCycleType = {
-        id: `pc-${Date.now()}`,
+    const cycleData = {
         name,
         reviewPeriodId: selectedReviewPeriodId,
-        startDate,
-        endDate,
-        status: 'Active',
-      };
-      dispatch({ type: 'ADD_PERFORMANCE_CYCLE', payload: newCycle });
-      setSelectedPerformanceCycleId(newCycle.id);
+        startDate: Timestamp.fromDate(startDate),
+        endDate: Timestamp.fromDate(endDate),
+        status: editingCycle?.status || 'Active',
+    };
+
+    if (editingCycle) {
+      updateDocumentNonBlocking(doc(firestore, 'performance_cycles', editingCycle.id), cycleData);
+      toast({ title: 'Success', description: `Performance cycle "${name}" updated.` });
+    } else {
+      const promise = addDocumentNonBlocking(collection(firestore, 'performance_cycles'), cycleData);
+      promise.then(docRef => {
+          if(docRef?.id) {
+            setSelectedPerformanceCycleId(docRef.id);
+          }
+      });
       toast({ title: 'Success', description: `Performance cycle "${name}" has been created.` });
       onComplete();
     }
@@ -117,19 +124,19 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
   };
 
   const handleDelete = (id: string) => {
-    dispatch({ type: 'DELETE_PERFORMANCE_CYCLE', payload: id });
+    deleteDocumentNonBlocking(doc(firestore, 'performance_cycles', id));
     toast({ title: 'Success', description: 'Performance cycle deleted.'});
   };
 
   const handleToggleStatus = (cycle: PerformanceCycleType) => {
     const newStatus = cycle.status === 'Active' ? 'Inactive' : 'Active';
-    dispatch({ type: 'UPDATE_PERFORMANCE_CYCLE', payload: { ...cycle, status: newStatus } });
+    updateDocumentNonBlocking(doc(firestore, 'performance_cycles', cycle.id), { status: newStatus });
     toast({ title: 'Success', description: `Cycle status set to ${newStatus}.` });
   };
 
 
   const getReviewPeriodName = (id: string) => {
-    return state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
+    return (state.reviewPeriods as ReviewPeriod[]).find(p => p.id === id)?.name || 'N/A';
   }
   
   const handleSelection = (id: string) => {
@@ -137,7 +144,7 @@ export function PerformanceCycle({ state, dispatch, onComplete, selectedReviewPe
     onComplete();
   };
   
-  const filteredCycles = state.performanceCycles.filter(gp => gp.reviewPeriodId === selectedReviewPeriodId);
+  const filteredCycles = (state.performanceCycles as PerformanceCycleType[]).filter(gp => gp.reviewPeriodId === selectedReviewPeriodId);
 
   return (
     <div className="space-y-6">

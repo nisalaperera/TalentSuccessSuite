@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,6 +17,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useFirestore } from '@/firebase';
+import { collection, doc, Timestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const PROCESS_PHASES: EvaluationStep['task'][] = ['Worker Self-Evaluation', 'Manager Evaluation', 'Normalization', 'Share Document', 'Confirm Review Meeting', 'Provide Final Feedback', 'Close Document'];
 const ROLES: EvaluationStep['role'][] = ['Primary (Worker)', 'Secondary (Manager)', 'Sec. Appraiser 1', 'Sec. Appraiser 2', 'HR / Dept Head'];
@@ -32,6 +36,7 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
   const [steps, setSteps] = useState<Partial<EvaluationStep>[]>([]);
   const [editingFlow, setEditingFlow] = useState<EvaluationFlowType | null>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (editingFlow) {
@@ -68,11 +73,9 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
   };
 
   const getFlowType = (sequence: number, index: number): EvaluationStep['flowType'] => {
-      if (index === 0) return 'Start';
-      const prevStep = steps
-        .filter(s => s.sequence)
-        .sort((a,b) => a.sequence! - b.sequence!)
-        [index-1];
+      const sortedSteps = steps.filter(s => s.sequence).sort((a,b) => a.sequence! - b.sequence!);
+      if (sortedSteps.length === 0 || index === sortedSteps.findIndex(s => s.id === steps.find(st => st.sequence === sequence)?.id)) return 'Start';
+      const prevStep = sortedSteps[sortedSteps.findIndex(s => s.id === steps.find(st => st.sequence === sequence)?.id) -1];
       if (prevStep && sequence === prevStep.sequence) return 'Parallel';
       return 'Sequential';
   }
@@ -94,17 +97,27 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
         task: s.task!,
         role: s.role!,
         flowType: getFlowType(s.sequence!, index),
+        startDate: s.startDate ? Timestamp.fromDate(s.startDate) : undefined,
+        endDate: s.endDate ? Timestamp.fromDate(s.endDate) : undefined,
       } as EvaluationStep))
       .sort((a, b) => a.sequence - b.sequence);
 
+    const flowData = { 
+        name: flowName, 
+        steps: finalSteps, 
+        status: editingFlow?.status || 'Active' 
+    };
+
     if (editingFlow) {
-        const updatedFlow = { ...editingFlow, name: flowName, steps: finalSteps };
-        dispatch({ type: 'UPDATE_EVALUATION_FLOW', payload: updatedFlow });
+        updateDocumentNonBlocking(doc(firestore, 'evaluation_flows', editingFlow.id), flowData);
         toast({ title: "Success", description: `Flow "${flowName}" updated.` });
     } else {
-        const newFlow: EvaluationFlowType = { id: `flow-${Date.now()}`, name: flowName, steps: finalSteps, status: 'Active' };
-        dispatch({ type: 'ADD_EVALUATION_FLOW', payload: newFlow });
-        setSelectedEvaluationFlowId(newFlow.id);
+        const promise = addDocumentNonBlocking(collection(firestore, 'evaluation_flows'), flowData);
+        promise.then(docRef => {
+            if(docRef?.id) {
+                setSelectedEvaluationFlowId(docRef.id);
+            }
+        });
         toast({ title: "Success", description: `Evaluation flow "${flowName}" has been saved.` });
         onComplete();
     }
@@ -113,7 +126,7 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
   };
 
   const handleDelete = (id: string) => {
-    dispatch({ type: 'DELETE_EVALUATION_FLOW', payload: id });
+    deleteDocumentNonBlocking(doc(firestore, 'evaluation_flows', id));
     toast({ title: 'Success', description: 'Evaluation flow deleted.'});
     if (id === selectedEvaluationFlowId) {
         setSelectedEvaluationFlowId('');
@@ -122,7 +135,7 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
 
   const handleToggleStatus = (flow: EvaluationFlowType) => {
     const newStatus = flow.status === 'Active' ? 'Inactive' : 'Active';
-    dispatch({ type: 'UPDATE_EVALUATION_FLOW', payload: { ...flow, status: newStatus } });
+    updateDocumentNonBlocking(doc(firestore, 'evaluation_flows', flow.id), { status: newStatus });
     toast({ title: 'Success', description: `Flow status set to ${newStatus}.` });
   };
 
@@ -155,7 +168,7 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
                 <RadioGroup value={selectedEvaluationFlowId} onValueChange={handleSelection}>
                     <TooltipProvider>
                      {state.evaluationFlows.length > 0 ? (
-                        state.evaluationFlows.map(flow => {
+                        (state.evaluationFlows as EvaluationFlowType[]).map(flow => {
                             const inUse = isFlowInUse(flow.id);
                             return (
                             <div key={flow.id} className="p-4 border rounded-lg mb-4 flex items-center justify-between gap-4 data-[state=checked]:bg-muted" data-state={flow.id === selectedEvaluationFlowId ? 'checked' : 'unchecked'}>

@@ -7,13 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Pencil, Trash2, Power, PowerOff } from 'lucide-react';
-import type { StepProps, GoalPlan as GoalPlanType } from '@/lib/types';
+import type { StepProps, GoalPlan as GoalPlanType, ReviewPeriod } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useFirestore } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 interface GoalPlanProps extends StepProps {
     selectedReviewPeriodId?: string;
@@ -26,6 +29,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<GoalPlanType | null>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (editingPlan) {
@@ -56,20 +60,23 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
       });
       return;
     }
-
-    if (editingPlan) {
-      const updatedPlan = { ...editingPlan, name };
-      dispatch({ type: 'UPDATE_GOAL_PLAN', payload: updatedPlan });
-      toast({ title: 'Success', description: `Goal plan "${name}" updated.` });
-    } else {
-      const newPlan: GoalPlanType = {
-        id: `gp-${Date.now()}`,
+    
+    const planData = {
         name,
         reviewPeriodId: selectedReviewPeriodId,
-        status: 'Active',
-      };
-      dispatch({ type: 'ADD_GOAL_PLAN', payload: newPlan });
-      setSelectedGoalPlanId(newPlan.id);
+        status: editingPlan?.status || 'Active',
+    };
+
+    if (editingPlan) {
+      updateDocumentNonBlocking(doc(firestore, 'goal_plans', editingPlan.id), planData);
+      toast({ title: 'Success', description: `Goal plan "${name}" updated.` });
+    } else {
+      const promise = addDocumentNonBlocking(collection(firestore, 'goal_plans'), planData);
+      promise.then(docRef => {
+          if(docRef?.id) {
+              setSelectedGoalPlanId(docRef.id);
+          }
+      })
       toast({ title: 'Success', description: `Goal plan "${name}" has been created.` });
       onComplete();
     }
@@ -78,7 +85,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
   };
 
   const handleDelete = (id: string) => {
-    dispatch({ type: 'DELETE_GOAL_PLAN', payload: id });
+    deleteDocumentNonBlocking(doc(firestore, 'goal_plans', id));
     toast({ title: 'Success', description: 'Goal plan deleted.'});
     if (id === selectedGoalPlanId) {
       setSelectedGoalPlanId('');
@@ -87,13 +94,13 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
 
   const handleToggleStatus = (plan: GoalPlanType) => {
     const newStatus = plan.status === 'Active' ? 'Inactive' : 'Active';
-    dispatch({ type: 'UPDATE_GOAL_PLAN', payload: { ...plan, status: newStatus } });
+    updateDocumentNonBlocking(doc(firestore, 'goal_plans', plan.id), { status: newStatus });
     toast({ title: 'Success', description: `Plan status set to ${newStatus}.` });
   };
 
 
   const getReviewPeriodName = (id: string) => {
-    return state.reviewPeriods.find(p => p.id === id)?.name || 'N/A';
+    return (state.reviewPeriods as ReviewPeriod[]).find(p => p.id === id)?.name || 'N/A';
   }
 
   const handleSelection = (id: string) => {
@@ -101,7 +108,7 @@ export function GoalPlan({ state, dispatch, onComplete, selectedReviewPeriodId, 
     onComplete();
   }
   
-  const filteredGoalPlans = state.goalPlans.filter(gp => gp.reviewPeriodId === selectedReviewPeriodId);
+  const filteredGoalPlans = (state.goalPlans as GoalPlanType[]).filter(gp => gp.reviewPeriodId === selectedReviewPeriodId);
 
   const isPlanInUse = (id: string) => {
     return state.performanceDocuments.some(pd => pd.goalPlanId === id);

@@ -17,6 +17,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
+import { useFirestore } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 interface PerformanceTemplateProps extends StepProps {
@@ -31,6 +34,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<PerformanceTemplateType | null>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (editingTemplate) {
@@ -64,21 +68,24 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
       });
       return;
     }
+    
+    const templateData = {
+        name,
+        description,
+        category,
+        status: editingTemplate?.status || 'Active',
+    };
 
     if (editingTemplate) {
-        const updatedTemplate = { ...editingTemplate, name, description, category };
-        dispatch({ type: 'UPDATE_PERFORMANCE_TEMPLATE', payload: updatedTemplate });
+        updateDocumentNonBlocking(doc(firestore, 'performance_templates', editingTemplate.id), templateData);
         toast({ title: 'Success', description: `Template "${name}" updated.` });
     } else {
-        const newTemplate: PerformanceTemplateType = {
-            id: `pt-${Date.now()}`,
-            name,
-            description,
-            category,
-            status: 'Active',
-        };
-        dispatch({ type: 'ADD_PERFORMANCE_TEMPLATE', payload: newTemplate });
-        setSelectedPerformanceTemplateId(newTemplate.id);
+        const promise = addDocumentNonBlocking(collection(firestore, 'performance_templates'), templateData);
+        promise.then(docRef => {
+            if(docRef?.id) {
+                setSelectedPerformanceTemplateId(docRef.id);
+            }
+        });
         toast({ title: 'Success', description: `Performance template "${name}" has been created.` });
         onComplete();
     }
@@ -87,7 +94,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
   };
 
   const handleDelete = (id: string) => {
-    dispatch({ type: 'DELETE_PERFORMANCE_TEMPLATE', payload: id });
+    deleteDocumentNonBlocking(doc(firestore, 'performance_templates', id));
     toast({ title: 'Success', description: 'Performance template deleted.'});
     if (id === selectedPerformanceTemplateId) {
       setSelectedPerformanceTemplateId('');
@@ -96,7 +103,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
 
   const handleToggleStatus = (template: PerformanceTemplateType) => {
     const newStatus = template.status === 'Active' ? 'Inactive' : 'Active';
-    dispatch({ type: 'UPDATE_PERFORMANCE_TEMPLATE', payload: { ...template, status: newStatus } });
+    updateDocumentNonBlocking(doc(firestore, 'performance_templates', template.id), { status: newStatus });
     toast({ title: 'Success', description: `Template status set to ${newStatus}.` });
   };
   
@@ -138,7 +145,7 @@ export function PerformanceTemplate({ state, dispatch, onComplete, selectedPerfo
                         </TableHeader>
                         <TableBody>
                         {state.performanceTemplates.length > 0 ? (
-                            state.performanceTemplates.map((template) => {
+                            (state.performanceTemplates as PerformanceTemplateType[]).map((template) => {
                                 const inUse = isTemplateInUse(template.id);
                                 return (
                                 <TableRow key={template.id} data-state={template.id === selectedPerformanceTemplateId ? 'selected' : 'unselected'}>

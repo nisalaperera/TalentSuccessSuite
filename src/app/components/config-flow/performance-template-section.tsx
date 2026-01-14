@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,11 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Settings, Trash2, GripVertical } from 'lucide-react';
-import type { StepProps, PerformanceTemplateSection as PerformanceTemplateSectionType, AccessPermission, SectionType } from '@/lib/types';
+import type { StepProps, PerformanceTemplateSection as PerformanceTemplateSectionType, AccessPermission, SectionType, PerformanceTemplate } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { StarRating } from './shared/star-rating';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { useFirestore } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser', 'HR'];
 
@@ -30,15 +34,16 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
   const [currentSection, setCurrentSection] = useState<Partial<PerformanceTemplateSectionType> | null>(null);
   const [sections, setSections] = useState<PerformanceTemplateSectionType[]>([]);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   const selectedTemplate = useMemo(() => 
-    state.performanceTemplates.find(t => t.id === selectedPerformanceTemplateId),
+    (state.performanceTemplates as PerformanceTemplate[]).find(t => t.id === selectedPerformanceTemplateId),
     [selectedPerformanceTemplateId, state.performanceTemplates]
   );
   
   useEffect(() => {
     if (selectedPerformanceTemplateId) {
-      const templateSections = state.performanceTemplateSections
+      const templateSections = (state.performanceTemplateSections as PerformanceTemplateSectionType[])
         .filter(s => s.performanceTemplateId === selectedPerformanceTemplateId)
         .sort((a, b) => a.order - b.order);
       setSections(templateSections);
@@ -56,8 +61,7 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
   const handleAddSection = (type: SectionType) => {
     if (!type || !selectedPerformanceTemplateId) return;
 
-    const newSection: PerformanceTemplateSectionType = {
-        id: `ds-${Date.now()}`,
+    const newSection: Omit<PerformanceTemplateSectionType, 'id'> = {
         name: type,
         type: type,
         performanceTemplateId: selectedPerformanceTemplateId,
@@ -112,15 +116,11 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
         itemCommentMandatory: false,
     };
     
-    const updatedSections = [...sections, newSection];
-    setSections(updatedSections);
-    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedPerformanceTemplateId), ...updatedSections] });
+    addDocumentNonBlocking(collection(firestore, 'performance_template_sections'), newSection);
   };
   
   const handleRemoveSection = (sectionId: string) => {
-    const newSections = sections.filter(s => s.id !== sectionId).map((s, i) => ({...s, order: i + 1}));
-    setSections(newSections);
-    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedPerformanceTemplateId), ...newSections] });
+    deleteDocumentNonBlocking(doc(firestore, 'performance_template_sections', sectionId));
   };
 
   const handleSetupClick = (section: PerformanceTemplateSectionType) => {
@@ -142,11 +142,8 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
   const handleSaveSection = () => {
     if (!currentSection || !currentSection.id) return;
     
-    const updatedLocalSections = sections.map(s => s.id === currentSection!.id ? currentSection as PerformanceTemplateSectionType : s);
-    setSections(updatedLocalSections);
-    
-    const updatedGlobalSections = state.performanceTemplateSections.map(s => s.id === currentSection!.id ? currentSection as PerformanceTemplateSectionType : s);
-    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: updatedGlobalSections });
+    const { id, ...sectionData } = currentSection;
+    updateDocumentNonBlocking(doc(firestore, 'performance_template_sections', id), sectionData);
 
     toast({
         title: 'Success',
@@ -165,7 +162,10 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
 
     const updatedSections = items.map((item, index) => ({ ...item, order: index + 1 }));
     setSections(updatedSections);
-    dispatch({ type: 'SET_PERFORMANCE_TEMPLATE_SECTIONS', payload: [...state.performanceTemplateSections.filter(s => s.performanceTemplateId !== selectedPerformanceTemplateId), ...updatedSections] });
+    
+    updatedSections.forEach(section => {
+        updateDocumentNonBlocking(doc(firestore, 'performance_template_sections', section.id), { order: section.order });
+    });
   };
 
   if (!selectedTemplate) {

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,27 +9,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import type { StepProps, PerformanceDocument as PerfDocType } from '@/lib/types';
+import type { StepProps, PerformanceDocument as PerfDocType, PerformanceCycle, ReviewPeriod, GoalPlan, PerformanceTemplate, EvaluationFlow, Eligibility } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { PlusCircle } from 'lucide-react';
+import { useFirestore } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [name, setName] = useState('');
   const [performanceCycleId, setPerformanceCycleId] = useState<string>();
   const [performanceTemplateId, setPerformanceTemplateId] = useState<string>();
+  const [goalPlanId, setGoalPlanId] = useState<string>();
   const [evaluationFlowId, setEvaluationFlowId] = useState<string>();
   const [eligibilityId, setEligibilityId] = useState<string>();
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
-  const [managerRating, setManagerRating] = useState(true);
-  const [employeeRating, setEmployeeRating] = useState(true);
-  const [managerComments, setManagerComments] = useState(true);
-  const [employeeComments, setEmployeeComments] = useState(true);
   const { toast } = useToast();
+  const firestore = useFirestore();
   
-  const isCreateDisabled = !name || !performanceCycleId || !performanceTemplateId || !evaluationFlowId || !eligibilityId;
+  const isCreateDisabled = !name || !performanceCycleId || !performanceTemplateId || !evaluationFlowId || !eligibilityId || !goalPlanId;
 
   const handleCreateDocument = () => {
     if (isCreateDisabled) {
@@ -37,42 +37,56 @@ export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) 
       return;
     }
 
-    const newDoc: PerfDocType = {
-      id: `pd-${Date.now()}`,
+    const allSectionIdsForTemplate = state.performanceTemplateSections
+        .filter(s => s.performanceTemplateId === performanceTemplateId)
+        .map(s => s.id);
+
+    const newDoc: Omit<PerfDocType, 'id'> = {
       name,
       performanceCycleId: performanceCycleId!,
+      goalPlanId: goalPlanId!,
       performanceTemplateId: performanceTemplateId!,
-      sectionIds: selectedSections,
+      sectionIds: allSectionIdsForTemplate,
       evaluationFlowId: evaluationFlowId!,
       eligibilityId: eligibilityId!,
-      managerRatingEnabled: managerRating,
-      employeeRatingEnabled: employeeRating,
-      managerCommentsEnabled: managerComments,
-      employeeCommentsEnabled: employeeComments,
+      isLaunched: false,
     };
-
-    dispatch({ type: 'ADD_PERFORMANCE_DOCUMENT', payload: newDoc });
+    
+    addDocumentNonBlocking(collection(firestore, 'performance_documents'), newDoc);
     toast({ title: "Success", description: `Performance document "${name}" has been created.` });
     
     // Reset form
     setName('');
     setPerformanceCycleId(undefined);
     setPerformanceTemplateId(undefined);
+    setGoalPlanId(undefined);
     setEvaluationFlowId(undefined);
     setEligibilityId(undefined);
-    setSelectedSections([]);
     setIsDialogOpen(false);
     onComplete();
   };
+
+  const handlePerformanceCycleChange = (cycleId: string) => {
+    setPerformanceCycleId(cycleId);
+    setGoalPlanId(undefined); 
+  }
+
+  const availableGoalPlans = useMemo(() => {
+    if (!performanceCycleId) return [];
+    const selectedCycle = (state.performanceCycles as PerformanceCycle[]).find(c => c.id === performanceCycleId);
+    if (!selectedCycle) return [];
+    return (state.goalPlans as GoalPlan[]).filter(gp => gp.reviewPeriodId === selectedCycle.reviewPeriodId);
+  }, [performanceCycleId, state.performanceCycles, state.goalPlans]);
   
   const getPerformanceTemplateName = (id: string) => state.performanceTemplates.find(dt => dt.id === id)?.name || '';
-  const availableSections = state.performanceTemplateSections.filter(s => s.performanceTemplateId === performanceTemplateId);
   const getPerformanceCycleName = (id: string) => {
-    const cycle = state.performanceCycles.find(c => c.id === id);
+    const cycle = (state.performanceCycles as PerformanceCycle[]).find(c => c.id === id);
     if (!cycle) return 'N/A';
-    const reviewPeriod = state.reviewPeriods.find(p => p.id === cycle.reviewPeriodId);
+    const reviewPeriod = (state.reviewPeriods as ReviewPeriod[]).find(p => p.id === cycle.reviewPeriodId);
     return `${cycle.name} (${reviewPeriod?.name || 'N/A'})`;
   }
+  const getReviewPeriodName = (id: string) => (state.reviewPeriods as ReviewPeriod[]).find(p => p.id === id)?.name || '';
+
 
   return (
     <div className="space-y-6">
@@ -95,7 +109,7 @@ export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) 
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Performance Cycle</TableHead><TableHead>Performance Template</TableHead></TableRow></TableHeader>
                 <TableBody>
                 {state.performanceDocuments.length > 0 ? (
-                    state.performanceDocuments.map(doc => (
+                    (state.performanceDocuments as PerfDocType[]).map(doc => (
                     <TableRow key={doc.id}>
                         <TableCell className="font-medium">{doc.name}</TableCell>
                         <TableCell>{getPerformanceCycleName(doc.performanceCycleId)}</TableCell>
@@ -116,43 +130,12 @@ export function PerformanceDocument({ state, dispatch, onComplete }: StepProps) 
             </DialogHeader>
             <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                 <Input placeholder="Performance Document Name" value={name} onChange={e => setName(e.target.value)} />
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{state.performanceCycles.map(p => <SelectItem key={p.id} value={p.id}>{getPerformanceCycleName(p.id)}</SelectItem>)}</SelectContent></Select>
-                    <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{state.performanceTemplates.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                    <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{state.evaluationFlows.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                    <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{state.eligibility.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-                </div>
-
-                {performanceTemplateId && availableSections.length > 0 && (
-                    <div className="space-y-2 pt-4 border-t">
-                    <h4 className="font-semibold">Select Performance Template Sections for "{getPerformanceTemplateName(performanceTemplateId)}"</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {availableSections.map(section => (
-                        <div key={section.id} className="flex items-center space-x-2">
-                            <Checkbox
-                            id={section.id}
-                            checked={selectedSections.includes(section.id)}
-                            onCheckedChange={(checked) => {
-                                return checked
-                                ? setSelectedSections([...selectedSections, section.id])
-                                : setSelectedSections(selectedSections.filter((id) => id !== section.id));
-                            }}
-                            />
-                            <Label htmlFor={section.id}>{section.name}</Label>
-                        </div>
-                        ))}
-                    </div>
-                    </div>
-                )}
-
-                <div className="space-y-2 pt-4 border-t">
-                    <h4 className="font-semibold">Additional Configuration</h4>
-                    <div className="flex flex-wrap gap-4">
-                        <div className="flex items-center space-x-2"><Switch id="mgr-rating" checked={managerRating} onCheckedChange={setManagerRating} /><Label htmlFor="mgr-rating">Manager Rating</Label></div>
-                        <div className="flex items-center space-x-2"><Switch id="emp-rating" checked={employeeRating} onCheckedChange={setEmployeeRating} /><Label htmlFor="emp-rating">Employee Rating</Label></div>
-                        <div className="flex items-center space-x-2"><Switch id="mgr-comment" checked={managerComments} onCheckedChange={setManagerComments} /><Label htmlFor="mgr-comment">Manager Comments</Label></div>
-                        <div className="flex items-center space-x-2"><Switch id="emp-comment" checked={employeeComments} onCheckedChange={setEmployeeComments} /><Label htmlFor="emp-comment">Employee Comments</Label></div>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                    <Select onValueChange={handlePerformanceCycleChange} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{(state.performanceCycles as PerformanceCycle[]).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({getReviewPeriodName(p.reviewPeriodId)})</SelectItem>)}</SelectContent></Select>
+                    <Select onValueChange={setGoalPlanId} value={goalPlanId} disabled={!performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Goal Plan"/></SelectTrigger><SelectContent>{availableGoalPlans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                    <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{(state.performanceTemplates as PerformanceTemplate[]).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                    <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{(state.evaluationFlows as EvaluationFlow[]).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                    <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{(state.eligibility as Eligibility[]).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                 </div>
             </div>
              <DialogFooter>

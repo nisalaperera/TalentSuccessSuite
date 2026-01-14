@@ -15,6 +15,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useFirestore } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+
 
 type RuleType = 'Person Type' | 'Department' | 'Legal Entity';
 
@@ -32,6 +36,7 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
   const [newLovValue, setNewLovValue] = useState('');
   const [editingEligibility, setEditingEligibility] = useState<EligibilityType | null>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (editingEligibility) {
@@ -90,14 +95,22 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
       return;
     }
 
+    const eligibilityData = {
+        name: eligibilityName,
+        rules,
+        status: editingEligibility?.status || 'Active',
+    };
+
     if (editingEligibility) {
-        const updatedEligibility = { ...editingEligibility, name: eligibilityName, rules };
-        dispatch({ type: 'UPDATE_ELIGIBILITY', payload: updatedEligibility });
+        updateDocumentNonBlocking(doc(firestore, 'eligibility_criteria', editingEligibility.id), eligibilityData);
         toast({ title: "Success", description: `Eligibility "${eligibilityName}" updated.` });
     } else {
-        const newEligibility: EligibilityType = { id: `elig-${Date.now()}`, name: eligibilityName, rules, status: 'Active' };
-        dispatch({ type: 'ADD_ELIGIBILITY', payload: newEligibility });
-        setSelectedEligibilityId(newEligibility.id);
+        const promise = addDocumentNonBlocking(collection(firestore, 'eligibility_criteria'), eligibilityData);
+        promise.then(docRef => {
+            if(docRef?.id) {
+                setSelectedEligibilityId(docRef.id);
+            }
+        });
         toast({ title: "Success", description: `Eligibility configuration "${eligibilityName}" saved.` });
         onComplete();
     }
@@ -106,7 +119,7 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
   };
 
   const handleDelete = (id: string) => {
-    dispatch({ type: 'DELETE_ELIGIBILITY', payload: id });
+    deleteDocumentNonBlocking(doc(firestore, 'eligibility_criteria', id));
     toast({ title: 'Success', description: 'Eligibility criteria deleted.'});
     if (id === selectedEligibilityId) {
         setSelectedEligibilityId('');
@@ -115,7 +128,7 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
 
   const handleToggleStatus = (eligibility: EligibilityType) => {
     const newStatus = eligibility.status === 'Active' ? 'Inactive' : 'Active';
-    dispatch({ type: 'UPDATE_ELIGIBILITY', payload: { ...eligibility, status: newStatus } });
+    updateDocumentNonBlocking(doc(firestore, 'eligibility_criteria', eligibility.id), { status: newStatus });
     toast({ title: 'Success', description: `Eligibility status set to ${newStatus}.` });
   };
   
@@ -151,7 +164,7 @@ export function EligibilityCriteria({ state, dispatch, onComplete, selectedEligi
                 <RadioGroup value={selectedEligibilityId} onValueChange={handleSelection}>
                     <TooltipProvider>
                      {state.eligibility.length > 0 ? (
-                        state.eligibility.map(e => {
+                        (state.eligibility as EligibilityType[]).map(e => {
                             const inUse = isEligibilityInUse(e.id);
                             return (
                                 <div key={e.id} className="p-4 border rounded-lg mb-4 flex items-center justify-between gap-4 data-[state=checked]:bg-muted" data-state={e.id === selectedEligibilityId ? 'checked' : 'unchecked'}>

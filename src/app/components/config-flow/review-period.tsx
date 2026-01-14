@@ -17,6 +17,10 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useFirestore } from '@/firebase';
+import { collection, doc, Timestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+
 
 interface ReviewPeriodProps extends StepProps {
     selectedReviewPeriodId?: string;
@@ -30,6 +34,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState<ReviewPeriodType | null>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   useEffect(() => {
     if (editingPeriod) {
@@ -64,14 +69,25 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
       return;
     }
 
+    const periodData = { 
+        name, 
+        startDate: Timestamp.fromDate(startDate), 
+        endDate: Timestamp.fromDate(endDate),
+        status: editingPeriod?.status || 'Active'
+    };
+
     if (editingPeriod) {
-      const updatedPeriod = { ...editingPeriod, name, startDate, endDate };
-      dispatch({ type: 'UPDATE_REVIEW_PERIOD', payload: updatedPeriod });
+      const docRef = doc(firestore, 'review_periods', editingPeriod.id);
+      updateDocumentNonBlocking(docRef, periodData);
       toast({ title: 'Success', description: `Review period "${name}" has been updated.` });
     } else {
-      const newPeriod = { id: `rp-${Date.now()}`, name, startDate, endDate, status: 'Active' as const };
-      dispatch({ type: 'ADD_REVIEW_PERIOD', payload: newPeriod });
-      setSelectedReviewPeriodId(newPeriod.id);
+      const collRef = collection(firestore, 'review_periods');
+      const promise = addDocumentNonBlocking(collRef, periodData);
+      promise.then(docRef => {
+        if(docRef?.id) {
+          setSelectedReviewPeriodId(docRef.id);
+        }
+      });
       toast({ title: 'Success', description: `Review period "${name}" has been created.` });
       onComplete();
     }
@@ -80,7 +96,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
   };
 
   const handleDelete = (id: string) => {
-    dispatch({ type: 'DELETE_REVIEW_PERIOD', payload: id });
+    deleteDocumentNonBlocking(doc(firestore, 'review_periods', id));
     toast({ title: 'Success', description: 'Review period has been deleted.' });
     if (id === selectedReviewPeriodId) {
       setSelectedReviewPeriodId('');
@@ -89,7 +105,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
   
   const handleToggleStatus = (period: ReviewPeriodType) => {
     const newStatus = period.status === 'Active' ? 'Inactive' : 'Active';
-    dispatch({ type: 'UPDATE_REVIEW_PERIOD', payload: { ...period, status: newStatus } });
+    updateDocumentNonBlocking(doc(firestore, 'review_periods', period.id), { status: newStatus });
     toast({ title: 'Success', description: `Period status set to ${newStatus}.` });
   };
 
@@ -99,7 +115,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
   };
 
   const isPeriodInUse = (id: string) => {
-    return state.goalPlans.some(gp => gp.reviewPeriodId === id) || state.performanceDocuments.some(pd => pd.reviewPeriodId === id);
+    return state.goalPlans.some(gp => gp.reviewPeriodId === id) || state.performanceCycles.some(pc => pc.reviewPeriodId === id);
   };
 
   return (
@@ -131,7 +147,7 @@ export function ReviewPeriod({ state, dispatch, onComplete, selectedReviewPeriod
                     </TableHeader>
                     <TableBody>
                     {state.reviewPeriods.length > 0 ? (
-                        state.reviewPeriods.map((period) => {
+                        (state.reviewPeriods as ReviewPeriodType[]).map((period) => {
                         const inUse = isPeriodInUse(period.id);
                         return (
                             <TableRow key={period.id} data-state={period.id === selectedReviewPeriodId ? 'selected' : 'unselected'}>
