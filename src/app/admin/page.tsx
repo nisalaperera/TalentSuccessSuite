@@ -152,7 +152,7 @@ export default function AdminPage() {
       steps: [
         {
           id: 'item-8',
-          title: 'Performance Cycle Document',
+          title: 'Performance Documents',
           content: <PerformanceDocument state={state} dispatch={dispatch} onComplete={() => {}} />
         }
       ]
