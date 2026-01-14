@@ -38,22 +38,25 @@ const seedData = async (firestore: any) => {
         const rpRef2 = doc(collection(firestore, 'review_periods'));
         batch.set(rpRef2, { name: 'FY 2025-26', startDate: new Date('2025-01-01'), endDate: new Date('2025-12-31'), status: 'Active' });
 
-        // Performance Cycles
-        const pcRef1 = doc(collection(firestore, 'performance_cycles'));
-        batch.set(pcRef1, { name: 'Q1 2024 Check-in', reviewPeriodId: rpRef1.id, startDate: new Date('2024-01-01'), endDate: new Date('2024-03-31'), status: 'Active' });
-        
-        const pcRef2 = doc(collection(firestore, 'performance_cycles'));
-        batch.set(pcRef2, { name: 'Q2 2024 Check-in', reviewPeriodId: rpRef1.id, startDate: new Date('2024-04-01'), endDate: new Date('2024-06-30'), status: 'Active' });
-        
-        const pcRef3 = doc(collection(firestore, 'performance_cycles'));
-        batch.set(pcRef3, { name: 'Q1 2025 Check-in', reviewPeriodId: rpRef2.id, startDate: new Date('2025-01-01'), endDate: new Date('2025-03-31'), status: 'Active' });
-
         // Goal Plans
         const gpRef1 = doc(collection(firestore, 'goal_plans'));
         batch.set(gpRef1, { name: 'FY25 Engineering Goals', reviewPeriodId: rpRef1.id, status: 'Active' });
         
         const gpRef2 = doc(collection(firestore, 'goal_plans'));
         batch.set(gpRef2, { name: 'FY26 Engineering Goals', reviewPeriodId: rpRef2.id, status: 'Active' });
+        
+        const gpRef3 = doc(collection(firestore, 'goal_plans'));
+        batch.set(gpRef3, { name: 'FY25 Sales Goals', reviewPeriodId: rpRef1.id, status: 'Active' });
+
+        // Performance Cycles
+        const pcRef1 = doc(collection(firestore, 'performance_cycles'));
+        batch.set(pcRef1, { name: 'Q1 2024 Check-in', reviewPeriodId: rpRef1.id, goalPlanId: gpRef1.id, startDate: new Date('2024-01-01'), endDate: new Date('2024-03-31'), status: 'Active' });
+        
+        const pcRef2 = doc(collection(firestore, 'performance_cycles'));
+        batch.set(pcRef2, { name: 'Q2 2024 Check-in', reviewPeriodId: rpRef1.id, goalPlanId: gpRef1.id, startDate: new Date('2024-04-01'), endDate: new Date('2024-06-30'), status: 'Active' });
+        
+        const pcRef3 = doc(collection(firestore, 'performance_cycles'));
+        batch.set(pcRef3, { name: 'Q1 2025 Check-in', reviewPeriodId: rpRef2.id, goalPlanId: gpRef2.id, startDate: new Date('2025-01-01'), endDate: new Date('2025-03-31'), status: 'Active' });
 
         // Performance Templates
         const ptRef1 = doc(collection(firestore, 'performance_templates'));
@@ -109,14 +112,14 @@ const seedData = async (firestore: any) => {
                 for (const department of departments) {
                     for (const entity of entities) {
                         const personNumber = String(personNumberCounter++);
-                        const firstName = `User${'\'\'\''}personNumber${'\'\'\''}`;
+                        const firstName = `User${personNumber}`;
                         const lastName = `Test`;
                         employeeShells.push({
                             personNumber,
-                            personEmail: `${'\'\'\''}firstName${'\'\'\''}.${'\'\'\''}lastName${'\'\'\''}@example.com`.toLowerCase(),
+                            personEmail: `${firstName}.${lastName}@example.com`.toLowerCase(),
                             firstName,
                             lastName,
-                            designation: `Sr. ${'\'\'\''}department.slice(0, 4)${'\'\'\''}`,
+                            designation: `Sr. ${department.slice(0, 4)}`,
                             personType,
                             department,
                             entity,
