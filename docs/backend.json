@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "ReviewPeriod": {
@@ -167,8 +168,7 @@
       "description": "Combines all previously defined components to create a live performance document.",
       "properties": {
         "name": { "type": "string" },
-        "reviewPeriodId": { "type": "string" },
-        "goalPlanId": { "type": "string" },
+        "performanceCycleId": { "type": "string" },
         "performanceTemplateId": { "type": "string" },
         "sectionIds": { "type": "array", "items": { "type": "string" } },
         "evaluationFlowId": { "type": "string" },
@@ -178,7 +178,7 @@
         "managerCommentsEnabled": { "type": "boolean" },
         "employeeCommentsEnabled": { "type": "boolean" }
       },
-      "required": ["name", "reviewPeriodId", "goalPlanId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
+      "required": ["name", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
     },
     "Employee": {
       "title": "Employee",

@@ -7,7 +7,7 @@ import { DataTableColumnHeader } from '@/app/components/data-table/data-table-co
 import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
 
 type ColumnsConfig = {
-    getLookUpName: (type: 'reviewPeriod' | 'goalPlan' | 'performanceTemplate', id: string) => string;
+    getLookUpName: (type: 'performanceCycle' | 'performanceTemplate', id: string) => string;
 }
 
 export const columns = ({ getLookUpName }: ColumnsConfig): ColumnDef<PerformanceDocument>[] => [
@@ -16,9 +16,9 @@ export const columns = ({ getLookUpName }: ColumnsConfig): ColumnDef<Performance
         header: ({ column }) => <DataTableColumnHeader column={column} title="Document Name" />,
     },
     {
-        accessorKey: 'reviewPeriodId',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Review Period" />,
-        cell: ({ row }) => getLookUpName('reviewPeriod', row.getValue('reviewPeriodId')),
+        accessorKey: 'performanceCycleId',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Performance Cycle" />,
+        cell: ({ row }) => getLookUpName('performanceCycle', row.getValue('performanceCycleId')),
     },
     {
         accessorKey: 'performanceTemplateId',

@@ -112,8 +112,7 @@ export type Eligibility = {
 export type PerformanceDocument = {
   id: string;
   name: string;
-  reviewPeriodId: string;
-  goalPlanId: string;
+  performanceCycleId: string;
   performanceTemplateId: string;
   sectionIds: string[];
   evaluationFlowId: string;
