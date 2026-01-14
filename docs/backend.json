@@ -185,12 +185,13 @@
         "properties": {
             "performanceDocumentId": { "type": "string" },
             "employeeId": { "type": "string" },
+            "goalPlanId": { "type": "string" },
             "performanceCycleId": { "type": "string" },
             "performanceTemplateId": { "type": "string" },
             "evaluationFlowId": { "type": "string" },
             "status": { "type": "string", "enum": ["Not Started", "In Progress", "Completed"] }
         },
-        "required": ["performanceDocumentId", "employeeId", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "status"]
+        "required": ["performanceDocumentId", "employeeId", "goalPlanId", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "status"]
     },
     "Employee": {
       "title": "Employee",
@@ -266,3 +267,5 @@
     }
   }
 }
+
+    

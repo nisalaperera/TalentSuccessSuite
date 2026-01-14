@@ -8,7 +8,7 @@ import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, GoalPlan } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -32,6 +32,9 @@ function EmployeeDocumentsContent() {
     
     const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
     const { data: performanceTemplates } = useCollection<PerformanceTemplate>(performanceTemplatesQuery);
+
+    const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
+    const { data: goalPlans } = useCollection<GoalPlan>(goalPlansQuery);
 
     const cycleFilter = searchParams.get('cycleId');
     const employeeFilter = searchParams.get('employeeId');
@@ -64,7 +67,9 @@ function EmployeeDocumentsContent() {
     
     const getTemplateName = (id: string) => performanceTemplates?.find(t => t.id === id)?.name || 'N/A';
 
-    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName }), [employees, performanceCycles, reviewPeriods, performanceTemplates]);
+    const getGoalPlanName = (id: string) => goalPlans?.find(gp => gp.id === id)?.name || 'N/A';
+
+    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getGoalPlanName }), [employees, performanceCycles, reviewPeriods, performanceTemplates, goalPlans]);
 
     const filteredData = useMemo(() => {
         if (!employeeDocuments) return [];
@@ -91,6 +96,7 @@ function EmployeeDocumentsContent() {
                         <SelectValue placeholder="Filter by Performance Cycle..." />
                     </SelectTrigger>
                     <SelectContent>
+                        <SelectItem value="all">All Cycles</SelectItem>
                         {(performanceCycles || []).map(cycle => (
                             <SelectItem key={cycle.id} value={cycle.id}>{getCycleName(cycle.id)}</SelectItem>
                         ))}
@@ -101,6 +107,7 @@ function EmployeeDocumentsContent() {
                         <SelectValue placeholder="Filter by Employee..." />
                     </SelectTrigger>
                     <SelectContent>
+                         <SelectItem value="all">All Employees</SelectItem>
                         {(employees || []).map(emp => (
                             <SelectItem key={emp.id} value={emp.id}>{getEmployeeName(emp.id)}</SelectItem>
                         ))}
@@ -127,3 +134,5 @@ export default function EmployeeDocumentsPage() {
         </Suspense>
     )
 }
+
+    

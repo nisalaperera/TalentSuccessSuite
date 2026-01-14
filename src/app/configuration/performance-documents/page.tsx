@@ -158,6 +158,7 @@ export default function PerformanceDocumentsPage() {
                 performanceDocumentId: perfDoc.id,
                 employeeId: emp.id,
                 performanceCycleId: perfDoc.performanceCycleId,
+                goalPlanId: perfDoc.goalPlanId,
                 performanceTemplateId: perfDoc.performanceTemplateId,
                 evaluationFlowId: perfDoc.evaluationFlowId,
                 status: 'Not Started',
@@ -233,3 +234,5 @@ export default function PerformanceDocumentsPage() {
         </div>
     );
 }
+
+    
