@@ -70,6 +70,19 @@ function ReviewPeriodsContent() {
           return;
         }
 
+        const isDuplicate = (reviewPeriods || []).some(
+            (period) => period.name.toLowerCase() === name.toLowerCase() && period.id !== editingPeriod?.id
+        );
+
+        if (isDuplicate) {
+            toast({
+                title: 'Duplicate Name',
+                description: `A review period with the name "${name}" already exists.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const periodData = { 
             name, 
             startDate: Timestamp.fromDate(startDate), 
