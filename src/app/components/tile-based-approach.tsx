@@ -62,10 +62,10 @@ export function TileBasedApproach({ state }: TileBasedProps) {
             ]
         },
         {
-            groupTitle: "Performance Document",
+            groupTitle: "Performance Cycle Config",
             items: [
                  {
-                    title: "Performance Documents",
+                    title: "Performance Cycle Documents",
                     description: "Assemble and create the final performance documents.",
                     href: "/configuration/performance-documents"
                 }
@@ -78,6 +78,11 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     title: "Employees",
                     description: "Manage employee records.",
                     href: "/configuration/employees"
+                },
+                {
+                    title: "Employee Documents",
+                    description: "View and manage launched employee documents.",
+                    href: "/configuration/employee-documents"
                 }
             ]
         }
