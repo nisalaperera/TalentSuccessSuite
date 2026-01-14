@@ -3,13 +3,13 @@
 
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGlobalState } from "@/app/context/global-state-provider";
 import { useMemo } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
-import type { PerformanceCycle, ReviewPeriod } from '@/lib/types';
+import type { PerformanceCycle, ReviewPeriod, Employee } from '@/lib/types';
+import { Combobox } from "@/components/ui/combobox";
 
 
 function GlobalFilters() {
@@ -21,23 +21,36 @@ function GlobalFilters() {
     
     const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
     const { data: performanceCycles } = useCollection<PerformanceCycle>(performanceCyclesQuery);
+    
+    const employeesQuery = useMemoFirebase(() => collection(firestore, 'employees'), [firestore]);
+    const { data: employees } = useCollection<Employee>(employeesQuery);
 
     const getReviewPeriodName = (id: string) => {
         return reviewPeriods?.find(p => p.id === id)?.name || 'N/A';
     }
 
-    const activeCycles = useMemo(() => (performanceCycles || []).filter(p => p.status === 'Active'), [performanceCycles])
+    const activeCycles = useMemo(() => (performanceCycles || []).filter(p => p.status === 'Active'), [performanceCycles]);
+    
+    const employeeOptions = useMemo(() => {
+        if (!employees) return [];
+        return employees.map(emp => ({
+            value: emp.personNumber,
+            label: `${emp.firstName} ${emp.lastName}`,
+        }));
+    }, [employees]);
 
 
     return (
         <div className="flex items-center gap-4">
-             <Input 
-                id="person-number"
-                placeholder="Enter person number" 
+             <Combobox
+                options={employeeOptions}
                 value={personNumber}
-                onChange={(e) => setPersonNumber(e.target.value)}
-                className="w-48"
-            />
+                onChange={setPersonNumber}
+                placeholder="Select an employee..."
+                searchPlaceholder="Search employees..."
+                noResultsText="No employees found."
+                triggerClassName="w-64"
+             />
              <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}>
                 <SelectTrigger id="performance-cycle" className="w-64">
                     <SelectValue placeholder="Select a performance cycle" />
@@ -81,7 +94,7 @@ export function Header() {
             </div>
           </Link>
         </div>
-         {isPerformanceSection && <GlobalFilters />}
+         {(isPerformanceSection || pathname.startsWith('/employee')) && <GlobalFilters />}
       </div>
     </header>
   );
