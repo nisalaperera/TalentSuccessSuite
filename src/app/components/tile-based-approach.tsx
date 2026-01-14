@@ -65,7 +65,7 @@ export function TileBasedApproach({ state }: TileBasedProps) {
             groupTitle: "Performance Cycle Config",
             items: [
                  {
-                    title: "Performance Cycle Documents",
+                    title: "Performance Documents",
                     description: "Assemble and create the final performance documents.",
                     href: "/configuration/performance-documents"
                 }

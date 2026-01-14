@@ -112,7 +112,7 @@ export default function ConfigurationPage() {
       steps: [
         {
           id: 'item-8',
-          title: 'Performance Cycle Documents',
+          title: 'Performance Documents',
           content: <PerformanceDocument state={state} dispatch={dispatch} onComplete={() => {}} />
         }
       ]
