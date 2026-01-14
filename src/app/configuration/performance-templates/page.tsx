@@ -66,6 +66,19 @@ function PerformanceTemplatesContent() {
             return;
         }
 
+        const isDuplicate = (performanceTemplates || []).some(
+            (template) => template.name.toLowerCase() === name.toLowerCase() && template.id !== editingTemplate?.id
+        );
+
+        if (isDuplicate) {
+            toast({
+                title: 'Duplicate Name',
+                description: `A performance template with the name "${name}" already exists.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const templateData = {
             name,
             description,

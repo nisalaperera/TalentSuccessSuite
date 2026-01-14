@@ -92,6 +92,19 @@ export default function PerformanceDocumentsPage() {
           return;
         }
 
+        const isDuplicate = (performanceDocuments || []).some(
+            (doc) => doc.name.toLowerCase() === name.toLowerCase()
+        );
+
+        if (isDuplicate) {
+            toast({
+                title: 'Duplicate Name',
+                description: `A performance document with the name "${name}" already exists.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const allSectionIdsForTemplate = (performanceTemplateSections || [])
             .filter(s => s.performanceTemplateId === performanceTemplateId)
             .map(s => s.id);

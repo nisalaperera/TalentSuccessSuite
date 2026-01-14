@@ -115,6 +115,19 @@ function PerformanceCyclesContent() {
             return;
         }
         
+        const isDuplicate = (performanceCycles || []).some(
+            (cycle) => cycle.name.toLowerCase() === name.toLowerCase() && cycle.id !== editingCycle?.id && cycle.reviewPeriodId === reviewPeriodId
+        );
+
+        if (isDuplicate) {
+            toast({
+                title: 'Duplicate Name',
+                description: `A performance cycle with the name "${name}" already exists in this review period.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const overlappingCycle = (performanceCycles || []).find(cycle => {
             if (cycle.reviewPeriodId !== reviewPeriodId) return false;
             if (editingCycle && cycle.id === editingCycle.id) return false;

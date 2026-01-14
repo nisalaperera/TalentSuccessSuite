@@ -72,6 +72,19 @@ function GoalPlansContent() {
             return;
         }
 
+        const isDuplicate = (goalPlans || []).some(
+            (plan) => plan.name.toLowerCase() === name.toLowerCase() && plan.id !== editingPlan?.id && plan.reviewPeriodId === reviewPeriodId
+        );
+
+        if (isDuplicate) {
+            toast({
+                title: 'Duplicate Name',
+                description: `A goal plan with the name "${name}" already exists for this review period.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const planData = {
             name,
             reviewPeriodId,

@@ -89,6 +89,19 @@ export default function EvaluationFlowsPage() {
             return;
         }
 
+        const isDuplicate = (evaluationFlows || []).some(
+            (flow) => flow.name.toLowerCase() === flowName.toLowerCase() && flow.id !== editingFlow?.id
+        );
+
+        if (isDuplicate) {
+            toast({
+                title: 'Duplicate Name',
+                description: `An evaluation flow with the name "${flowName}" already exists.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const finalSteps: EvaluationStep[] = steps.map((s, index) => ({ 
             ...s, 
             sequence: s.sequence!, 

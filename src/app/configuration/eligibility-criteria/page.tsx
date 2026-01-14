@@ -94,6 +94,19 @@ export default function EligibilityCriteriaPage() {
             return;
         }
 
+        const isDuplicate = (eligibilityCriteria || []).some(
+            (criteria) => criteria.name.toLowerCase() === eligibilityName.toLowerCase() && criteria.id !== editingEligibility?.id
+        );
+
+        if (isDuplicate) {
+            toast({
+                title: 'Duplicate Name',
+                description: `An eligibility criteria with the name "${eligibilityName}" already exists.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const eligibilityData = {
             name: eligibilityName,
             rules,
