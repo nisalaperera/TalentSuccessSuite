@@ -16,13 +16,13 @@ export default function Home() {
     {
       title: 'Goal Management',
       description: 'View your goals, submit self-evaluations, and track your performance.',
-      href: '/employee',
+      href: '/goal',
       icon: <Target className="h-12 w-12 text-primary" />,
     },
     {
       title: 'Performance Management',
       description: 'Evaluate your team, provide feedback, and monitor performance progress.',
-      href: '/manager',
+      href: '/performance',
       icon: <GanttChartSquare className="h-12 w-12 text-primary" />,
     },
   ];

@@ -3,10 +3,62 @@
 
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useGlobalState } from "@/app/context/global-state-provider";
+import { useMemo } from "react";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import type { PerformanceCycle, ReviewPeriod } from '@/lib/types';
+
+
+function GlobalFilters() {
+    const { personNumber, setPersonNumber, performanceCycleId, setPerformanceCycleId } = useGlobalState();
+    const firestore = useFirestore();
+
+    const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
+    const { data: reviewPeriods } = useCollection<ReviewPeriod>(reviewPeriodsQuery);
+    
+    const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
+    const { data: performanceCycles } = useCollection<PerformanceCycle>(performanceCyclesQuery);
+
+    const getReviewPeriodName = (id: string) => {
+        return reviewPeriods?.find(p => p.id === id)?.name || 'N/A';
+    }
+
+    const activeCycles = useMemo(() => (performanceCycles || []).filter(p => p.status === 'Active'), [performanceCycles])
+
+
+    return (
+        <div className="flex items-center gap-4">
+             <Input 
+                id="person-number"
+                placeholder="Enter person number" 
+                value={personNumber}
+                onChange={(e) => setPersonNumber(e.target.value)}
+                className="w-48"
+            />
+             <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}>
+                <SelectTrigger id="performance-cycle" className="w-64">
+                    <SelectValue placeholder="Select a performance cycle" />
+                </SelectTrigger>
+                <SelectContent>
+                    {activeCycles.map(p => 
+                        <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({getReviewPeriodName(p.reviewPeriodId)})
+                        </SelectItem>
+                    )}
+                </SelectContent>
+            </Select>
+        </div>
+    )
+}
+
 
 export function Header() {
   const pathname = usePathname();
   const isAdminSection = pathname.startsWith('/admin') || pathname.startsWith('/configuration');
+  const isPerformanceSection = pathname.startsWith('/performance') || pathname.startsWith('/goal');
 
   if (pathname === '/') {
     return null; // No header on the main landing page
@@ -15,18 +67,21 @@ export function Header() {
   return (
     <header className="p-4 border-b sticky top-0 bg-background/95 backdrop-blur z-10">
       <div className="container mx-auto flex justify-between items-center">
-        <div>
+        <div className="flex items-center gap-8">
           <Link href="/">
-            <h1 className="text-2xl font-headline font-bold text-primary hover:text-primary/90">
-              Talent Suite
-            </h1>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-headline font-bold text-primary hover:text-primary/90">
+                Talent Suite
+              </h1>
+              {isAdminSection && (
+                <p className="text-sm text-foreground/80 font-body hidden sm:block">
+                    Seamless Performance Management Configuration
+                </p>
+              )}
+            </div>
           </Link>
-          {isAdminSection && (
-             <p className="text-sm text-foreground/80 font-body hidden sm:block">
-                Seamless Performance Management Configuration
-              </p>
-          )}
         </div>
+         {isPerformanceSection && <GlobalFilters />}
       </div>
     </header>
   );
