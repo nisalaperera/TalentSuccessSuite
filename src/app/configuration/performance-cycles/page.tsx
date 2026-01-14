@@ -8,7 +8,7 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useToast } from '@/hooks/use-toast';
-import type { PerformanceCycle, ReviewPeriod, GoalPlan } from '@/lib/types';
+import type { PerformanceCycle, ReviewPeriod, GoalPlan, PerformanceDocument } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,10 @@ function PerformanceCyclesContent() {
     
     const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
     const { data: goalPlans } = useCollection<GoalPlan>(goalPlansQuery);
+    
+    const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: performanceDocuments } = useCollection<PerformanceDocument>(performanceDocumentsQuery);
+
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingCycle, setEditingCycle] = useState<PerformanceCycle | null>(null);
@@ -145,6 +149,10 @@ function PerformanceCyclesContent() {
         handleCloseDialog();
     };
 
+    const isCycleInUse = (id: string) => {
+        return (performanceDocuments || []).some(pd => pd.performanceCycleId === id && pd.isLaunched);
+    };
+
     const handleDelete = (id: string) => {
         const docRef = doc(firestore, 'performance_cycles', id);
         deleteDocumentNonBlocking(docRef);
@@ -161,7 +169,7 @@ function PerformanceCyclesContent() {
     const getReviewPeriodName = (id: string) => reviewPeriods?.find(p => p.id === id)?.name || 'N/A';
     const getGoalPlanName = (id: string) => goalPlans?.find(p => p.id === id)?.name || 'N/A';
     
-    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, getReviewPeriodName, getGoalPlanName }), [reviewPeriods, goalPlans]);
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, getReviewPeriodName, getGoalPlanName, isCycleInUse }), [reviewPeriods, goalPlans, performanceDocuments]);
 
     const filteredData = useMemo(() => {
         if (!performanceCycles) return [];

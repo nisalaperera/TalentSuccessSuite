@@ -57,6 +57,8 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
   customActions = []
 }: DataTableRowActionsProps<TData>) {
   const data = row.original;
+  const hasCustomActions = customActions.length > 0;
+  const hasStandardActions = onEdit || (isToggleable && onToggleStatus);
 
   return (
     <div className="flex items-center gap-2 justify-end">
@@ -78,15 +80,6 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
             </DropdownMenuItem>
           )}
 
-          {customActions.map((action, index) => (
-             <DropdownMenuItem key={index} onClick={() => action.onClick(data)}>
-                {action.icon}
-                {action.label}
-             </DropdownMenuItem>
-          ))}
-          
-          {(onEdit || customActions.length > 0) && onToggleStatus && onDelete && <DropdownMenuSeparator />}
-          
           {isToggleable && onToggleStatus && (
             <DropdownMenuItem onClick={() => onToggleStatus(data)}>
               {data.status === 'Active' ? (
@@ -103,9 +96,18 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
             </DropdownMenuItem>
           )}
 
+          {(hasStandardActions && hasCustomActions) && <DropdownMenuSeparator />}
+          
+          {customActions.map((action, index) => (
+             <DropdownMenuItem key={index} onClick={() => action.onClick(data)}>
+                {action.icon}
+                {action.label}
+             </DropdownMenuItem>
+          ))}
+          
+          {( (hasStandardActions || hasCustomActions) && onDelete) && <DropdownMenuSeparator />}
+
           {onDelete && (
-            <>
-            <DropdownMenuSeparator />
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                 <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm text-destructive outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
@@ -133,7 +135,6 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
                     </AlertDialogContent>
                 )}
             </AlertDialog>
-            </>
           )}
 
         </DropdownMenuContent>

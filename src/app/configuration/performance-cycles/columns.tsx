@@ -13,9 +13,10 @@ type ColumnsConfig = {
     onToggleStatus: (cycle: PerformanceCycle) => void;
     getReviewPeriodName: (id: string) => string;
     getGoalPlanName: (id: string) => string;
+    isCycleInUse: (id: string) => boolean;
 }
 
-export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName, getGoalPlanName }: ColumnsConfig): ColumnDef<PerformanceCycle>[] => [
+export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName, getGoalPlanName, isCycleInUse }: ColumnsConfig): ColumnDef<PerformanceCycle>[] => [
     {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -58,14 +59,18 @@ export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName,
     {
         id: 'actions',
         cell: ({ row }) => {
+            const cycle = row.original;
+            const inUse = isCycleInUse(cycle.id);
             return (
                 <DataTableRowActions
                     row={row}
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onToggleStatus={onToggleStatus}
-                    canEdit={true}
-                    canDelete={true}
+                    canEdit={!inUse}
+                    canDelete={!inUse}
+                    editTooltip="Cannot edit a cycle that is in use."
+                    deleteTooltip="Cannot delete a cycle that is in use."
                 />
             )
         },
