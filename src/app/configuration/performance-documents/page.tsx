@@ -6,7 +6,7 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useToast } from '@/hooks/use-toast';
-import type { PerformanceDocument as PerfDocType, ReviewPeriod, PerformanceCycle, Employee, PerformanceTemplate, EvaluationFlow, Eligibility, PerformanceTemplateSection, EmployeePerformanceDocument } from '@/lib/types';
+import type { PerformanceDocument as PerfDocType, ReviewPeriod, PerformanceCycle, Employee, PerformanceTemplate, EvaluationFlow, Eligibility, PerformanceTemplateSection, EmployeePerformanceDocument, GoalPlan } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,9 @@ export default function PerformanceDocumentsPage() {
     
     const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
     const { data: performanceCycles } = useCollection<PerformanceCycle>(performanceCyclesQuery);
+
+    const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
+    const { data: goalPlans } = useCollection<GoalPlan>(goalPlansQuery);
 
     const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
     const { data: performanceTemplates } = useCollection<PerformanceTemplate>(performanceTemplatesQuery);
@@ -51,6 +54,7 @@ export default function PerformanceDocumentsPage() {
     // Form state
     const [name, setName] = useState('');
     const [performanceCycleId, setPerformanceCycleId] = useState<string>();
+    const [goalPlanId, setGoalPlanId] = useState<string>();
     const [performanceTemplateId, setPerformanceTemplateId] = useState<string>();
     const [evaluationFlowId, setEvaluationFlowId] = useState<string>();
     const [eligibilityId, setEligibilityId] = useState<string>();
@@ -58,6 +62,7 @@ export default function PerformanceDocumentsPage() {
     const resetForm = () => {
         setName('');
         setPerformanceCycleId(undefined);
+        setGoalPlanId(undefined);
         setPerformanceTemplateId(undefined);
         setEvaluationFlowId(undefined);
         setEligibilityId(undefined);
@@ -72,7 +77,12 @@ export default function PerformanceDocumentsPage() {
         setIsDialogOpen(false);
     };
 
-    const isCreateDisabled = !name || !performanceCycleId || !performanceTemplateId || !evaluationFlowId || !eligibilityId;
+    const handlePerformanceCycleChange = (cycleId: string) => {
+        setPerformanceCycleId(cycleId);
+        setGoalPlanId(undefined); // Reset goal plan when cycle changes
+    }
+
+    const isCreateDisabled = !name || !performanceCycleId || !goalPlanId || !performanceTemplateId || !evaluationFlowId || !eligibilityId;
 
     const handleCreateDocument = () => {
         if (isCreateDisabled) {
@@ -87,6 +97,7 @@ export default function PerformanceDocumentsPage() {
         const newDoc: Omit<PerfDocType, 'id'> = {
           name,
           performanceCycleId: performanceCycleId!,
+          goalPlanId: goalPlanId!,
           performanceTemplateId: performanceTemplateId!,
           sectionIds: allSectionIdsForTemplate,
           evaluationFlowId: evaluationFlowId!,
@@ -179,6 +190,13 @@ export default function PerformanceDocumentsPage() {
         }
     }
     
+    const availableGoalPlans = useMemo(() => {
+        if (!performanceCycleId || !performanceCycles || !goalPlans) return [];
+        const selectedCycle = performanceCycles.find(c => c.id === performanceCycleId);
+        if (!selectedCycle) return [];
+        return goalPlans.filter(gp => gp.reviewPeriodId === selectedCycle.reviewPeriodId);
+    }, [performanceCycleId, performanceCycles, goalPlans]);
+
     const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria]);
 
     return (
@@ -199,7 +217,8 @@ export default function PerformanceDocumentsPage() {
                     <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                         <Input placeholder="Performance Document Name" value={name} onChange={e => setName(e.target.value)} />
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                            <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{(performanceCycles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({getLookUpName('reviewPeriod', p.reviewPeriodId)})</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={handlePerformanceCycleChange} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{(performanceCycles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({getLookUpName('reviewPeriod', p.reviewPeriodId)})</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={setGoalPlanId} value={goalPlanId} disabled={!performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Goal Plan"/></SelectTrigger><SelectContent>{availableGoalPlans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{(performanceTemplates || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{(evaluationFlows || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{(eligibilityCriteria || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>

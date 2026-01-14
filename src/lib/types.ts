@@ -115,6 +115,7 @@ export type PerformanceDocument = {
   id: string;
   name: string;
   performanceCycleId: string;
+  goalPlanId: string;
   performanceTemplateId: string;
   sectionIds: string[];
   evaluationFlowId: string;

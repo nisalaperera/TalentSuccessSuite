@@ -169,13 +169,14 @@
       "properties": {
         "name": { "type": "string" },
         "performanceCycleId": { "type": "string" },
+        "goalPlanId": { "type": "string" },
         "performanceTemplateId": { "type": "string" },
         "sectionIds": { "type": "array", "items": { "type": "string" } },
         "evaluationFlowId": { "type": "string" },
         "eligibilityId": { "type": "string" },
         "isLaunched": { "type": "boolean", "description": "Indicates if the document has been launched to employees."}
       },
-      "required": ["name", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
+      "required": ["name", "performanceCycleId", "goalPlanId", "performanceTemplateId", "evaluationFlowId", "eligibilityId"]
     },
     "EmployeePerformanceDocument": {
         "title": "EmployeePerformanceDocument",
