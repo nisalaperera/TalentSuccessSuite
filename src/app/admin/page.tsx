@@ -109,11 +109,11 @@ export default function AdminPage() {
       ]
     },
     {
-      groupTitle: "Performance Document",
+      groupTitle: "Performance Cycle Config",
       steps: [
         {
           id: 'item-8',
-          title: 'Performance Documents',
+          title: 'Performance Cycle Document',
           content: <PerformanceDocument state={state} dispatch={dispatch} onComplete={() => {}} />
         }
       ]
