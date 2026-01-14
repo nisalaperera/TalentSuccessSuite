@@ -28,7 +28,7 @@ const seedData = async (firestore: any) => {
     }
 
     if (shouldSeed) {
-        console.log("Re-seeding initial data as requested...");
+        console.log("Seeding initial data...");
         const batch = writeBatch(firestore);
 
         // Review Periods
