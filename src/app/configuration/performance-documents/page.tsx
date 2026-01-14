@@ -113,9 +113,24 @@ export default function PerformanceDocumentsPage() {
         }
 
         const eligibleEmployees = employees.filter(employee => {
+            // An employee is eligible if they do NOT match any of the exclusion rules.
             return !eligibility.rules.some(rule => {
-                const employeeValue = employee[rule.type.toLowerCase().replace(' ', '') as keyof Employee] as string;
-                return rule.values.includes(employeeValue);
+                let employeeValue: string | undefined;
+                // Map rule type to the corresponding employee property key.
+                switch (rule.type) {
+                    case 'Person Type':
+                        employeeValue = employee.personType;
+                        break;
+                    case 'Department':
+                        employeeValue = employee.department;
+                        break;
+                    case 'Legal Entity':
+                        employeeValue = employee.entity;
+                        break;
+                }
+                
+                // If the employee has a value for the rule's type, check if it's in the exclusion list.
+                return employeeValue ? rule.values.includes(employeeValue) : false;
             });
         });
 
