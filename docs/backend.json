@@ -39,11 +39,12 @@
         "properties": {
             "name": { "type": "string" },
             "reviewPeriodId": { "type": "string" },
+            "goalPlanId": { "type": "string" },
             "startDate": { "type": "string", "format": "date-time" },
             "endDate": { "type": "string", "format": "date-time" },
             "status": { "type": "string" }
         },
-        "required": ["name", "reviewPeriodId", "startDate", "endDate", "status"]
+        "required": ["name", "reviewPeriodId", "goalPlanId", "startDate", "endDate", "status"]
     },
     "GoalPlan": {
       "title": "GoalPlan",

@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useReducer, useState, useMemo } from 'react';
+import { useReducer, useState, useMemo, useEffect } from 'react';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -14,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Label } from '@/components/ui/label';
 
 
 export default function PerformanceDocumentsPage() {
@@ -59,6 +61,19 @@ export default function PerformanceDocumentsPage() {
     const [evaluationFlowId, setEvaluationFlowId] = useState<string>();
     const [eligibilityId, setEligibilityId] = useState<string>();
 
+    const selectedPerformanceCycle = useMemo(() => 
+        performanceCycles?.find(c => c.id === performanceCycleId),
+    [performanceCycleId, performanceCycles]);
+    
+    useEffect(() => {
+        if (selectedPerformanceCycle) {
+            setGoalPlanId(selectedPerformanceCycle.goalPlanId);
+        } else {
+            setGoalPlanId(undefined);
+        }
+    }, [selectedPerformanceCycle]);
+
+
     const resetForm = () => {
         setName('');
         setPerformanceCycleId(undefined);
@@ -76,11 +91,6 @@ export default function PerformanceDocumentsPage() {
     const handleCloseDialog = () => {
         setIsDialogOpen(false);
     };
-
-    const handlePerformanceCycleChange = (cycleId: string) => {
-        setPerformanceCycleId(cycleId);
-        setGoalPlanId(undefined); // Reset goal plan when cycle changes
-    }
 
     const isCreateDisabled = !name || !performanceCycleId || !goalPlanId || !performanceTemplateId || !evaluationFlowId || !eligibilityId;
 
@@ -178,7 +188,7 @@ export default function PerformanceDocumentsPage() {
         }
     };
 
-    const getLookUpName = (type: 'reviewPeriod' | 'performanceCycle' | 'performanceTemplate', id: string) => {
+    const getLookUpName = (type: 'reviewPeriod' | 'performanceCycle' | 'performanceTemplate' | 'goalPlan', id: string) => {
         switch(type) {
             case 'reviewPeriod': return reviewPeriods?.find(p => p.id === id)?.name || '';
             case 'performanceCycle':
@@ -187,17 +197,11 @@ export default function PerformanceDocumentsPage() {
                 const reviewPeriod = reviewPeriods?.find(p => p.id === cycle.reviewPeriodId);
                 return `${cycle.name} (${reviewPeriod?.name || 'N/A'})`;
             case 'performanceTemplate': return performanceTemplates?.find(p => p.id === id)?.name || '';
+            case 'goalPlan': return goalPlans?.find(p => p.id === id)?.name || '';
             default: return '';
         }
     }
     
-    const availableGoalPlans = useMemo(() => {
-        if (!performanceCycleId || !performanceCycles || !goalPlans) return [];
-        const selectedCycle = performanceCycles.find(c => c.id === performanceCycleId);
-        if (!selectedCycle) return [];
-        return goalPlans.filter(gp => gp.reviewPeriodId === selectedCycle.reviewPeriodId);
-    }, [performanceCycleId, performanceCycles, goalPlans]);
-
     const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria]);
 
     return (
@@ -218,8 +222,11 @@ export default function PerformanceDocumentsPage() {
                     <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
                         <Input placeholder="Performance Document Name" value={name} onChange={e => setName(e.target.value)} />
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                            <Select onValueChange={handlePerformanceCycleChange} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{(performanceCycles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({getLookUpName('reviewPeriod', p.reviewPeriodId)})</SelectItem>)}</SelectContent></Select>
-                            <Select onValueChange={setGoalPlanId} value={goalPlanId} disabled={!performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Goal Plan"/></SelectTrigger><SelectContent>{availableGoalPlans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
+                            <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{(performanceCycles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({getLookUpName('reviewPeriod', p.reviewPeriodId)})</SelectItem>)}</SelectContent></Select>
+                            <div className="space-y-2">
+                                <Label>Goal Plan</Label>
+                                <Input value={goalPlanId ? getLookUpName('goalPlan', goalPlanId) : 'Select a performance cycle first'} readOnly disabled />
+                            </div>
                             <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{(performanceTemplates || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{(evaluationFlows || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{(eligibilityCriteria || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>

@@ -1,6 +1,7 @@
 
 
 
+
 import { DocumentData } from "firebase/firestore";
 
 export type ReviewPeriod = {
@@ -15,6 +16,7 @@ export type PerformanceCycle = {
   id: string;
   name: string;
   reviewPeriodId: string;
+  goalPlanId: string;
   status: 'Active' | 'Inactive';
   startDate: Date;
   endDate: Date;

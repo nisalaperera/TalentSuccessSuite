@@ -12,9 +12,10 @@ type ColumnsConfig = {
     onDelete: (id: string) => void;
     onToggleStatus: (cycle: PerformanceCycle) => void;
     getReviewPeriodName: (id: string) => string;
+    getGoalPlanName: (id: string) => string;
 }
 
-export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName }: ColumnsConfig): ColumnDef<PerformanceCycle>[] => [
+export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName, getGoalPlanName }: ColumnsConfig): ColumnDef<PerformanceCycle>[] => [
     {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -30,6 +31,13 @@ export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName 
         filterFn: (row, id, value) => {
             return value.includes(row.getValue(id))
         },
+    },
+    {
+        accessorKey: 'goalPlanId',
+        header: ({ column }) => (
+            <DataTableColumnHeader column={column} title="Goal Plan" />
+        ),
+        cell: ({ row }) => getGoalPlanName(row.getValue('goalPlanId')),
     },
     {
         accessorKey: 'startDate',
@@ -63,3 +71,5 @@ export const columns = ({ onEdit, onDelete, onToggleStatus, getReviewPeriodName 
         },
     },
 ];
+
+    

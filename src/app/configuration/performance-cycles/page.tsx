@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useReducer, useState, useEffect, Suspense, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useToast } from '@/hooks/use-toast';
-import type { PerformanceCycle, ReviewPeriod } from '@/lib/types';
+import type { PerformanceCycle, ReviewPeriod, GoalPlan } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,6 @@ import { DatePicker } from '@/app/components/config-flow/shared/date-picker';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, Timestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { DocumentData } from 'firebase/firestore';
 
 
 function PerformanceCyclesContent() {
@@ -31,6 +31,9 @@ function PerformanceCyclesContent() {
     
     const performanceCyclesQuery = useMemoFirebase(() => collection(firestore, 'performance_cycles'), [firestore]);
     const { data: performanceCycles } = useCollection<PerformanceCycle>(performanceCyclesQuery);
+    
+    const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
+    const { data: goalPlans } = useCollection<GoalPlan>(goalPlansQuery);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingCycle, setEditingCycle] = useState<PerformanceCycle | null>(null);
@@ -39,25 +42,39 @@ function PerformanceCyclesContent() {
     // Form state
     const [name, setName] = useState('');
     const [reviewPeriodId, setReviewPeriodId] = useState('');
+    const [goalPlanId, setGoalPlanId] = useState('');
     const [startDate, setStartDate] = useState<Date>();
     const [endDate, setEndDate] = useState<Date>();
     
     const filterReviewPeriod = searchParams.get('reviewPeriodId') || '';
 
+    const availableGoalPlans = useMemo(() => {
+        if (!reviewPeriodId || !goalPlans) return [];
+        return goalPlans.filter(gp => gp.reviewPeriodId === reviewPeriodId && gp.status === 'Active');
+    }, [reviewPeriodId, goalPlans]);
+
     useEffect(() => {
         if (editingCycle) {
             setName(editingCycle.name);
             setReviewPeriodId(editingCycle.reviewPeriodId);
+            setGoalPlanId(editingCycle.goalPlanId);
             setStartDate(editingCycle.startDate instanceof Timestamp ? editingCycle.startDate.toDate() : editingCycle.startDate);
             setEndDate(editingCycle.endDate instanceof Timestamp ? editingCycle.endDate.toDate() : editingCycle.endDate);
         } else {
             setName('');
             setReviewPeriodId(filterReviewPeriod || '');
+            setGoalPlanId('');
             setStartDate(undefined);
             setEndDate(undefined);
         }
     }, [editingCycle, filterReviewPeriod]);
     
+    // When reviewPeriodId changes in the form, reset goalPlanId if it's no longer valid
+    useEffect(() => {
+        if (reviewPeriodId && !availableGoalPlans.find(gp => gp.id === goalPlanId)) {
+            setGoalPlanId('');
+        }
+    }, [reviewPeriodId, availableGoalPlans, goalPlanId]);
 
     const handleOpenDialog = (cycle: PerformanceCycle | null = null) => {
         setEditingCycle(cycle);
@@ -70,7 +87,7 @@ function PerformanceCyclesContent() {
     };
 
     const handleSave = () => {
-        if (!name || !reviewPeriodId || !startDate || !endDate) {
+        if (!name || !reviewPeriodId || !goalPlanId || !startDate || !endDate) {
             toast({ title: 'Missing Information', description: 'Please fill out all fields.', variant: 'destructive' });
             return;
         }
@@ -110,6 +127,7 @@ function PerformanceCyclesContent() {
         const cycleData = {
             name,
             reviewPeriodId,
+            goalPlanId,
             startDate: Timestamp.fromDate(startDate),
             endDate: Timestamp.fromDate(endDate),
             status: editingCycle?.status || 'Active'
@@ -141,8 +159,9 @@ function PerformanceCyclesContent() {
     };
     
     const getReviewPeriodName = (id: string) => reviewPeriods?.find(p => p.id === id)?.name || 'N/A';
+    const getGoalPlanName = (id: string) => goalPlans?.find(p => p.id === id)?.name || 'N/A';
     
-    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, getReviewPeriodName }), [reviewPeriods]);
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, getReviewPeriodName, getGoalPlanName }), [reviewPeriods, goalPlans]);
 
     const filteredData = useMemo(() => {
         if (!performanceCycles) return [];
@@ -199,6 +218,12 @@ function PerformanceCyclesContent() {
                                 {(reviewPeriods || []).filter(p => p.status === 'Active').map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
+                        <Select onValueChange={setGoalPlanId} value={goalPlanId} disabled={!reviewPeriodId}>
+                            <SelectTrigger><SelectValue placeholder="Select Goal Plan"/></SelectTrigger>
+                            <SelectContent>
+                                {availableGoalPlans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                         <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
                         <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" />
                     </div>
@@ -219,3 +244,5 @@ export default function PerformanceCyclesPage() {
         </Suspense>
     )
 }
+
+    
