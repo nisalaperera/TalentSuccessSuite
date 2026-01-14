@@ -20,14 +20,14 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     href: "/configuration/review-periods"
                 },
                 {
-                    title: "Performance Cycles",
-                    description: "Define the specific evaluation cycles within a review period.",
-                    href: "/configuration/performance-cycles"
-                },
-                {
                     title: "Goal Plans",
                     description: "Define goal containers and link them to review periods.",
                     href: "/configuration/goal-plans"
+                },
+                {
+                    title: "Performance Cycles",
+                    description: "Define the specific evaluation cycles within a review period.",
+                    href: "/configuration/performance-cycles"
                 },
             ]
         },
