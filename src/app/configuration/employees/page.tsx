@@ -29,7 +29,7 @@ function EmployeesContent() {
             <DataTable 
               columns={tableColumns} 
               data={employees ?? []}
-              filterColumn='personNumber'
+              filterColumn='lastName'
             />
         </div>
     );
