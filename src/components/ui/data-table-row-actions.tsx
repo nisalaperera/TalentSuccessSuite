@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 
 interface CustomAction<TData> {
     label: string;
@@ -62,6 +63,7 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
 
   return (
     <div className="flex items-center gap-2 justify-end">
+        <TooltipProvider>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -74,10 +76,15 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[160px]">
           {onEdit && (
-            <DropdownMenuItem onClick={() => onEdit(data)} disabled={!canEdit}>
-              <Pencil className="mr-2 h-3.5 w-3.5" />
-              Edit
-            </DropdownMenuItem>
+             <Tooltip>
+                <TooltipTrigger asChild>
+                    <DropdownMenuItem onClick={() => onEdit(data)} disabled={!canEdit}>
+                        <Pencil className="mr-2 h-3.5 w-3.5" />
+                        Edit
+                    </DropdownMenuItem>
+                </TooltipTrigger>
+                {!canEdit && editTooltip && <TooltipContent><p>{editTooltip}</p></TooltipContent>}
+            </Tooltip>
           )}
 
           {isToggleable && onToggleStatus && (
@@ -105,19 +112,24 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
              </DropdownMenuItem>
           ))}
           
-          {( (hasStandardActions || hasCustomActions) && onDelete) && <DropdownMenuSeparator />}
+          {((hasStandardActions || hasCustomActions) && onDelete) && <DropdownMenuSeparator />}
 
           {onDelete && (
             <AlertDialog>
-                <AlertDialogTrigger asChild>
-                <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm text-destructive outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                    aria-disabled={!canDelete}
-                    onClick={(e) => { if (!canDelete) e.preventDefault(); }}
-                >
-                    <Trash2 className="mr-2 h-3.5 w-3.5" />
-                    Delete
-                </div>
-                </AlertDialogTrigger>
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                        <AlertDialogTrigger asChild>
+                            <div 
+                                className={`relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm text-destructive outline-none transition-colors focus:bg-accent focus:text-accent-foreground ${!canDelete ? 'pointer-events-none opacity-50' : 'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'}`}
+                                onClick={(e) => { if (!canDelete) e.preventDefault(); }}
+                            >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Delete
+                            </div>
+                        </AlertDialogTrigger>
+                    </TooltipTrigger>
+                     {!canDelete && deleteTooltip && <TooltipContent><p>{deleteTooltip}</p></TooltipContent>}
+                </Tooltip>
                 {canDelete && (
                     <AlertDialogContent>
                     <AlertDialogHeader>
@@ -139,6 +151,7 @@ export function DataTableRowActions<TData extends { id: string, status?: 'Active
 
         </DropdownMenuContent>
       </DropdownMenu>
+      </TooltipProvider>
     </div>
   );
 }
