@@ -56,7 +56,6 @@ export default function PerformanceDocumentsPage() {
     // Form state
     const [name, setName] = useState('');
     const [performanceCycleId, setPerformanceCycleId] = useState<string>();
-    const [goalPlanId, setGoalPlanId] = useState<string>();
     const [performanceTemplateId, setPerformanceTemplateId] = useState<string>();
     const [evaluationFlowId, setEvaluationFlowId] = useState<string>();
     const [eligibilityId, setEligibilityId] = useState<string>();
@@ -65,19 +64,12 @@ export default function PerformanceDocumentsPage() {
         performanceCycles?.find(c => c.id === performanceCycleId),
     [performanceCycleId, performanceCycles]);
     
-    useEffect(() => {
-        if (selectedPerformanceCycle) {
-            setGoalPlanId(selectedPerformanceCycle.goalPlanId);
-        } else {
-            setGoalPlanId(undefined);
-        }
-    }, [selectedPerformanceCycle]);
+    const goalPlanId = selectedPerformanceCycle?.goalPlanId;
 
 
     const resetForm = () => {
         setName('');
         setPerformanceCycleId(undefined);
-        setGoalPlanId(undefined);
         setPerformanceTemplateId(undefined);
         setEvaluationFlowId(undefined);
         setEligibilityId(undefined);
@@ -222,10 +214,6 @@ export default function PerformanceDocumentsPage() {
                         <Input placeholder="Performance Document Name" value={name} onChange={e => setName(e.target.value)} />
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
                             <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}><SelectTrigger><SelectValue placeholder="Select Performance Cycle"/></SelectTrigger><SelectContent>{(performanceCycles || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({getLookUpName('reviewPeriod', p.reviewPeriodId)})</SelectItem>)}</SelectContent></Select>
-                            <div className="space-y-2">
-                                <Label>Goal Plan</Label>
-                                <Input value={goalPlanId ? getLookUpName('goalPlan', goalPlanId) : 'Select a performance cycle first'} readOnly disabled />
-                            </div>
                             <Select onValueChange={setPerformanceTemplateId} value={performanceTemplateId}><SelectTrigger><SelectValue placeholder="Select Performance Template"/></SelectTrigger><SelectContent>{(performanceTemplates || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEvaluationFlowId} value={evaluationFlowId}><SelectTrigger><SelectValue placeholder="Attach Evaluation Flow"/></SelectTrigger><SelectContent>{(evaluationFlows || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
                             <Select onValueChange={setEligibilityId} value={eligibilityId}><SelectTrigger><SelectValue placeholder="Attach Eligibility Criteria"/></SelectTrigger><SelectContent>{(eligibilityCriteria || []).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
