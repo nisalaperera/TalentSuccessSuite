@@ -12,7 +12,7 @@ export default function AdminLayout({
         <header className="mb-8">
           <div className="flex justify-between items-center">
              <div>
-                <Link href="/"><h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-2 tracking-tight hover:text-primary/90">EvalFlow</h1></Link>
+                <Link href="/"><h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-2 tracking-tight hover:text-primary/90">Talent Suite</h1></Link>
                 <p className="text-lg text-foreground/80 font-body">
                   Seamless Performance Management Configuration
                 </p>

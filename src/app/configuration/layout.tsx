@@ -10,7 +10,7 @@ export default function ConfigurationLayout({
         <header className="mb-8">
           <div className="flex justify-between items-center">
              <div>
-                <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-2 tracking-tight">EvalFlow</h1>
+                <h1 className="text-4xl md:text-5xl font-headline font-bold text-primary mb-2 tracking-tight">Talent Suite</h1>
                 <p className="text-lg text-foreground/80 font-body">
                   Seamless Performance Management Configuration
                 </p>
