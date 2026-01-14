@@ -116,7 +116,7 @@ function EmployeeDocumentsContent() {
                 )}
             </div>
 
-            <DataTable columns={tableColumns} data={filteredData} filterColumn='' />
+            <DataTable columns={tableColumns} data={filteredData} />
         </div>
     );
 }

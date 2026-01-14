@@ -16,22 +16,23 @@ interface DataTableToolbarProps<TData> {
 export function DataTableToolbar<TData>({
   table,
   children,
-  filterColumn = 'name',
+  filterColumn,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
-  const globalFilter = table.getState().globalFilter;
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
-        <Input
-          placeholder={`Filter by ${filterColumn}...`}
-          value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn(filterColumn)?.setFilterValue(event.target.value)
-          }
-          className="h-8 w-[150px] lg:w-[250px]"
-        />
+        {filterColumn && (
+           <Input
+              placeholder={`Filter by ${filterColumn}...`}
+              value={(table.getColumn(filterColumn)?.getFilterValue() as string) ?? ''}
+              onChange={(event) =>
+                table.getColumn(filterColumn)?.setFilterValue(event.target.value)
+              }
+              className="h-8 w-[150px] lg:w-[250px]"
+            />
+        )}
         {children}
         {isFiltered && (
           <Button
