@@ -1,29 +1,28 @@
-
 'use client';
 
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ShieldCheck, User, Briefcase } from 'lucide-react';
+import { ShieldCheck, User, Briefcase, Target, GanttChartSquare } from 'lucide-react';
 
 export default function Home() {
   const views = [
     {
-      title: 'Admin View',
+      title: 'Admin Configurations',
       description: 'Configure and manage performance cycles, templates, and documents.',
       href: '/admin',
       icon: <ShieldCheck className="h-12 w-12 text-primary" />,
     },
     {
-      title: 'Employee View',
+      title: 'Goal Management',
       description: 'View your goals, submit self-evaluations, and track your performance.',
       href: '/employee',
-      icon: <User className="h-12 w-12 text-primary" />,
+      icon: <Target className="h-12 w-12 text-primary" />,
     },
     {
-      title: 'Manager View',
+      title: 'Performance Management',
       description: 'Evaluate your team, provide feedback, and monitor performance progress.',
       href: '/manager',
-      icon: <Briefcase className="h-12 w-12 text-primary" />,
+      icon: <GanttChartSquare className="h-12 w-12 text-primary" />,
     },
   ];
 
