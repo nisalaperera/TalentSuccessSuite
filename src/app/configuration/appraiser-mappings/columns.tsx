@@ -6,15 +6,15 @@ import type { AppraiserMapping } from '@/lib/types';
 import { DataTableColumnHeader } from '@/app/components/data-table/data-table-column-header';
 
 type ColumnsConfig = {
-    getEmployeeName: (id: string) => string;
+    getEmployeeNameByPersonNumber: (personNumber: string) => string;
     getCycleName: (id: string) => string;
 }
 
-export const columns = ({ getEmployeeName, getCycleName }: ColumnsConfig): ColumnDef<AppraiserMapping>[] => [
+export const columns = ({ getEmployeeNameByPersonNumber, getCycleName }: ColumnsConfig): ColumnDef<AppraiserMapping>[] => [
     {
-        accessorKey: 'employeeId',
+        accessorKey: 'employeePersonNumber',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Employee" />,
-        cell: ({ row }) => getEmployeeName(row.getValue('employeeId')),
+        cell: ({ row }) => getEmployeeNameByPersonNumber(row.getValue('employeePersonNumber')),
     },
     {
         accessorKey: 'performanceCycleId',
@@ -22,18 +22,12 @@ export const columns = ({ getEmployeeName, getCycleName }: ColumnsConfig): Colum
         cell: ({ row }) => getCycleName(row.getValue('performanceCycleId')),
     },
     {
-        accessorKey: 'primaryAppraiserId',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Primary Appraiser" />,
-        cell: ({ row }) => getEmployeeName(row.getValue('primaryAppraiserId')),
+        accessorKey: 'appraiserType',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Appraiser Type" />,
     },
     {
-        accessorKey: 'secondaryAppraiserIds',
-        header: 'Secondary Appraisers',
-        cell: ({ row }) => {
-            const ids = row.getValue('secondaryAppraiserIds') as string[];
-            if (!ids || ids.length === 0) return 'N/A';
-            return ids.map(id => getEmployeeName(id)).join(', ');
-        },
-        enableSorting: false,
+        accessorKey: 'appraiserPersonNumber',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Appraiser" />,
+        cell: ({ row }) => getEmployeeNameByPersonNumber(row.getValue('appraiserPersonNumber')),
     },
 ];

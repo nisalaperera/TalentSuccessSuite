@@ -5,6 +5,7 @@
 
 
 
+
 import { DocumentData } from "firebase/firestore";
 
 export type ReviewPeriod = {
@@ -141,11 +142,10 @@ export type EmployeePerformanceDocument = {
 
 export type AppraiserMapping = {
   id: string;
-  employeePerformanceDocumentId: string;
-  employeeId: string;
+  employeePersonNumber: string;
   performanceCycleId: string;
-  primaryAppraiserId: string;
-  secondaryAppraiserIds: string[];
+  appraiserType: 'Primary' | 'Secondary';
+  appraiserPersonNumber: string;
 };
 
 export type Employee = {

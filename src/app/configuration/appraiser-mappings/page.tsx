@@ -24,8 +24,8 @@ function AppraiserMappingsContent() {
     const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
     const { data: reviewPeriods } = useCollection<ReviewPeriod>(reviewPeriodsQuery);
 
-    const getEmployeeName = (id: string) => {
-        const emp = employees?.find(e => e.id === id);
+    const getEmployeeNameByPersonNumber = (personNumber: string) => {
+        const emp = employees?.find(e => e.personNumber === personNumber);
         return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
     };
 
@@ -36,7 +36,7 @@ function AppraiserMappingsContent() {
         return `${cycle.name} (${period?.name || 'N/A'})`;
     };
     
-    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName }), [employees, performanceCycles, reviewPeriods]);
+    const tableColumns = useMemo(() => columns({ getEmployeeNameByPersonNumber, getCycleName }), [employees, performanceCycles, reviewPeriods]);
 
     return (
         <div className="container mx-auto py-10">

@@ -161,11 +161,6 @@ export default function PerformanceDocumentsPage() {
             return;
         }
 
-        const personNumberToIdMap = new Map<string, string>();
-        (employees || []).forEach(emp => {
-            personNumberToIdMap.set(emp.personNumber, emp.id);
-        });
-
         const batch = writeBatch(firestore);
         
         for (const emp of eligibleEmployees) {
@@ -180,31 +175,31 @@ export default function PerformanceDocumentsPage() {
             };
             batch.set(newEmployeeDocRef, newDoc);
 
-            const primaryAppraiserId = personNumberToIdMap.get(emp.workManager);
-            if (!primaryAppraiserId) {
-                console.warn(`Could not find primary appraiser (work manager) for employee ${emp.personNumber}. Skipping appraiser mapping.`);
-                continue;
+            // Create Primary Appraiser Mapping
+            if (emp.workManager) {
+                const primaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                const primaryMapping: Omit<AppraiserMapping, 'id'> = {
+                    employeePersonNumber: emp.personNumber,
+                    performanceCycleId: perfDoc.performanceCycleId,
+                    appraiserType: 'Primary',
+                    appraiserPersonNumber: emp.workManager,
+                };
+                batch.set(primaryMappingRef, primaryMapping);
+            } else {
+                 console.warn(`Could not find primary appraiser (work manager) for employee ${emp.personNumber}. Skipping primary appraiser mapping.`);
             }
 
-            const secondaryAppraiserIds: string[] = [];
+            // Create Secondary Appraiser Mapping
             if (emp.homeManager) {
-                const homeManagerDocId = personNumberToIdMap.get(emp.homeManager);
-                if (homeManagerDocId) {
-                    secondaryAppraiserIds.push(homeManagerDocId);
-                } else {
-                    console.warn(`Could not find home manager for employee ${emp.personNumber}.`);
-                }
+                const secondaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                const secondaryMapping: Omit<AppraiserMapping, 'id'> = {
+                    employeePersonNumber: emp.personNumber,
+                    performanceCycleId: perfDoc.performanceCycleId,
+                    appraiserType: 'Secondary',
+                    appraiserPersonNumber: emp.homeManager,
+                };
+                batch.set(secondaryMappingRef, secondaryMapping);
             }
-
-            const appraiserMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
-            const newAppraiserMapping: Omit<AppraiserMapping, 'id'> = {
-                employeePerformanceDocumentId: newEmployeeDocRef.id,
-                employeeId: emp.id,
-                performanceCycleId: perfDoc.performanceCycleId,
-                primaryAppraiserId: primaryAppraiserId,
-                secondaryAppraiserIds: secondaryAppraiserIds,
-            };
-            batch.set(appraiserMappingRef, newAppraiserMapping);
         }
 
         const perfDocRef = doc(firestore, 'performance_documents', perfDoc.id);
@@ -268,5 +263,3 @@ export default function PerformanceDocumentsPage() {
         </div>
     );
 }
-
-    
