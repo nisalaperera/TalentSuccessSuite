@@ -140,6 +140,7 @@ export type AppraiserMapping = {
   appraiserType: 'Primary' | 'Secondary';
   appraiserPersonNumber: string;
   linkedType: 'Work Manager' | 'Home Manager';
+  isCompleted: boolean;
 };
 
 export type Employee = {

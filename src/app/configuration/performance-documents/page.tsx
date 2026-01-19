@@ -99,7 +99,7 @@ export default function PerformanceDocumentsPage() {
         if (isDuplicate) {
             toast({
                 title: 'Duplicate Name',
-                description: `A performance document with the name "${name}" already exists.`,
+                description: `A performance document with the name "${'name'}" already exists.`,
                 variant: 'destructive',
             });
             return;
@@ -201,6 +201,7 @@ export default function PerformanceDocumentsPage() {
                     appraiserType: 'Primary',
                     appraiserPersonNumber: emp.workManager,
                     linkedType: 'Work Manager',
+                    isCompleted: false,
                 };
                 batch.set(primaryMappingRef, primaryMapping);
             } else {
@@ -216,6 +217,7 @@ export default function PerformanceDocumentsPage() {
                     appraiserType: 'Secondary',
                     appraiserPersonNumber: emp.homeManager,
                     linkedType: 'Home Manager',
+                    isCompleted: false,
                 };
                 batch.set(secondaryMappingRef, secondaryMapping);
             }

@@ -4,6 +4,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import type { AppraiserMapping } from '@/lib/types';
 import { DataTableColumnHeader } from '@/app/components/data-table/data-table-column-header';
+import { Badge } from '@/components/ui/badge';
 
 type ColumnsConfig = {
     getEmployeeNameByPersonNumber: (personNumber: string) => string;
@@ -33,5 +34,15 @@ export const columns = ({ getEmployeeNameByPersonNumber, getCycleName }: Columns
         accessorKey: 'appraiserPersonNumber',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Appraiser" />,
         cell: ({ row }) => getEmployeeNameByPersonNumber(row.getValue('appraiserPersonNumber')),
+    },
+    {
+        accessorKey: 'isCompleted',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Completed" />,
+        cell: ({ row }) => {
+            const isCompleted = row.getValue('isCompleted');
+            return isCompleted 
+                ? <Badge>Yes</Badge> 
+                : <Badge variant="secondary">No</Badge>;
+        }
     },
 ];

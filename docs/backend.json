@@ -219,6 +219,10 @@
           "type": "string",
           "enum": ["Work Manager", "Home Manager"],
           "description": "Indicates the managerial relationship."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates if the appraiser has completed their evaluation."
         }
       },
       "required": ["employeePersonNumber", "performanceCycleId", "appraiserType", "appraiserPersonNumber", "linkedType"]
