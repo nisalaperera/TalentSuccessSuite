@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useGlobalState } from '@/app/context/global-state-provider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Employee, EmployeePerformanceDocument, PerformanceDocument, PerformanceTemplate, PerformanceCycle, ReviewPeriod } from '@/lib/types';
+import type { Employee, EmployeePerformanceDocument, PerformanceDocument, PerformanceTemplate, PerformanceCycle, ReviewPeriod, AppraiserMapping } from '@/lib/types';
 import { MyPerformanceCycles } from './components/my-performance-cycles';
 import { MyTeamPerformanceCycles } from './components/my-team-performance-cycles';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -30,6 +30,17 @@ export default function PerformancePage() {
   const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
   const { data: allReviewPeriods } = useCollection<ReviewPeriod>(reviewPeriodsQuery);
   
+  const appraiserMappingsQuery = useMemoFirebase(() => {
+    if (!personNumber || !performanceCycleId) return null;
+    return query(
+        collection(firestore, 'employee_appraiser_mappings'),
+        where('appraiserPersonNumber', '==', personNumber),
+        where('performanceCycleId', '==', performanceCycleId)
+    );
+  }, [firestore, personNumber, performanceCycleId]);
+  const { data: appraiserMappings, isLoading: isLoadingMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
+
+  
   const selectedEmployee = useMemo(() => {
     if (!personNumber || !allEmployees) return null;
     return allEmployees.find(e => e.personNumber === personNumber) || null;
@@ -47,38 +58,47 @@ export default function PerformancePage() {
   const { data: myPerformanceCycles, isLoading: isLoadingMyCycles } = useCollection<EmployeePerformanceDocument>(myPerformanceCyclesQuery);
   
   // My Team Performance Cycles Data
-  const { workTeamIds, homeTeamIds } = useMemo(() => {
-    if (!selectedEmployee || !allEmployees) return { workTeamIds: [], homeTeamIds: [] };
-    const workTeamIds = allEmployees
-      .filter(e => e.workManager === selectedEmployee.personNumber)
-      .map(e => e.id);
-    const homeTeamIds = allEmployees
-      .filter(e => e.homeManager === selectedEmployee.personNumber)
-      .map(e => e.id);
-    return { workTeamIds, homeTeamIds };
-  }, [selectedEmployee, allEmployees]);
+  const { workTeamEmployeeIds, homeTeamEmployeeIds } = useMemo(() => {
+    if (!appraiserMappings || !allEmployees) return { workTeamEmployeeIds: [], homeTeamEmployeeIds: [] };
+
+    const employeeMap = new Map(allEmployees.map(e => [e.personNumber, e.id]));
+    
+    const workTeamPersonNumbers = appraiserMappings
+      .filter(m => m.linkedType === 'Work Manager')
+      .map(m => m.employeePersonNumber);
+
+    const homeTeamPersonNumbers = appraiserMappings
+      .filter(m => m.linkedType === 'Home Manager')
+      .map(m => m.employeePersonNumber);
+
+    const workTeamEmployeeIds = workTeamPersonNumbers.map(pn => employeeMap.get(pn)).filter((id): id is string => !!id);
+    const homeTeamEmployeeIds = homeTeamPersonNumbers.map(pn => employeeMap.get(pn)).filter((id): id is string => !!id);
+    
+    return { workTeamEmployeeIds, homeTeamEmployeeIds };
+  }, [appraiserMappings, allEmployees]);
+
 
   const workTeamPerformanceCyclesQuery = useMemoFirebase(() => {
-    if (workTeamIds.length === 0 || !performanceCycleId) return null;
+    if (workTeamEmployeeIds.length === 0 || !performanceCycleId) return null;
     return query(
       collection(firestore, 'employee_performance_documents'),
-      where('employeeId', 'in', workTeamIds),
+      where('employeeId', 'in', workTeamEmployeeIds),
       where('performanceCycleId', '==', performanceCycleId)
     );
-  }, [firestore, workTeamIds, performanceCycleId]);
+  }, [firestore, workTeamEmployeeIds, performanceCycleId]);
   const { data: workTeamPerformanceCycles, isLoading: isLoadingWorkTeamCycles } = useCollection<EmployeePerformanceDocument>(workTeamPerformanceCyclesQuery);
 
   const homeTeamPerformanceCyclesQuery = useMemoFirebase(() => {
-    if (homeTeamIds.length === 0 || !performanceCycleId) return null;
+    if (homeTeamEmployeeIds.length === 0 || !performanceCycleId) return null;
     return query(
       collection(firestore, 'employee_performance_documents'),
-      where('employeeId', 'in', homeTeamIds),
+      where('employeeId', 'in', homeTeamEmployeeIds),
       where('performanceCycleId', '==', performanceCycleId)
     );
-  }, [firestore, homeTeamIds, performanceCycleId]);
+  }, [firestore, homeTeamEmployeeIds, performanceCycleId]);
   const { data: homeTeamPerformanceCycles, isLoading: isLoadingHomeTeamCycles } = useCollection<EmployeePerformanceDocument>(homeTeamPerformanceCyclesQuery);
   
-  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingWorkTeamCycles || isLoadingHomeTeamCycles;
+  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingWorkTeamCycles || isLoadingHomeTeamCycles || isLoadingMappings;
 
   if (!personNumber || !performanceCycleId) {
     return (
