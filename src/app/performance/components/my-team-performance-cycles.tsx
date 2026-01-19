@@ -1,14 +1,13 @@
-
 'use client';
 
-import { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import type { Employee, EmployeePerformanceDocument, PerformanceDocument, PerformanceTemplate } from '@/lib/types';
+import type { Employee, EmployeePerformanceDocument, PerformanceDocument, AppraiserMapping } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MyTeamPerformanceCyclesProps {
@@ -16,38 +15,64 @@ interface MyTeamPerformanceCyclesProps {
     homeTeamData: EmployeePerformanceDocument[] | null;
     allEmployees: Employee[] | null;
     allPerformanceDocuments: PerformanceDocument[] | null;
-    allPerformanceTemplates: PerformanceTemplate[] | null;
+    allAppraiserMappings: AppraiserMapping[] | null;
 }
 
 interface TeamTableProps {
     data: EmployeePerformanceDocument[] | null;
     allEmployees: Employee[] | null;
     allPerformanceDocuments: PerformanceDocument[] | null;
+    allAppraiserMappings: AppraiserMapping[] | null;
 }
 
-function TeamTable({ data, allEmployees, allPerformanceDocuments }: TeamTableProps) {
+function TeamTable({ data, allEmployees, allPerformanceDocuments, allAppraiserMappings }: TeamTableProps) {
+    const [openRowId, setOpenRowId] = useState<string | null>(null);
+
     const getEmployeeName = (employeeId: string) => {
         const emp = allEmployees?.find(e => e.id === employeeId);
         return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
     }
+    
+    const getEmployeeNameByPersonNumber = (personNumber: string) => {
+        if (!allEmployees) return 'N/A';
+        const emp = allEmployees.find(e => e.personNumber === personNumber);
+        return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
+    };
 
     const getDocumentName = (docId: string) => {
         return allPerformanceDocuments?.find(d => d.id === docId)?.name || 'N/A';
     }
+    
+    const handleToggleRow = (rowId: string) => {
+        setOpenRowId(prev => (prev === rowId ? null : rowId));
+    };
 
     const tableData = useMemo(() => {
         if (!data) return [];
-        return data.map(cycle => ({
-            ...cycle,
-            employeeName: getEmployeeName(cycle.employeeId),
-            documentName: getDocumentName(cycle.performanceDocumentId),
-        }));
-    }, [data, allEmployees, allPerformanceDocuments]);
+        return data.map(cycle => {
+            const employee = allEmployees?.find(e => e.id === cycle.employeeId);
+            const appraisers = (allAppraiserMappings || [])
+                .filter(m => m.employeePersonNumber === employee?.personNumber)
+                .sort((a, b) => { // Sort primary first
+                    if (a.appraiserType === 'Primary' && b.appraiserType !== 'Primary') return -1;
+                    if (a.appraiserType !== 'Primary' && b.appraiserType === 'Primary') return 1;
+                    return 0;
+                });
+            
+            return {
+                ...cycle,
+                employeeName: getEmployeeName(cycle.employeeId),
+                documentName: getDocumentName(cycle.performanceDocumentId),
+                appraisers: appraisers,
+            }
+        });
+    }, [data, allEmployees, allPerformanceDocuments, allAppraiserMappings]);
 
     return (
         <Table>
             <TableHeader>
                 <TableRow>
+                    <TableHead className="w-12" />
                     <TableHead>Employee</TableHead>
                     <TableHead>Document Name</TableHead>
                     <TableHead>Status</TableHead>
@@ -61,26 +86,69 @@ function TeamTable({ data, allEmployees, allPerformanceDocuments }: TeamTablePro
                         const buttonText = cycle.status === 'Manager Evaluation' ? 'Evaluate' : 'View Evaluation';
                         
                         return (
-                            <TableRow key={cycle.id}>
-                                <TableCell className="font-medium">{cycle.employeeName}</TableCell>
-                                <TableCell>{cycle.documentName}</TableCell>
-                                <TableCell><Badge variant="secondary">{cycle.status}</Badge></TableCell>
-                                <TableCell className="text-right">
-                                    {showButton ? (
-                                        <Link href={`/performance/evaluation/${cycle.id}`}>
-                                            <Button variant="outline" size="sm">
-                                                {buttonText}
-                                                <ArrowRight className="ml-2 h-4 w-4" />
-                                            </Button>
-                                        </Link>
-                                    ) : null}
-                                </TableCell>
-                            </TableRow>
+                            <React.Fragment key={cycle.id}>
+                                <TableRow>
+                                    <TableCell>
+                                        <Button variant="ghost" size="icon" onClick={() => handleToggleRow(cycle.id)} disabled={cycle.appraisers.length === 0}>
+                                            {openRowId === cycle.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                            <span className="sr-only">Toggle appraisers</span>
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell className="font-medium">{cycle.employeeName}</TableCell>
+                                    <TableCell>{cycle.documentName}</TableCell>
+                                    <TableCell><Badge variant="secondary">{cycle.status}</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                        {showButton ? (
+                                            <Link href={`/performance/evaluation/${cycle.id}`}>
+                                                <Button variant="outline" size="sm">
+                                                    {buttonText}
+                                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                                </Button>
+                                            </Link>
+                                        ) : null}
+                                    </TableCell>
+                                </TableRow>
+                                {openRowId === cycle.id && (
+                                     <TableRow className="bg-muted/50 hover:bg-muted">
+                                        <TableCell colSpan={5} className="p-0">
+                                            <div className="p-4 pl-16">
+                                                <h4 className="font-semibold mb-2">Appraisers for {cycle.employeeName}</h4>
+                                                {cycle.appraisers.length > 0 ? (
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Appraiser Type</TableHead>
+                                                                <TableHead>Appraiser Name</TableHead>
+                                                                <TableHead>Eval/Goal Types</TableHead>
+                                                                <TableHead>Completed</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {cycle.appraisers.map(mapping => (
+                                                                <TableRow key={mapping.id} className="border-0">
+                                                                    <TableCell>{mapping.appraiserType}</TableCell>
+                                                                    <TableCell>{getEmployeeNameByPersonNumber(mapping.appraiserPersonNumber)}</TableCell>
+                                                                    <TableCell>{mapping.evalGoalTypes}</TableCell>
+                                                                    <TableCell>
+                                                                        {mapping.isCompleted ? <Badge>Yes</Badge> : <Badge variant="secondary">No</Badge>}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">No appraisers assigned for this employee in this cycle.</p>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </React.Fragment>
                         );
                     })
                 ) : (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center h-24">
+                        <TableCell colSpan={5} className="text-center h-24">
                             No performance documents found for this team view.
                         </TableCell>
                     </TableRow>
@@ -90,7 +158,7 @@ function TeamTable({ data, allEmployees, allPerformanceDocuments }: TeamTablePro
     );
 }
 
-export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmployees, allPerformanceDocuments }: MyTeamPerformanceCyclesProps) {
+export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmployees, allPerformanceDocuments, allAppraiserMappings }: MyTeamPerformanceCyclesProps) {
     return (
         <Card>
             <CardHeader>
@@ -108,6 +176,7 @@ export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmploye
                             data={workTeamData}
                             allEmployees={allEmployees}
                             allPerformanceDocuments={allPerformanceDocuments}
+                            allAppraiserMappings={allAppraiserMappings}
                         />
                     </TabsContent>
                     <TabsContent value="home">
@@ -115,6 +184,7 @@ export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmploye
                             data={homeTeamData}
                             allEmployees={allEmployees}
                             allPerformanceDocuments={allPerformanceDocuments}
+                            allAppraiserMappings={allAppraiserMappings}
                         />
                     </TabsContent>
                 </Tabs>

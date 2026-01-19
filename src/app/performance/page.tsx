@@ -39,6 +39,15 @@ export default function PerformancePage() {
   }, [firestore, personNumber, performanceCycleId]);
   const { data: appraiserMappings, isLoading: isLoadingMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
 
+  const allAppraiserMappingsQuery = useMemoFirebase(() => {
+    if (!performanceCycleId) return null;
+    return query(
+        collection(firestore, 'employee_appraiser_mappings'),
+        where('performanceCycleId', '==', performanceCycleId)
+    );
+  }, [firestore, performanceCycleId]);
+  const { data: allAppraiserMappings, isLoading: isLoadingAllMappings } = useCollection<AppraiserMapping>(allAppraiserMappingsQuery);
+
   
   const selectedEmployee = useMemo(() => {
     if (!personNumber || !allEmployees) return null;
@@ -107,7 +116,7 @@ export default function PerformancePage() {
   }, [firestore, homeTeamEmployeeIds, performanceCycleId]);
   const { data: homeTeamPerformanceCycles, isLoading: isLoadingHomeTeamCycles } = useCollection<EmployeePerformanceDocument>(homeTeamPerformanceCyclesQuery);
   
-  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingWorkTeamCycles || isLoadingHomeTeamCycles || isLoadingMappings || isLoadingMyAppraiserMappings;
+  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingWorkTeamCycles || isLoadingHomeTeamCycles || isLoadingMappings || isLoadingMyAppraiserMappings || isLoadingAllMappings;
 
   if (!personNumber || !performanceCycleId) {
     return (
@@ -144,6 +153,7 @@ export default function PerformancePage() {
           allEmployees={allEmployees}
           allPerformanceDocuments={allPerformanceDocuments}
           allPerformanceTemplates={allPerformanceTemplates}
+          allAppraiserMappings={allAppraiserMappings}
         />
     </div>
   );
