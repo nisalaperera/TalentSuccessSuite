@@ -1,10 +1,9 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { doc, collection, writeBatch, serverTimestamp, query, where } from 'firebase/firestore';
+import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping } from '@/lib/types';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,29 +17,30 @@ import { useMemo, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StarRating } from '@/app/components/config-flow/shared/star-rating';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { useGlobalState } from '@/app/context/global-state-provider';
+import { useToast } from '@/hooks/use-toast';
 
 export default function EvaluationPage() {
     const params = useParams();
+    const router = useRouter();
     const documentId = params.id as string;
     const firestore = useFirestore();
+    const { personNumber } = useGlobalState();
+    const { toast } = useToast();
 
     // State for evaluation inputs
     const [ratings, setRatings] = useState<Record<string, number>>({});
     const [comments, setComments] = useState<Record<string, string>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // 1. Get the EmployeePerformanceDocument
     const employeePerfDocRef = useMemoFirebase(() => documentId ? doc(firestore, 'employee_performance_documents', documentId) : null, [firestore, documentId]);
     const { data: employeePerfDoc, isLoading: isLoadingDoc } = useDoc<EmployeePerformanceDocument>(employeePerfDocRef);
 
     // 2. Get related entities from IDs in EmployeePerformanceDocument
-    const perfTemplateRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'performance_templates', employeePerfDoc.performanceTemplateId) : null, [firestore, employeePerfDoc]);
-    const { data: perfTemplate, isLoading: isLoadingTemplate } = useDoc<PerformanceTemplate>(perfTemplateRef);
-    
     const employeeRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'employees', employeePerfDoc.employeeId) : null, [firestore, employeePerfDoc]);
     const { data: employee, isLoading: isLoadingEmployee } = useDoc<Employee>(employeeRef);
 
@@ -65,7 +65,21 @@ export default function EvaluationPage() {
             .sort((a, b) => a.order - b.order);
     }, [allSections, employeePerfDoc]);
 
-    const isLoading = isLoadingDoc || isLoadingTemplate || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc;
+    // 4. Get relevant appraiser mapping to update status
+    const appraiserMappingsQuery = useMemoFirebase(() => 
+        (personNumber && employeePerfDoc) 
+        ? query(
+            collection(firestore, 'employee_appraiser_mappings'),
+            where('appraiserPersonNumber', '==', personNumber),
+            where('performanceCycleId', '==', employeePerfDoc.performanceCycleId)
+          ) 
+        : null, 
+    [firestore, personNumber, employeePerfDoc]);
+
+    const { data: appraiserMappings, isLoading: isLoadingMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
+
+
+    const isLoading = isLoadingDoc || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc || isLoadingMappings;
 
     const handleRatingChange = (sectionId: string, rating: number) => {
         setRatings(prev => ({ ...prev, [sectionId]: rating }));
@@ -74,6 +88,82 @@ export default function EvaluationPage() {
     const handleCommentChange = (sectionId: string, comment: string) => {
         setComments(prev => ({ ...prev, [sectionId]: comment }));
     };
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+
+        // 1. Validation
+        for (const section of sections) {
+            if (section.sectionRatingMandatory && (!ratings[section.id] || ratings[section.id] === 0)) {
+                toast({ title: 'Validation Error', description: `Rating is mandatory for section: "${section.name}"`, variant: 'destructive'});
+                setIsSubmitting(false);
+                return;
+            }
+            if (section.sectionCommentMandatory && (!comments[section.id] || comments[section.id].trim() === '')) {
+                toast({ title: 'Validation Error', description: `Comment is mandatory for section: "${section.name}"`, variant: 'destructive'});
+                setIsSubmitting(false);
+                return;
+            }
+            if (comments[section.id]) {
+                const comment = comments[section.id];
+                if (section.minLength && comment.length < section.minLength) {
+                    toast({ title: 'Validation Error', description: `Comment for "${section.name}" must be at least ${section.minLength} characters.`, variant: 'destructive'});
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (section.maxLength && comment.length > section.maxLength) {
+                    toast({ title: 'Validation Error', description: `Comment for "${section.name}" cannot exceed ${section.maxLength} characters.`, variant: 'destructive'});
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+        }
+        
+        if (Object.keys(ratings).length === 0 && Object.keys(comments).length === 0) {
+            toast({ title: 'Nothing to Submit', description: 'Please provide at least one rating or comment.', variant: 'destructive'});
+            setIsSubmitting(false);
+            return;
+        }
+
+        try {
+            const batch = writeBatch(firestore);
+
+            // 2. Add evaluations to batch
+            for (const section of sections) {
+                if (ratings[section.id] || comments[section.id]) {
+                    const evaluationRef = doc(collection(firestore, 'evaluations'));
+                    batch.set(evaluationRef, {
+                        employeePerformanceDocumentId: documentId,
+                        sectionId: section.id,
+                        evaluatorPersonNumber: personNumber,
+                        rating: ratings[section.id] || null,
+                        comment: comments[section.id] || '',
+                        submittedAt: serverTimestamp(),
+                    });
+                }
+            }
+
+            // 3. Update appraiser mapping status
+            const relevantMapping = appraiserMappings?.find(m => m.employeePersonNumber === employee?.personNumber);
+            if (relevantMapping) {
+                const mappingRef = doc(firestore, 'employee_appraiser_mappings', relevantMapping.id);
+                batch.update(mappingRef, { isCompleted: true });
+            } else {
+                console.warn("Could not find a relevant appraiser mapping to update completion status.");
+            }
+            
+            await batch.commit();
+
+            toast({ title: 'Success', description: 'Your evaluation has been submitted.'});
+            router.push('/performance');
+
+        } catch (error) {
+            console.error("Error submitting evaluation:", error);
+            toast({ title: 'Submission Error', description: 'There was a problem submitting your evaluation.', variant: 'destructive'});
+            setIsSubmitting(false);
+        }
+    };
+
 
     if (isLoading) {
         return <div className="container mx-auto py-10">Loading evaluation...</div>;
@@ -152,7 +242,9 @@ export default function EvaluationPage() {
             </Accordion>
 
             <div className="flex justify-end mt-8">
-                <Button>Submit Evaluation</Button>
+                <Button onClick={handleSubmit} disabled={isSubmitting}>
+                   {isSubmitting ? 'Submitting...' : 'Submit Evaluation'}
+                </Button>
             </div>
         </div>
     );

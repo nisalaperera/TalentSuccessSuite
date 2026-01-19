@@ -249,6 +249,39 @@
         }
       },
       "required": ["personNumber", "personEmail", "firstName", "lastName"]
+    },
+    "EmployeeEvaluation": {
+      "title": "EmployeeEvaluation",
+      "type": "object",
+      "description": "Stores a single evaluation (rating and/or comment) for a section of an employee's performance document.",
+      "properties": {
+        "employeePerformanceDocumentId": {
+          "type": "string",
+          "description": "Reference to the EmployeePerformanceDocument being evaluated."
+        },
+        "sectionId": {
+          "type": "string",
+          "description": "Reference to the PerformanceTemplateSection being evaluated."
+        },
+        "evaluatorPersonNumber": {
+          "type": "string",
+          "description": "The personNumber of the user who submitted the evaluation."
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating given for the section."
+        },
+        "comment": {
+          "type": "string",
+          "description": "The comment given for the section."
+        },
+        "submittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of when the evaluation was submitted."
+        }
+      },
+      "required": ["employeePerformanceDocumentId", "sectionId", "evaluatorPersonNumber", "submittedAt"]
     }
   },
   "auth": {
@@ -301,6 +334,10 @@
     "employees": {
         "schema": { "$ref": "#/entities/Employee" },
         "description": "Stores employee data."
+    },
+    "evaluations": {
+      "schema": { "$ref": "#/entities/EmployeeEvaluation" },
+      "description": "Stores individual section evaluations from users."
     }
   }
 }

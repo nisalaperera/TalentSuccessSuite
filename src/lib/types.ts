@@ -1,4 +1,5 @@
 
+
 import { DocumentData } from "firebase/firestore";
 
 export type ReviewPeriod = {
@@ -156,6 +157,16 @@ export type Employee = {
   workManager: string;
   homeManager: string;
 };
+
+export type EmployeeEvaluation = {
+  id: string;
+  employeePerformanceDocumentId: string;
+  sectionId: string;
+  evaluatorPersonNumber: string;
+  rating?: number;
+  comment?: string;
+  submittedAt: Date;
+}
 
 export type LOVs = {
   personTypes: string[];
