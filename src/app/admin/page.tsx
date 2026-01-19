@@ -148,7 +148,7 @@ export default function AdminPage() {
       ]
     },
     {
-      groupTitle: "Performance Cycle Config",
+      groupTitle: "Performance Evolution",
       steps: [
         {
           id: 'item-8',
@@ -199,5 +199,7 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
 
     

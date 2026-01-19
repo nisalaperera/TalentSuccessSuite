@@ -63,22 +63,12 @@ export function TileBasedApproach({ state }: TileBasedProps) {
             ]
         },
         {
-            groupTitle: "Performance Cycle Config",
+            groupTitle: "Performance Evolution",
             items: [
                  {
                     title: "Performance Documents",
                     description: "Assemble and create the final performance documents.",
                     href: "/configuration/performance-documents"
-                }
-            ]
-        },
-        {
-            groupTitle: "Temporary (To be Removed)",
-            items: [
-                 {
-                    title: "Employees",
-                    description: "Manage employee records.",
-                    href: "/configuration/employees"
                 },
                 {
                     title: "Employee Performance Documents",
@@ -89,6 +79,16 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     title: "Performance Appraiser Mappings",
                     description: "View performance appraiser mappings.",
                     href: "/configuration/appraiser-mappings"
+                }
+            ]
+        },
+        {
+            groupTitle: "Temporary (To be Removed)",
+            items: [
+                 {
+                    title: "Employees",
+                    description: "Manage employee records.",
+                    href: "/configuration/employees"
                 }
             ]
         }
@@ -119,3 +119,5 @@ export function TileBasedApproach({ state }: TileBasedProps) {
         </div>
     );
 }
+
+    
