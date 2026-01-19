@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, Suspense } from 'react';
@@ -35,10 +34,27 @@ function AppraiserMappingsContent() {
     const cycleFilter = searchParams.get('cycleId');
     const employeeFilter = searchParams.get('employeePersonNumber');
     const appraiserFilter = searchParams.get('appraiserPersonNumber');
+    const appraiserTypeFilter = searchParams.get('appraiserType');
 
-    const handleFilterChange = (type: 'cycle' | 'employee' | 'appraiser', value: string) => {
+    const handleFilterChange = (type: 'cycle' | 'employee' | 'appraiser' | 'appraiserType', value: string) => {
         const params = new URLSearchParams(searchParams.toString());
-        const paramName = type === 'cycle' ? 'cycleId' : (type === 'employee' ? 'employeePersonNumber' : 'appraiserPersonNumber');
+        
+        let paramName;
+        switch (type) {
+            case 'cycle':
+                paramName = 'cycleId';
+                break;
+            case 'employee':
+                paramName = 'employeePersonNumber';
+                break;
+            case 'appraiser':
+                paramName = 'appraiserPersonNumber';
+                break;
+            case 'appraiserType':
+                paramName = 'appraiserType';
+                break;
+        }
+
 
         if (value && value !== 'all') {
             params.set(paramName, value);
@@ -87,11 +103,12 @@ function AppraiserMappingsContent() {
             const cycleMatch = !cycleFilter || doc.performanceCycleId === cycleFilter;
             const employeeMatch = !employeeFilter || doc.employeePersonNumber === employeeFilter;
             const appraiserMatch = !appraiserFilter || doc.appraiserPersonNumber === appraiserFilter;
-            return cycleMatch && employeeMatch && appraiserMatch;
+            const appraiserTypeMatch = !appraiserTypeFilter || doc.appraiserType === appraiserTypeFilter;
+            return cycleMatch && employeeMatch && appraiserMatch && appraiserTypeMatch;
         });
-    }, [appraiserMappings, cycleFilter, employeeFilter, appraiserFilter]);
+    }, [appraiserMappings, cycleFilter, employeeFilter, appraiserFilter, appraiserTypeFilter]);
 
-    const hasActiveFilters = cycleFilter || employeeFilter || appraiserFilter;
+    const hasActiveFilters = cycleFilter || employeeFilter || appraiserFilter || appraiserTypeFilter;
 
 
     return (
@@ -102,9 +119,9 @@ function AppraiserMappingsContent() {
                 showAddNew={false}
             />
 
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex flex-wrap items-center gap-4 mb-4">
                 <Select value={cycleFilter || ''} onValueChange={(value) => handleFilterChange('cycle', value)}>
-                    <SelectTrigger className="w-[250px]">
+                    <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]">
                         <SelectValue placeholder="Filter by Performance Cycle..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -114,6 +131,16 @@ function AppraiserMappingsContent() {
                         ))}
                     </SelectContent>
                 </Select>
+                <Select value={appraiserTypeFilter || ''} onValueChange={(value) => handleFilterChange('appraiserType', value)}>
+                    <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[180px]">
+                        <SelectValue placeholder="Filter by Appraiser Type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="Primary">Primary</SelectItem>
+                        <SelectItem value="Secondary">Secondary</SelectItem>
+                    </SelectContent>
+                </Select>
                 <Combobox
                     options={employeeOptions}
                     value={employeeFilter || ''}
@@ -121,7 +148,7 @@ function AppraiserMappingsContent() {
                     placeholder="Filter by Employee..."
                     searchPlaceholder="Search employees..."
                     noResultsText="No employees found."
-                    triggerClassName="w-[250px]"
+                    triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
                 />
                  <Combobox
                     options={employeeOptions}
@@ -130,7 +157,7 @@ function AppraiserMappingsContent() {
                     placeholder="Filter by Appraiser..."
                     searchPlaceholder="Search appraisers..."
                     noResultsText="No appraisers found."
-                    triggerClassName="w-[250px]"
+                    triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
                 />
                 {hasActiveFilters && (
                     <Button variant="ghost" onClick={clearFilters}>
