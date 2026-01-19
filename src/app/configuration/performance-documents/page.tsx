@@ -127,8 +127,8 @@ export default function PerformanceDocumentsPage() {
     };
 
      const handleLaunch = async (perfDoc: PerfDocType) => {
-        if (!employees || !eligibilityCriteria) {
-            toast({ title: "Data not loaded", description: "Employee or eligibility data is not available yet. Please try again in a moment.", variant: "destructive"});
+        if (!employees || !eligibilityCriteria || !evaluationFlows) {
+            toast({ title: "Data not loaded", description: "Core data is not available yet. Please try again in a moment.", variant: "destructive"});
             return;
         }
 
@@ -137,6 +137,23 @@ export default function PerformanceDocumentsPage() {
             toast({ title: "Eligibility criteria not found", variant: "destructive" });
             return;
         }
+        
+        const evaluationFlow = evaluationFlows.find(f => f.id === perfDoc.evaluationFlowId);
+        if (!evaluationFlow) {
+            toast({ title: "Evaluation flow not found", variant: "destructive" });
+            return;
+        }
+
+        const sortedSteps = [...evaluationFlow.steps].sort((a,b) => a.sequence - b.sequence);
+        const firstStep = sortedSteps[0];
+        
+        if (!firstStep) {
+            toast({ title: "Evaluation flow has no steps", variant: "destructive" });
+            return;
+        }
+
+        const initialStatus = firstStep.task;
+
 
         const eligibleEmployees = employees.filter(employee => {
             return !eligibility.rules.some(rule => {
@@ -171,7 +188,7 @@ export default function PerformanceDocumentsPage() {
                 performanceCycleId: perfDoc.performanceCycleId,
                 performanceTemplateId: perfDoc.performanceTemplateId,
                 evaluationFlowId: perfDoc.evaluationFlowId,
-                status: 'Not Started',
+                status: initialStatus,
             };
             batch.set(newEmployeeDocRef, newDoc);
 
@@ -228,7 +245,7 @@ export default function PerformanceDocumentsPage() {
         }
     }
     
-    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria]);
+    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows]);
 
     return (
         <div className="container mx-auto py-10">

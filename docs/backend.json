@@ -189,7 +189,7 @@
             "performanceCycleId": { "type": "string" },
             "performanceTemplateId": { "type": "string" },
             "evaluationFlowId": { "type": "string" },
-            "status": { "type": "string", "enum": ["Not Started", "In Progress", "Completed"] }
+            "status": { "type": "string" }
         },
         "required": ["performanceDocumentId", "employeeId", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "status"]
     },

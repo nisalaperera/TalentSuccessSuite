@@ -32,12 +32,21 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName }: Colu
         accessorKey: 'status',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-            const status = row.getValue('status');
-            let variant: "default" | "secondary" | "destructive" | "outline" | null | undefined = "secondary";
-            if (status === 'Completed') variant = 'default';
-            if (status === 'In Progress') variant = 'outline';
+            const status = row.getValue('status') as string;
+            let variant: "default" | "secondary" | "destructive" | "outline" | null | undefined;
+
+            switch(status) {
+                case 'Close Document':
+                    variant = 'default';
+                    break;
+                case 'Worker Self-Evaluation':
+                    variant = 'secondary';
+                    break;
+                default:
+                    variant = 'outline';
+            }
             
-            return <Badge variant={variant}>{status as string}</Badge>;
+            return <Badge variant={variant}>{status}</Badge>;
         }
     },
 ];
