@@ -14,17 +14,24 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { StarRating } from '@/app/components/config-flow/shared/star-rating';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 
 export default function EvaluationPage() {
     const params = useParams();
     const documentId = params.id as string;
     const firestore = useFirestore();
+
+    // State for evaluation inputs
+    const [ratings, setRatings] = useState<Record<string, number>>({});
+    const [comments, setComments] = useState<Record<string, string>>({});
 
     // 1. Get the EmployeePerformanceDocument
     const employeePerfDocRef = useMemoFirebase(() => documentId ? doc(firestore, 'employee_performance_documents', documentId) : null, [firestore, documentId]);
@@ -59,6 +66,14 @@ export default function EvaluationPage() {
     }, [allSections, employeePerfDoc]);
 
     const isLoading = isLoadingDoc || isLoadingTemplate || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc;
+
+    const handleRatingChange = (sectionId: string, rating: number) => {
+        setRatings(prev => ({ ...prev, [sectionId]: rating }));
+    };
+
+    const handleCommentChange = (sectionId: string, comment: string) => {
+        setComments(prev => ({ ...prev, [sectionId]: comment }));
+    };
 
     if (isLoading) {
         return <div className="container mx-auto py-10">Loading evaluation...</div>;
@@ -99,6 +114,40 @@ export default function EvaluationPage() {
                         </AccordionTrigger>
                         <AccordionContent className="p-6 pt-0">
                            <div className="space-y-6">
+                                
+                                {(section.enableSectionRatings || section.enableSectionComments) && (
+                                    <div className="pb-6 border-b">
+                                        <h4 className="font-semibold text-lg mb-4">Your Evaluation</h4>
+                                        <div className="space-y-4">
+                                            {section.enableSectionRatings && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && <span className="text-destructive">*</span>}</Label>
+                                                    <StarRating
+                                                        count={section.ratingScale || 5}
+                                                        value={ratings[section.id] || 0}
+                                                        onChange={(value) => handleRatingChange(section.id, value)}
+                                                    />
+                                                </div>
+                                            )}
+                                            {section.enableSectionComments && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && <span className="text-destructive">*</span>}</Label>
+                                                    <Textarea
+                                                        id={`comment-${section.id}`}
+                                                        value={comments[section.id] || ''}
+                                                        onChange={(e) => handleCommentChange(section.id, e.target.value)}
+                                                        placeholder="Provide your comments..."
+                                                        maxLength={section.maxLength}
+                                                    />
+                                                    <p className="text-sm text-muted-foreground text-right">
+                                                        {comments[section.id]?.length || 0} / {section.maxLength}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 <p className="text-muted-foreground">{section.type}</p>
                                 
                                 <h4 className="font-semibold text-lg border-b pb-2">Section Configuration</h4>
@@ -162,6 +211,10 @@ export default function EvaluationPage() {
                     </AccordionItem>
                  ))}
             </Accordion>
+
+            <div className="flex justify-end mt-8">
+                <Button>Submit Evaluation</Button>
+            </div>
         </div>
     );
 }
