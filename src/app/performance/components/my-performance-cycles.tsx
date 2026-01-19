@@ -41,6 +41,15 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, myAppraiser
         setOpenRowId(prev => (prev === rowId ? null : rowId));
     };
 
+    const sortedAppraiserMappings = useMemo(() => {
+        if (!myAppraiserMappings) return [];
+        return [...myAppraiserMappings].sort((a, b) => {
+            if (a.appraiserType === 'Primary' && b.appraiserType !== 'Primary') return -1;
+            if (a.appraiserType !== 'Primary' && b.appraiserType === 'Primary') return 1;
+            return 0;
+        });
+    }, [myAppraiserMappings]);
+
 
     return (
         <Card>
@@ -66,7 +75,7 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, myAppraiser
                                     <React.Fragment key={cycle.id}>
                                         <TableRow>
                                             <TableCell>
-                                                <Button variant="ghost" size="icon" onClick={() => handleToggleRow(cycle.id)} disabled={!myAppraiserMappings || myAppraiserMappings.length === 0}>
+                                                <Button variant="ghost" size="icon" onClick={() => handleToggleRow(cycle.id)} disabled={!sortedAppraiserMappings || sortedAppraiserMappings.length === 0}>
                                                     {openRowId === cycle.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                                     <span className="sr-only">Toggle appraisers</span>
                                                 </Button>
@@ -87,7 +96,7 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, myAppraiser
                                                 <TableCell colSpan={4} className="p-0">
                                                     <div className="p-4 pl-16">
                                                         <h4 className="font-semibold mb-2">Appraisers</h4>
-                                                        {myAppraiserMappings && myAppraiserMappings.length > 0 ? (
+                                                        {sortedAppraiserMappings && sortedAppraiserMappings.length > 0 ? (
                                                             <Table>
                                                                 <TableHeader>
                                                                     <TableRow>
@@ -98,7 +107,7 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, myAppraiser
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
-                                                                    {myAppraiserMappings.map(mapping => (
+                                                                    {sortedAppraiserMappings.map(mapping => (
                                                                         <TableRow key={mapping.id} className="border-0">
                                                                             <TableCell>{mapping.appraiserType}</TableCell>
                                                                             <TableCell>{getEmployeeNameByPersonNumber(mapping.appraiserPersonNumber)}</TableCell>
