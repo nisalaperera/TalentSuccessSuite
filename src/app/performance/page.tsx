@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -57,6 +56,16 @@ export default function PerformancePage() {
   }, [firestore, selectedEmployee, performanceCycleId]);
   const { data: myPerformanceCycles, isLoading: isLoadingMyCycles } = useCollection<EmployeePerformanceDocument>(myPerformanceCyclesQuery);
   
+  const myAppraiserMappingsQuery = useMemoFirebase(() => {
+    if (!personNumber || !performanceCycleId) return null;
+    return query(
+        collection(firestore, 'employee_appraiser_mappings'),
+        where('employeePersonNumber', '==', personNumber),
+        where('performanceCycleId', '==', performanceCycleId)
+    );
+  }, [firestore, personNumber, performanceCycleId]);
+  const { data: myAppraiserMappings, isLoading: isLoadingMyAppraiserMappings } = useCollection<AppraiserMapping>(myAppraiserMappingsQuery);
+
   // My Team Performance Cycles Data
   const { workTeamEmployeeIds, homeTeamEmployeeIds } = useMemo(() => {
     if (!appraiserMappings || !allEmployees) return { workTeamEmployeeIds: [], homeTeamEmployeeIds: [] };
@@ -98,7 +107,7 @@ export default function PerformancePage() {
   }, [firestore, homeTeamEmployeeIds, performanceCycleId]);
   const { data: homeTeamPerformanceCycles, isLoading: isLoadingHomeTeamCycles } = useCollection<EmployeePerformanceDocument>(homeTeamPerformanceCyclesQuery);
   
-  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingWorkTeamCycles || isLoadingHomeTeamCycles || isLoadingMappings;
+  const isLoading = isLoadingEmployees || isLoadingMyCycles || isLoadingWorkTeamCycles || isLoadingHomeTeamCycles || isLoadingMappings || isLoadingMyAppraiserMappings;
 
   if (!personNumber || !performanceCycleId) {
     return (
@@ -127,6 +136,8 @@ export default function PerformancePage() {
           data={myPerformanceCycles}
           allPerformanceDocuments={allPerformanceDocuments}
           allPerformanceTemplates={allPerformanceTemplates}
+          myAppraiserMappings={myAppraiserMappings}
+          allEmployees={allEmployees}
           />
         <MyTeamPerformanceCycles 
           workTeamData={workTeamPerformanceCycles}
