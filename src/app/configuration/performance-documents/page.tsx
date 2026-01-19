@@ -39,7 +39,7 @@ export default function PerformanceDocumentsPage() {
     const { data: evaluationFlows } = useCollection<EvaluationFlow>(evaluationFlowsQuery);
 
     const eligibilityQuery = useMemoFirebase(() => collection(firestore, 'eligibility_criteria'), [firestore]);
-    const { data: eligibilityCriteria } = useCollection<Eligibility>(eligibilityCriteria);
+    const { data: eligibilityCriteria } = useCollection<Eligibility>(eligibilityQuery);
 
     const employeesQuery = useMemoFirebase(() => collection(firestore, 'employees'), [firestore]);
     const { data: employees } = useCollection<Employee>(employeesQuery);
@@ -268,3 +268,5 @@ export default function PerformanceDocumentsPage() {
         </div>
     );
 }
+
+    
