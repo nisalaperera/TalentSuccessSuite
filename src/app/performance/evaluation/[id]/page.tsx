@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, writeBatch, serverTimestamp, query, where } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping, EvaluationFlow } from '@/lib/types';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -53,6 +54,9 @@ export default function EvaluationPage() {
     const perfDocRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'performance_documents', employeePerfDoc.performanceDocumentId) : null, [firestore, employeePerfDoc]);
     const { data: performanceDocument, isLoading: isLoadingPerfDoc } = useDoc<PerformanceDocument>(perfDocRef);
 
+    const evalFlowRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'evaluation_flows', employeePerfDoc.evaluationFlowId) : null, [firestore, employeePerfDoc]);
+    const { data: evaluationFlow, isLoading: isLoadingFlow } = useDoc<EvaluationFlow>(evalFlowRef);
+
 
     // 3. Get all sections and filter
     const sectionsQuery = useMemoFirebase(() => employeePerfDoc ? collection(firestore, 'performance_template_sections') : null, [firestore, employeePerfDoc]);
@@ -79,7 +83,7 @@ export default function EvaluationPage() {
     const { data: appraiserMappings, isLoading: isLoadingMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
 
 
-    const isLoading = isLoadingDoc || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc || isLoadingMappings;
+    const isLoading = isLoadingDoc || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc || isLoadingMappings || isLoadingFlow;
 
     const handleRatingChange = (sectionId: string, rating: number) => {
         setRatings(prev => ({ ...prev, [sectionId]: rating }));
@@ -126,6 +130,11 @@ export default function EvaluationPage() {
         }
 
         try {
+            if (!evaluationFlow) {
+                toast({ title: 'Error', description: 'Evaluation flow configuration could not be loaded.', variant: 'destructive'});
+                setIsSubmitting(false);
+                return;
+            }
             const batch = writeBatch(firestore);
 
             // 2. Add evaluations to batch
@@ -152,6 +161,20 @@ export default function EvaluationPage() {
                 console.warn("Could not find a relevant appraiser mapping to update completion status.");
             }
             
+            // 4. Update document status to next step in the flow
+            const currentStatus = employeePerfDoc.status;
+            const sortedSteps = [...evaluationFlow.steps].sort((a,b) => a.sequence - b.sequence);
+            const currentStepIndex = sortedSteps.findIndex(step => step.task === currentStatus);
+
+            if (currentStepIndex !== -1 && currentStepIndex < sortedSteps.length - 1) {
+                const nextStep = sortedSteps[currentStepIndex + 1];
+                const nextStatus = nextStep.task;
+                
+                if (employeePerfDocRef) {
+                     batch.update(employeePerfDocRef, { status: nextStatus });
+                }
+            }
+
             await batch.commit();
 
             toast({ title: 'Success', description: 'Your evaluation has been submitted.'});
