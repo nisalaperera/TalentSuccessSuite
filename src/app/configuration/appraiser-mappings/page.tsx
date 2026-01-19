@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, Suspense } from 'react';
@@ -114,8 +115,8 @@ function AppraiserMappingsContent() {
     return (
         <div className="container mx-auto py-10">
             <PageHeader
-                title="Appraiser Mappings"
-                description="View employee to appraiser mappings."
+                title="Performance Appraiser Mappings"
+                description="View performance appraiser mappings."
                 showAddNew={false}
             />
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -85,8 +86,8 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     href: "/configuration/employee-documents"
                 },
                 {
-                    title: "Appraiser Mappings",
-                    description: "View employee to appraiser mappings.",
+                    title: "Performance Appraiser Mappings",
+                    description: "View performance appraiser mappings.",
                     href: "/configuration/appraiser-mappings"
                 }
             ]
