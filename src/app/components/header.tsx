@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -50,6 +49,7 @@ function GlobalFilters() {
                 searchPlaceholder="Search employees..."
                 noResultsText="No employees found."
                 triggerClassName="w-64"
+                allowDeselect={false}
              />
              <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}>
                 <SelectTrigger id="performance-cycle" className="w-64">

@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -28,6 +27,7 @@ interface ComboboxProps {
     searchPlaceholder?: string;
     noResultsText?: string;
     triggerClassName?: string;
+    allowDeselect?: boolean;
 }
 
 export function Combobox({ 
@@ -37,7 +37,8 @@ export function Combobox({
     placeholder = "Select an option...",
     searchPlaceholder = "Search...",
     noResultsText = "No results found.",
-    triggerClassName = "w-[200px]"
+    triggerClassName = "w-[200px]",
+    allowDeselect = true
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -67,7 +68,11 @@ export function Combobox({
                   key={option.value}
                   value={option.label}
                   onSelect={() => {
-                    onChange(option.value === value ? "" : option.value)
+                    if (allowDeselect) {
+                      onChange(option.value === value ? "" : option.value)
+                    } else {
+                      onChange(option.value)
+                    }
                     setOpen(false)
                   }}
                 >
