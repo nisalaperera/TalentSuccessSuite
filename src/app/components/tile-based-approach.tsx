@@ -83,6 +83,11 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     title: "Employee Documents",
                     description: "View and manage launched employee documents.",
                     href: "/configuration/employee-documents"
+                },
+                {
+                    title: "Appraiser Mappings",
+                    description: "View employee to appraiser mappings.",
+                    href: "/configuration/appraiser-mappings"
                 }
             ]
         }
