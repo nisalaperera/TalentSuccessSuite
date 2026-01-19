@@ -193,6 +193,35 @@
         },
         "required": ["performanceDocumentId", "employeeId", "performanceCycleId", "performanceTemplateId", "evaluationFlowId", "status"]
     },
+    "AppraiserMapping": {
+      "title": "AppraiserMapping",
+      "type": "object",
+      "description": "Maps employees to their appraisers for a specific performance document.",
+      "properties": {
+        "employeePerformanceDocumentId": {
+          "type": "string",
+          "description": "Reference to the specific EmployeePerformanceDocument."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Reference to the Employee being reviewed."
+        },
+        "performanceCycleId": {
+          "type": "string",
+          "description": "Reference to the PerformanceCycle."
+        },
+        "primaryAppraiserId": {
+          "type": "string",
+          "description": "The Firestore document ID of the primary appraiser (Employee)."
+        },
+        "secondaryAppraiserIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "An array of Firestore document IDs for secondary appraisers (Employee)."
+        }
+      },
+      "required": ["employeePerformanceDocumentId", "employeeId", "performanceCycleId", "primaryAppraiserId"]
+    },
     "Employee": {
       "title": "Employee",
       "type": "object",
@@ -260,6 +289,10 @@
     "employee_performance_documents": {
         "schema": { "$ref": "#/entities/EmployeePerformanceDocument" },
         "description": "Stores individual performance documents for each employee."
+    },
+    "employee_appraiser_mappings": {
+        "schema": { "$ref": "#/entities/AppraiserMapping" },
+        "description": "Stores appraiser mappings for each employee performance document."
     },
     "employees": {
         "schema": { "$ref": "#/entities/Employee" },

@@ -7,7 +7,7 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useToast } from '@/hooks/use-toast';
-import type { PerformanceDocument as PerfDocType, ReviewPeriod, PerformanceCycle, Employee, PerformanceTemplate, EvaluationFlow, Eligibility, PerformanceTemplateSection, EmployeePerformanceDocument, GoalPlan } from '@/lib/types';
+import type { PerformanceDocument as PerfDocType, ReviewPeriod, PerformanceCycle, Employee, PerformanceTemplate, EvaluationFlow, Eligibility, PerformanceTemplateSection, EmployeePerformanceDocument, GoalPlan, AppraiserMapping } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ export default function PerformanceDocumentsPage() {
     const { data: evaluationFlows } = useCollection<EvaluationFlow>(evaluationFlowsQuery);
 
     const eligibilityQuery = useMemoFirebase(() => collection(firestore, 'eligibility_criteria'), [firestore]);
-    const { data: eligibilityCriteria } = useCollection<Eligibility>(eligibilityQuery);
+    const { data: eligibilityCriteria } = useCollection<Eligibility>(eligibilityCriteria);
 
     const employeesQuery = useMemoFirebase(() => collection(firestore, 'employees'), [firestore]);
     const { data: employees } = useCollection<Employee>(employeesQuery);
@@ -139,10 +139,8 @@ export default function PerformanceDocumentsPage() {
         }
 
         const eligibleEmployees = employees.filter(employee => {
-            // An employee is eligible if they do NOT match any of the exclusion rules.
             return !eligibility.rules.some(rule => {
                 let employeeValue: string | undefined;
-                // Map rule type to the corresponding employee property key.
                 switch (rule.type) {
                     case 'Person Type':
                         employeeValue = employee.personType;
@@ -154,8 +152,6 @@ export default function PerformanceDocumentsPage() {
                         employeeValue = employee.entity;
                         break;
                 }
-                
-                // If the employee has a value for the rule's type, check if it's in the exclusion list.
                 return employeeValue ? rule.values.includes(employeeValue) : false;
             });
         });
@@ -165,9 +161,14 @@ export default function PerformanceDocumentsPage() {
             return;
         }
 
+        const personNumberToIdMap = new Map<string, string>();
+        (employees || []).forEach(emp => {
+            personNumberToIdMap.set(emp.personNumber, emp.id);
+        });
+
         const batch = writeBatch(firestore);
         
-        eligibleEmployees.forEach(emp => {
+        for (const emp of eligibleEmployees) {
             const newEmployeeDocRef = doc(collection(firestore, 'employee_performance_documents'));
             const newDoc: Omit<EmployeePerformanceDocument, 'id'> = {
                 performanceDocumentId: perfDoc.id,
@@ -178,7 +179,33 @@ export default function PerformanceDocumentsPage() {
                 status: 'Not Started',
             };
             batch.set(newEmployeeDocRef, newDoc);
-        });
+
+            const primaryAppraiserId = personNumberToIdMap.get(emp.workManager);
+            if (!primaryAppraiserId) {
+                console.warn(`Could not find primary appraiser (work manager) for employee ${emp.personNumber}. Skipping appraiser mapping.`);
+                continue;
+            }
+
+            const secondaryAppraiserIds: string[] = [];
+            if (emp.homeManager) {
+                const homeManagerDocId = personNumberToIdMap.get(emp.homeManager);
+                if (homeManagerDocId) {
+                    secondaryAppraiserIds.push(homeManagerDocId);
+                } else {
+                    console.warn(`Could not find home manager for employee ${emp.personNumber}.`);
+                }
+            }
+
+            const appraiserMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+            const newAppraiserMapping: Omit<AppraiserMapping, 'id'> = {
+                employeePerformanceDocumentId: newEmployeeDocRef.id,
+                employeeId: emp.id,
+                performanceCycleId: perfDoc.performanceCycleId,
+                primaryAppraiserId: primaryAppraiserId,
+                secondaryAppraiserIds: secondaryAppraiserIds,
+            };
+            batch.set(appraiserMappingRef, newAppraiserMapping);
+        }
 
         const perfDocRef = doc(firestore, 'performance_documents', perfDoc.id);
         batch.update(perfDocRef, { isLaunched: true });

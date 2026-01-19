@@ -3,6 +3,7 @@
 
 
 
+
 import { DocumentData } from "firebase/firestore";
 
 export type ReviewPeriod = {
@@ -136,6 +137,15 @@ export type EmployeePerformanceDocument = {
     evaluationFlowId: string;
     status: 'Not Started' | 'In Progress' | 'Completed';
 }
+
+export type AppraiserMapping = {
+  id: string;
+  employeePerformanceDocumentId: string;
+  employeeId: string;
+  performanceCycleId: string;
+  primaryAppraiserId: string;
+  secondaryAppraiserIds: string[];
+};
 
 export type Employee = {
   id: string;
