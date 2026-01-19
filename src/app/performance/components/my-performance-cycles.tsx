@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -6,27 +5,22 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
-import type { EmployeePerformanceDocument, PerformanceDocument, PerformanceTemplate, AppraiserMapping, Employee } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceDocument, AppraiserMapping, Employee } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MyPerformanceCyclesProps {
     data: EmployeePerformanceDocument[] | null;
     allPerformanceDocuments: PerformanceDocument[] | null;
-    allPerformanceTemplates: PerformanceTemplate[] | null;
     myAppraiserMappings: AppraiserMapping[] | null;
     allEmployees: Employee[] | null;
 }
 
-export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerformanceTemplates, myAppraiserMappings, allEmployees }: MyPerformanceCyclesProps) {
+export function MyPerformanceCycles({ data, allPerformanceDocuments, myAppraiserMappings, allEmployees }: MyPerformanceCyclesProps) {
     const [openRowId, setOpenRowId] = useState<string | null>(null);
 
     const getDocumentName = (docId: string) => {
         return allPerformanceDocuments?.find(d => d.id === docId)?.name || 'N/A';
-    }
-
-    const getTemplateName = (templateId: string) => {
-        return allPerformanceTemplates?.find(t => t.id === templateId)?.name || 'N/A';
     }
 
     const tableData = useMemo(() => {
@@ -34,9 +28,8 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
         return data.map(cycle => ({
             ...cycle,
             documentName: getDocumentName(cycle.performanceDocumentId),
-            templateName: getTemplateName(cycle.performanceTemplateId),
         }));
-    }, [data, allPerformanceDocuments, allPerformanceTemplates]);
+    }, [data, allPerformanceDocuments]);
 
     const getEmployeeNameByPersonNumber = (personNumber: string) => {
         if (!allEmployees) return 'N/A';
@@ -61,7 +54,6 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
                         <TableRow>
                             <TableHead className="w-12" />
                             <TableHead>Document Name</TableHead>
-                            <TableHead>Template</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -80,7 +72,6 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
                                                 </Button>
                                             </TableCell>
                                             <TableCell className="font-medium">{cycle.documentName}</TableCell>
-                                            <TableCell>{cycle.templateName}</TableCell>
                                             <TableCell><Badge variant="secondary">{cycle.status}</Badge></TableCell>
                                             <TableCell className="text-right">
                                                 <Link href={`/performance/evaluation/${cycle.id}`}>
@@ -93,24 +84,28 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
                                         </TableRow>
                                         {openRowId === cycle.id && (
                                             <TableRow className="bg-muted/50 hover:bg-muted">
-                                                <TableCell colSpan={5} className="p-0">
+                                                <TableCell colSpan={4} className="p-0">
                                                     <div className="p-4 pl-16">
                                                         <h4 className="font-semibold mb-2">Appraisers</h4>
                                                         {myAppraiserMappings && myAppraiserMappings.length > 0 ? (
                                                             <Table>
                                                                 <TableHeader>
                                                                     <TableRow>
-                                                                        <TableHead>Appraiser Name</TableHead>
                                                                         <TableHead>Appraiser Type</TableHead>
+                                                                        <TableHead>Appraiser Name</TableHead>
                                                                         <TableHead>Eval/Goal Types</TableHead>
+                                                                        <TableHead>Completed</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
                                                                     {myAppraiserMappings.map(mapping => (
                                                                         <TableRow key={mapping.id} className="border-0">
-                                                                            <TableCell>{getEmployeeNameByPersonNumber(mapping.appraiserPersonNumber)}</TableCell>
                                                                             <TableCell>{mapping.appraiserType}</TableCell>
+                                                                            <TableCell>{getEmployeeNameByPersonNumber(mapping.appraiserPersonNumber)}</TableCell>
                                                                             <TableCell>{mapping.evalGoalTypes}</TableCell>
+                                                                            <TableCell>
+                                                                                {mapping.isCompleted ? <Badge>Yes</Badge> : <Badge variant="secondary">No</Badge>}
+                                                                            </TableCell>
                                                                         </TableRow>
                                                                     ))}
                                                                 </TableBody>
@@ -127,7 +122,7 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
                             })
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center h-24">
+                                <TableCell colSpan={4} className="text-center h-24">
                                     No performance documents found for you in this cycle.
                                 </TableCell>
                             </TableRow>

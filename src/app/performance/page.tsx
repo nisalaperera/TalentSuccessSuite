@@ -135,7 +135,6 @@ export default function PerformancePage() {
         <MyPerformanceCycles
           data={myPerformanceCycles}
           allPerformanceDocuments={allPerformanceDocuments}
-          allPerformanceTemplates={allPerformanceTemplates}
           myAppraiserMappings={myAppraiserMappings}
           allEmployees={allEmployees}
           />
