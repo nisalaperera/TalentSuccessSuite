@@ -8,6 +8,7 @@ import { columns } from './columns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import type { AppraiserMapping, Employee, PerformanceCycle, ReviewPeriod } from '@/lib/types';
+import type { SortingState } from '@tanstack/react-table';
 
 function AppraiserMappingsContent() {
     const firestore = useFirestore();
@@ -37,6 +38,12 @@ function AppraiserMappingsContent() {
     };
     
     const tableColumns = useMemo(() => columns({ getEmployeeNameByPersonNumber, getCycleName }), [employees, performanceCycles, reviewPeriods]);
+    
+    const initialSorting = useMemo<SortingState>(() => [
+        { id: 'performanceCycleId', desc: false },
+        { id: 'employeePersonNumber', desc: false },
+        { id: 'appraiserType', desc: false },
+    ], []);
 
     return (
         <div className="container mx-auto py-10">
@@ -45,7 +52,11 @@ function AppraiserMappingsContent() {
                 description="View employee to appraiser mappings."
                 showAddNew={false}
             />
-            <DataTable columns={tableColumns} data={appraiserMappings ?? []} />
+            <DataTable 
+                columns={tableColumns} 
+                data={appraiserMappings ?? []} 
+                initialSorting={initialSorting}
+            />
         </div>
     );
 }
