@@ -200,7 +200,7 @@ export default function PerformanceDocumentsPage() {
                     performanceCycleId: perfDoc.performanceCycleId,
                     appraiserType: 'Primary',
                     appraiserPersonNumber: emp.workManager,
-                    linkedType: 'Work Manager',
+                    evalGoalTypes: 'Work',
                     isCompleted: false,
                 };
                 batch.set(primaryMappingRef, primaryMapping);
@@ -216,7 +216,7 @@ export default function PerformanceDocumentsPage() {
                     performanceCycleId: perfDoc.performanceCycleId,
                     appraiserType: 'Secondary',
                     appraiserPersonNumber: emp.homeManager,
-                    linkedType: 'Home Manager',
+                    evalGoalTypes: 'Home',
                     isCompleted: false,
                 };
                 batch.set(secondaryMappingRef, secondaryMapping);

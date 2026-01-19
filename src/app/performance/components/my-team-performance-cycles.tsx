@@ -100,8 +100,8 @@ export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmploye
             <CardContent>
                 <Tabs defaultValue="work">
                     <TabsList>
-                        <TabsTrigger value="work">Work Manager</TabsTrigger>
-                        <TabsTrigger value="home">Home Manager</TabsTrigger>
+                        <TabsTrigger value="work">Work</TabsTrigger>
+                        <TabsTrigger value="home">Home</TabsTrigger>
                     </TabsList>
                     <TabsContent value="work">
                         <TeamTable 

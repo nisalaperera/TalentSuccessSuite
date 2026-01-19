@@ -73,11 +73,11 @@ export default function PerformancePage() {
     const employeeMap = new Map(allEmployees.map(e => [e.personNumber, e.id]));
     
     const workTeamPersonNumbers = appraiserMappings
-      .filter(m => m.linkedType === 'Work Manager')
+      .filter(m => m.evalGoalTypes.includes('Work'))
       .map(m => m.employeePersonNumber);
 
     const homeTeamPersonNumbers = appraiserMappings
-      .filter(m => m.linkedType === 'Home Manager')
+      .filter(m => m.evalGoalTypes.includes('Home'))
       .map(m => m.employeePersonNumber);
 
     const workTeamEmployeeIds = workTeamPersonNumbers.map(pn => employeeMap.get(pn)).filter((id): id is string => !!id);

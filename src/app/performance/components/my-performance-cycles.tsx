@@ -102,7 +102,7 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
                                                                     <TableRow>
                                                                         <TableHead>Appraiser Name</TableHead>
                                                                         <TableHead>Appraiser Type</TableHead>
-                                                                        <TableHead>Linked As</TableHead>
+                                                                        <TableHead>Eval/Goal Types</TableHead>
                                                                     </TableRow>
                                                                 </TableHeader>
                                                                 <TableBody>
@@ -110,7 +110,7 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
                                                                         <TableRow key={mapping.id} className="border-0">
                                                                             <TableCell>{getEmployeeNameByPersonNumber(mapping.appraiserPersonNumber)}</TableCell>
                                                                             <TableCell>{mapping.appraiserType}</TableCell>
-                                                                            <TableCell>{mapping.linkedType}</TableCell>
+                                                                            <TableCell>{mapping.evalGoalTypes}</TableCell>
                                                                         </TableRow>
                                                                     ))}
                                                                 </TableBody>

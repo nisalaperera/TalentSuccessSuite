@@ -215,17 +215,16 @@
           "type": "string",
           "description": "The personNumber of the appraiser."
         },
-        "linkedType": {
+        "evalGoalTypes": {
           "type": "string",
-          "enum": ["Work Manager", "Home Manager"],
-          "description": "Indicates the managerial relationship."
+          "description": "Indicates the evaluation/goal relationship type (e.g., Work, Home, or comma-separated values like Work,Home)."
         },
         "isCompleted": {
           "type": "boolean",
           "description": "Indicates if the appraiser has completed their evaluation."
         }
       },
-      "required": ["employeePersonNumber", "performanceCycleId", "appraiserType", "appraiserPersonNumber", "linkedType"]
+      "required": ["employeePersonNumber", "performanceCycleId", "appraiserType", "appraiserPersonNumber", "evalGoalTypes"]
     },
     "Employee": {
       "title": "Employee",
