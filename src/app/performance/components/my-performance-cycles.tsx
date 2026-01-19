@@ -2,6 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
@@ -53,19 +54,24 @@ export function MyPerformanceCycles({ data, allPerformanceDocuments, allPerforma
                     </TableHeader>
                     <TableBody>
                         {tableData.length > 0 ? (
-                            tableData.map(cycle => (
-                                <TableRow key={cycle.id}>
-                                    <TableCell className="font-medium">{cycle.documentName}</TableCell>
-                                    <TableCell>{cycle.templateName}</TableCell>
-                                    <TableCell><Badge variant="secondary">{cycle.status}</Badge></TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm">
-                                            View Document
-                                            <ArrowRight className="ml-2 h-4 w-4" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                            tableData.map(cycle => {
+                                const buttonText = cycle.status === 'Worker Self-Evaluation' ? 'Evaluate' : 'View Evaluation';
+                                return (
+                                    <TableRow key={cycle.id}>
+                                        <TableCell className="font-medium">{cycle.documentName}</TableCell>
+                                        <TableCell>{cycle.templateName}</TableCell>
+                                        <TableCell><Badge variant="secondary">{cycle.status}</Badge></TableCell>
+                                        <TableCell className="text-right">
+                                            <Link href={`/performance/evaluation/${cycle.id}`}>
+                                                <Button variant="outline" size="sm">
+                                                    {buttonText}
+                                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                                </Button>
+                                            </Link>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={4} className="text-center h-24">
