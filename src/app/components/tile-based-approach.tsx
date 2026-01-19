@@ -80,8 +80,8 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     href: "/configuration/employees"
                 },
                 {
-                    title: "Employee Documents",
-                    description: "View and manage launched employee documents.",
+                    title: "Employee Performance Documents",
+                    description: "View and manage launched employee performance documents.",
                     href: "/configuration/employee-documents"
                 },
                 {

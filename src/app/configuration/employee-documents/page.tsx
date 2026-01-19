@@ -81,7 +81,7 @@ function EmployeeDocumentsContent() {
         <div className="container mx-auto py-10">
             <PageHeader
                 title="Employee Performance Documents"
-                description="View all launched performance documents for employees."
+                description="View all launched employee performance documents."
                 showAddNew={false}
             />
 
