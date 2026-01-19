@@ -26,6 +26,10 @@ export const columns = ({ getEmployeeNameByPersonNumber, getCycleName }: Columns
         header: ({ column }) => <DataTableColumnHeader column={column} title="Appraiser Type" />,
     },
     {
+        accessorKey: 'linkedType',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Linked As" />,
+    },
+    {
         accessorKey: 'appraiserPersonNumber',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Appraiser" />,
         cell: ({ row }) => getEmployeeNameByPersonNumber(row.getValue('appraiserPersonNumber')),

@@ -139,6 +139,7 @@ export type AppraiserMapping = {
   performanceCycleId: string;
   appraiserType: 'Primary' | 'Secondary';
   appraiserPersonNumber: string;
+  linkedType: 'Work Manager' | 'Home Manager';
 };
 
 export type Employee = {

@@ -214,9 +214,14 @@
         "appraiserPersonNumber": {
           "type": "string",
           "description": "The personNumber of the appraiser."
+        },
+        "linkedType": {
+          "type": "string",
+          "enum": ["Work Manager", "Home Manager"],
+          "description": "Indicates the managerial relationship."
         }
       },
-      "required": ["employeePersonNumber", "performanceCycleId", "appraiserType", "appraiserPersonNumber"]
+      "required": ["employeePersonNumber", "performanceCycleId", "appraiserType", "appraiserPersonNumber", "linkedType"]
     },
     "Employee": {
       "title": "Employee",
