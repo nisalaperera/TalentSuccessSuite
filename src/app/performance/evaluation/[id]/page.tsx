@@ -114,98 +114,37 @@ export default function EvaluationPage() {
                         </AccordionTrigger>
                         <AccordionContent className="p-6 pt-0">
                            <div className="space-y-6">
-                                
-                                {(section.enableSectionRatings || section.enableSectionComments) && (
-                                    <div className="pb-6 border-b">
-                                        <h4 className="font-semibold text-lg mb-4">Your Evaluation</h4>
-                                        <div className="space-y-4">
-                                            {section.enableSectionRatings && (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && <span className="text-destructive">*</span>}</Label>
-                                                    <StarRating
-                                                        count={section.ratingScale || 5}
-                                                        value={ratings[section.id] || 0}
-                                                        onChange={(value) => handleRatingChange(section.id, value)}
-                                                    />
-                                                </div>
-                                            )}
-                                            {section.enableSectionComments && (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && <span className="text-destructive">*</span>}</Label>
-                                                    <Textarea
-                                                        id={`comment-${section.id}`}
-                                                        value={comments[section.id] || ''}
-                                                        onChange={(e) => handleCommentChange(section.id, e.target.value)}
-                                                        placeholder="Provide your comments..."
-                                                        maxLength={section.maxLength}
-                                                    />
-                                                    <p className="text-sm text-muted-foreground text-right">
-                                                        {comments[section.id]?.length || 0} / {section.maxLength}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
+                                {(section.enableSectionRatings || section.enableSectionComments) ? (
+                                    <div className="space-y-4">
+                                        {section.enableSectionRatings && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && <span className="text-destructive">*</span>}</Label>
+                                                <StarRating
+                                                    count={section.ratingScale || 5}
+                                                    value={ratings[section.id] || 0}
+                                                    onChange={(value) => handleRatingChange(section.id, value)}
+                                                />
+                                            </div>
+                                        )}
+                                        {section.enableSectionComments && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && <span className="text-destructive">*</span>}</Label>
+                                                <Textarea
+                                                    id={`comment-${section.id}`}
+                                                    value={comments[section.id] || ''}
+                                                    onChange={(e) => handleCommentChange(section.id, e.target.value)}
+                                                    placeholder="Provide your comments..."
+                                                    maxLength={section.maxLength}
+                                                />
+                                                <p className="text-sm text-muted-foreground text-right">
+                                                    {comments[section.id]?.length || 0} / {section.maxLength}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No evaluation inputs are enabled for this section.</p>
                                 )}
-                                
-                                <p className="text-muted-foreground">{section.type}</p>
-                                
-                                <h4 className="font-semibold text-lg border-b pb-2">Section Configuration</h4>
-                                
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="flex items-center justify-between"><Label>Section Ratings Enabled</Label><Badge variant={section.enableSectionRatings ? "default" : "secondary"}>{section.enableSectionRatings ? 'Yes' : 'No'}</Badge></div>
-                                    {section.enableSectionRatings && (
-                                        <>
-                                            <div className="flex items-center justify-between"><Label>Ratings Mandatory</Label><Badge variant={section.sectionRatingMandatory ? "default" : "secondary"}>{section.sectionRatingMandatory ? 'Yes' : 'No'}</Badge></div>
-                                            <div className="flex items-center justify-between"><Label>Rating Scale</Label><Badge variant="outline">1 - {section.ratingScale}</Badge></div>
-                                            <div className="flex items-center justify-between"><Label>Calculation Method</Label><Badge variant="outline">{section.ratingCalculationMethod}</Badge></div>
-                                        </>
-                                    )}
-                                     <div className="flex items-center justify-between"><Label>Section Comments Enabled</Label><Badge variant={section.enableSectionComments ? "default" : "secondary"}>{section.enableSectionComments ? 'Yes' : 'No'}</Badge></div>
-                                     {section.enableSectionComments && (
-                                        <>
-                                            <div className="flex items-center justify-between"><Label>Comments Mandatory</Label><Badge variant={section.sectionCommentMandatory ? "default" : "secondary"}>{section.sectionCommentMandatory ? 'Yes' : 'No'}</Badge></div>
-                                            <div className="flex items-center justify-between"><Label>Min/Max Length</Label><Badge variant="outline">{section.minLength} / {section.maxLength}</Badge></div>
-                                        </>
-                                     )}
-                                </div>
-                                {section.type === 'Performance Goals' && (
-                                    <>
-                                        <h4 className="font-semibold text-lg border-b pb-2">Goal Item Configuration</h4>
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            <div className="flex items-center justify-between"><Label>Goal Ratings Enabled</Label><Badge variant={section.enableItemRatings ? "default" : "secondary"}>{section.enableItemRatings ? 'Yes' : 'No'}</Badge></div>
-                                            {section.enableItemRatings && <div className="flex items-center justify-between"><Label>Goal Ratings Mandatory</Label><Badge variant={section.itemRatingMandatory ? "default" : "secondary"}>{section.itemRatingMandatory ? 'Yes' : 'No'}</Badge></div>}
-                                            <div className="flex items-center justify-between"><Label>Goal Comments Enabled</Label><Badge variant={section.enableItemComments ? "default" : "secondary"}>{section.enableItemComments ? 'Yes' : 'No'}</Badge></div>
-                                            {section.enableItemComments && <div className="flex items-center justify-between"><Label>Goal Comments Mandatory</Label><Badge variant={section.itemCommentMandatory ? "default" : "secondary"}>{section.itemCommentMandatory ? 'Yes' : 'No'}</Badge></div>}
-                                        </div>
-                                    </>
-                                )}
-
-                               <h4 className="font-semibold text-lg border-b pb-2">Access Permissions</h4>
-                               <Table>
-                                  <TableHeader>
-                                      <TableRow>
-                                          <TableHead>Role</TableHead>
-                                          <TableHead className="text-center">View</TableHead>
-                                          <TableHead className="text-center">Rate</TableHead>
-                                          <TableHead className="text-center">View Worker Ratings</TableHead>
-                                          <TableHead className="text-center">View Primary Appraiser Ratings</TableHead>
-                                          <TableHead className="text-center">View Secondary Appraiser Ratings</TableHead>
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {section.permissions?.map(p => (
-                                          <TableRow key={p.role}>
-                                              <TableCell className="font-medium">{p.role}</TableCell>
-                                              <TableCell className="text-center"><Switch checked={p.view} disabled /></TableCell>
-                                              <TableCell className="text-center"><Switch checked={p.rate} disabled /></TableCell>
-                                              <TableCell className="text-center"><Switch checked={p.viewWorkerRatings} disabled /></TableCell>
-                                              <TableCell className="text-center"><Switch checked={p.viewPrimaryAppraiserRatings} disabled /></TableCell>
-                                              <TableCell className="text-center"><Switch checked={p.viewSecondaryAppraiserRatings} disabled /></TableCell>
-                                          </TableRow>
-                                      ))}
-                                  </TableBody>
-                              </Table>
                            </div>
                         </AccordionContent>
                     </AccordionItem>
