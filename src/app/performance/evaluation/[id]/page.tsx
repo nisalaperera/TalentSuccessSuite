@@ -110,6 +110,15 @@ export default function EvaluationPage() {
         }
     }, [myExistingEvals]);
 
+    const isWorker = useMemo(() => employee?.personNumber === personNumber, [employee, personNumber]);
+
+    const isReadOnly = useMemo(() => {
+        if (!employeePerfDoc || !isWorker) {
+            return false;
+        }
+        return isWorker && employeePerfDoc.status !== 'Worker Self-Evaluation';
+    }, [employeePerfDoc, isWorker]);
+
 
     const isLoading = isLoadingDoc || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc || isLoadingMappings || isLoadingFlow || isLoadingMyEvals;
 
@@ -281,23 +290,25 @@ export default function EvaluationPage() {
                                     <div className="space-y-4">
                                         {section.enableSectionRatings && (
                                             <div className="space-y-2">
-                                                <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && <span className="text-destructive">*</span>}</Label>
+                                                <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
                                                 <StarRating
                                                     count={section.ratingScale || 5}
                                                     value={ratings[section.id] || 0}
                                                     onChange={(value) => handleRatingChange(section.id, value)}
+                                                    disabled={isReadOnly}
                                                 />
                                             </div>
                                         )}
                                         {section.enableSectionComments && (
                                             <div className="space-y-2">
-                                                <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && <span className="text-destructive">*</span>}</Label>
+                                                <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
                                                 <Textarea
                                                     id={`comment-${section.id}`}
                                                     value={comments[section.id] || ''}
                                                     onChange={(e) => handleCommentChange(section.id, e.target.value)}
                                                     placeholder="Provide your comments..."
                                                     maxLength={section.maxLength}
+                                                    disabled={isReadOnly}
                                                 />
                                                 <p className="text-sm text-muted-foreground text-right">
                                                     {comments[section.id]?.length || 0} / {section.maxLength}
@@ -315,9 +326,11 @@ export default function EvaluationPage() {
             </Accordion>
 
             <div className="flex justify-end mt-8">
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                   {isSubmitting ? 'Submitting...' : 'Submit Evaluation'}
-                </Button>
+                {!isReadOnly && (
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting ? 'Submitting...' : 'Submit Evaluation'}
+                    </Button>
+                )}
             </div>
         </div>
     );
