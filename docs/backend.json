@@ -88,16 +88,19 @@
             "type": { "type": "string" },
             "performanceTemplateId": { "type": "string" },
             "order": { "type": "number" },
-            "permissions": { 
+            "permissions": {
                 "type": "array",
                 "items": {
                     "type": "object",
                     "properties": {
                         "role": { "type": "string" },
                         "view": { "type": "boolean" },
-                        "edit": { "type": "boolean" }
+                        "rate": { "type": "boolean" },
+                        "viewWorkerRatings": { "type": "boolean" },
+                        "viewPrimaryAppraiserRatings": { "type": "boolean" },
+                        "viewSecondaryAppraiserRatings": { "type": "boolean" }
                     },
-                    "required": ["role", "view", "edit"]
+                    "required": ["role", "view", "rate"]
                 }
             },
             "enableSectionRatings": { "type": "boolean" },
@@ -345,3 +348,5 @@
     }
   }
 }
+
+    

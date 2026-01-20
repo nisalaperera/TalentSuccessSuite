@@ -24,6 +24,42 @@ import { Button } from '@/components/ui/button';
 import { useGlobalState } from '@/app/context/global-state-provider';
 import { useToast } from '@/hooks/use-toast';
 
+function OtherEvaluationsDisplay({
+  evals,
+  section,
+}: {
+  evals: (EmployeeEvaluation & { evaluatorRole: string })[];
+  section: PerformanceTemplateSection;
+}) {
+  if (evals.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-6 space-y-4 pt-4 border-t">
+      <h4 className="font-semibold text-muted-foreground">Other Evaluations for this Section</h4>
+      {evals.map((e) => (
+        <div key={e.id} className="space-y-2 rounded-md border bg-muted/50 p-4">
+          <p className="font-medium text-sm">{e.evaluatorRole}</p>
+          {section.enableSectionRatings && e.rating !== null && e.rating !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Rating:</span>
+              <StarRating count={section.ratingScale || 5} value={e.rating} onChange={() => {}} disabled />
+            </div>
+          )}
+          {section.enableSectionComments && e.comment && (
+             <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Comment:</p>
+                <p className="text-sm whitespace-pre-wrap rounded-md bg-background p-3">{e.comment}</p>
+             </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 export default function EvaluationPage() {
     const params = useParams();
     const router = useRouter();
@@ -37,29 +73,28 @@ export default function EvaluationPage() {
     const [comments, setComments] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // 1. Get the EmployeePerformanceDocument
+    // 1. Get the EmployeePerformanceDocument and its relations
     const employeePerfDocRef = useMemoFirebase(() => documentId ? doc(firestore, 'employee_performance_documents', documentId) : null, [firestore, documentId]);
     const { data: employeePerfDoc, isLoading: isLoadingDoc } = useDoc<EmployeePerformanceDocument>(employeePerfDocRef);
-
-    // 2. Get related entities from IDs in EmployeePerformanceDocument
+    
     const employeeRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'employees', employeePerfDoc.employeeId) : null, [firestore, employeePerfDoc]);
-    const { data: employee, isLoading: isLoadingEmployee } = useDoc<Employee>(employeeRef);
+    const { data: employee } = useDoc<Employee>(employeeRef);
 
     const perfCycleRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'performance_cycles', employeePerfDoc.performanceCycleId) : null, [firestore, employeePerfDoc]);
-    const { data: perfCycle, isLoading: isLoadingCycle } = useDoc<PerformanceCycle>(perfCycleRef);
+    const { data: perfCycle } = useDoc<PerformanceCycle>(perfCycleRef);
 
     const reviewPeriodRef = useMemoFirebase(() => perfCycle ? doc(firestore, 'review_periods', perfCycle.reviewPeriodId) : null, [firestore, perfCycle]);
-    const { data: reviewPeriod, isLoading: isLoadingPeriod } = useDoc<ReviewPeriod>(reviewPeriodRef);
+    const { data: reviewPeriod } = useDoc<ReviewPeriod>(reviewPeriodRef);
 
     const perfDocRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'performance_documents', employeePerfDoc.performanceDocumentId) : null, [firestore, employeePerfDoc]);
-    const { data: performanceDocument, isLoading: isLoadingPerfDoc } = useDoc<PerformanceDocument>(perfDocRef);
+    const { data: performanceDocument } = useDoc<PerformanceDocument>(perfDocRef);
 
     const evalFlowRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'evaluation_flows', employeePerfDoc.evaluationFlowId) : null, [firestore, employeePerfDoc]);
-    const { data: evaluationFlow, isLoading: isLoadingFlow } = useDoc<EvaluationFlow>(evalFlowRef);
-
-    // 3. Get all sections and filter
+    const { data: evaluationFlow } = useDoc<EvaluationFlow>(evalFlowRef);
+    
+    // 2. Get sections for the template
     const sectionsQuery = useMemoFirebase(() => employeePerfDoc ? collection(firestore, 'performance_template_sections') : null, [firestore, employeePerfDoc]);
-    const { data: allSections, isLoading: isLoadingSections } = useCollection<PerformanceTemplateSection>(sectionsQuery);
+    const { data: allSections } = useCollection<PerformanceTemplateSection>(sectionsQuery);
     
     const sections = useMemo(() => {
         if (!allSections || !employeePerfDoc) return [];
@@ -68,59 +103,89 @@ export default function EvaluationPage() {
             .sort((a, b) => a.order - b.order);
     }, [allSections, employeePerfDoc]);
 
-    // 4. Get relevant appraiser mapping to update status
-    const appraiserMappingsQuery = useMemoFirebase(() => 
-        (personNumber && employeePerfDoc) 
+    // 3. Get all appraiser mappings for the employee in this cycle
+    const allMappingsForEmployeeQuery = useMemoFirebase(() => 
+        (employee && perfCycle) 
         ? query(
             collection(firestore, 'employee_appraiser_mappings'),
-            where('appraiserPersonNumber', '==', personNumber),
-            where('performanceCycleId', '==', employeePerfDoc.performanceCycleId)
+            where('employeePersonNumber', '==', employee.personNumber),
+            where('performanceCycleId', '==', perfCycle.id)
           ) 
         : null, 
-    [firestore, personNumber, employeePerfDoc]);
+    [firestore, employee, perfCycle]);
+    const { data: allMappingsForEmployee } = useCollection<AppraiserMapping>(allMappingsForEmployeeQuery);
 
-    const { data: appraiserMappings, isLoading: isLoadingMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
+    // 4. Get all evaluations for this document
+    const allEvalsForDocQuery = useMemoFirebase(() => documentId ? query(collection(firestore, 'evaluations'), where('employeePerformanceDocumentId', '==', documentId)) : null, [firestore, documentId]);
+    const { data: allEvalsForDoc } = useCollection<EmployeeEvaluation>(allEvalsForDocQuery);
 
-    // 5. Get this user's existing evaluations for this document
-    const myExistingEvalsQuery = useMemoFirebase(() => 
-        (documentId && personNumber) ? query(
-            collection(firestore, 'evaluations'), 
-            where('employeePerformanceDocumentId', '==', documentId),
-            where('evaluatorPersonNumber', '==', personNumber)
-        ) : null, 
-    [firestore, documentId, personNumber]);
-    const { data: myExistingEvals, isLoading: isLoadingMyEvals } = useCollection<EmployeeEvaluation>(myExistingEvalsQuery);
-
-
-    // Pre-fill state with existing evaluations
+    // Derived State
+    const currentUserRole = useMemo(() => {
+        if (!personNumber || !employee || !allMappingsForEmployee) return null;
+        if (personNumber === employee.personNumber) return 'Worker';
+        const mapping = allMappingsForEmployee.find(m => m.appraiserPersonNumber === personNumber);
+        return mapping?.appraiserType || null; // 'Primary' or 'Secondary'
+    }, [personNumber, employee, allMappingsForEmployee]);
+    
+    // Pre-fill state with existing evaluations for the current user
     useEffect(() => {
-        if (myExistingEvals) {
+        if (allEvalsForDoc && personNumber) {
+            const myEvals = allEvalsForDoc.filter(ev => ev.evaluatorPersonNumber === personNumber);
             const initialRatings: Record<string, number> = {};
             const initialComments: Record<string, string> = {};
-            for (const evalDoc of myExistingEvals) {
-                if (evalDoc.rating) {
-                    initialRatings[evalDoc.sectionId] = evalDoc.rating;
-                }
-                if (evalDoc.comment) {
-                    initialComments[evalDoc.sectionId] = evalDoc.comment;
-                }
+            for (const evalDoc of myEvals) {
+                if (evalDoc.rating) initialRatings[evalDoc.sectionId] = evalDoc.rating;
+                if (evalDoc.comment) initialComments[evalDoc.sectionId] = evalDoc.comment;
             }
             setRatings(initialRatings);
             setComments(initialComments);
         }
-    }, [myExistingEvals]);
-
-    const isWorker = useMemo(() => employee?.personNumber === personNumber, [employee, personNumber]);
+    }, [allEvalsForDoc, personNumber]);
 
     const isReadOnly = useMemo(() => {
-        if (!employeePerfDoc || !isWorker) {
-            return false;
+        if (!employeePerfDoc || !currentUserRole) return true; // Read-only if we don't know role
+        if (currentUserRole === 'Worker' && employeePerfDoc.status !== 'Worker Self-Evaluation') return true;
+        if ((currentUserRole === 'Primary' || currentUserRole === 'Secondary') && employeePerfDoc.status !== 'Manager Evaluation') return true;
+        
+        const myMapping = allMappingsForEmployee?.find(m => m.appraiserPersonNumber === personNumber);
+        if (myMapping?.isCompleted) return true;
+
+        return false;
+    }, [employeePerfDoc, currentUserRole, allMappingsForEmployee, personNumber]);
+
+
+    const evaluationsToShow = useMemo(() => {
+        const evalsBySection: Record<string, (EmployeeEvaluation & { evaluatorRole: string })[]> = {};
+        if (!allEvalsForDoc || !currentUserRole || !allMappingsForEmployee || !employee) return evalsBySection;
+
+        const getEvaluatorRole = (evaluatorPersonNumber: string) => {
+            if (evaluatorPersonNumber === employee.personNumber) return 'Worker';
+            const mapping = allMappingsForEmployee.find(m => m.appraiserPersonNumber === evaluatorPersonNumber);
+            return mapping?.appraiserType || 'Unknown';
+        };
+
+        for (const section of sections) {
+            const permissions = section.permissions.find(p => p.role === currentUserRole);
+            if (!permissions) continue;
+
+            const visibleEvals = allEvalsForDoc.filter(ev => {
+                if (ev.evaluatorPersonNumber === personNumber) return false; // Don't show my own
+                
+                const evaluatorRole = getEvaluatorRole(ev.evaluatorPersonNumber);
+
+                if (evaluatorRole === 'Worker' && permissions.viewWorkerRatings) return true;
+                if (evaluatorRole === 'Primary' && permissions.viewPrimaryAppraiserRatings) return true;
+                if (evaluatorRole === 'Secondary' && permissions.viewSecondaryAppraiserRatings) return true;
+                
+                return false;
+            }).map(ev => ({ ...ev, evaluatorRole: getEvaluatorRole(ev.evaluatorPersonNumber) }));
+
+            evalsBySection[section.id] = visibleEvals;
         }
-        return isWorker && employeePerfDoc.status !== 'Worker Self-Evaluation';
-    }, [employeePerfDoc, isWorker]);
+        return evalsBySection;
+    }, [allEvalsForDoc, sections, currentUserRole, allMappingsForEmployee, employee, personNumber]);
 
-
-    const isLoading = isLoadingDoc || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc || isLoadingMappings || isLoadingFlow || isLoadingMyEvals;
+    const isLoading = isLoadingDoc || !allMappingsForEmployee || !allEvalsForDoc || !evaluationFlow || !employee;
 
     const handleRatingChange = (sectionId: string, rating: number) => {
         setRatings(prev => ({ ...prev, [sectionId]: rating }));
@@ -133,8 +198,17 @@ export default function EvaluationPage() {
     const handleSubmit = async () => {
         setIsSubmitting(true);
 
-        // 1. Validation
+        if (!employeePerfDoc || !evaluationFlow || !currentUserRole || !allMappingsForEmployee) {
+             toast({ title: 'Error', description: 'Core data could not be loaded. Cannot submit.', variant: 'destructive'});
+             setIsSubmitting(false);
+             return;
+        }
+
+        // Validation
         for (const section of sections) {
+            const permissions = section.permissions.find(p => p.role === currentUserRole);
+            if (!permissions?.rate) continue; // Skip validation if user can't rate this section
+
             if (section.sectionRatingMandatory && (ratings[section.id] === undefined || ratings[section.id] === 0)) {
                 toast({ title: 'Validation Error', description: `Rating is mandatory for section: "${section.name}"`, variant: 'destructive'});
                 setIsSubmitting(false);
@@ -145,54 +219,15 @@ export default function EvaluationPage() {
                 setIsSubmitting(false);
                 return;
             }
-            if (comments[section.id]) {
-                const comment = comments[section.id];
-                if (section.minLength && comment.length < section.minLength) {
-                    toast({ title: 'Validation Error', description: `Comment for "${section.name}" must be at least ${section.minLength} characters.`, variant: 'destructive'});
-                    setIsSubmitting(false);
-                    return;
-                }
-                if (section.maxLength && comment.length > section.maxLength) {
-                    toast({ title: 'Validation Error', description: `Comment for "${section.name}" cannot exceed ${section.maxLength} characters.`, variant: 'destructive'});
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
         }
         
-        if (Object.keys(ratings).length === 0 && Object.keys(comments).length === 0) {
-            toast({ title: 'Nothing to Submit', description: 'Please provide at least one rating or comment.', variant: 'destructive'});
-            setIsSubmitting(false);
-            return;
-        }
-
         try {
-            if (!evaluationFlow || !employeePerfDoc) {
-                toast({ title: 'Error', description: 'Evaluation flow or document configuration could not be loaded.', variant: 'destructive'});
-                setIsSubmitting(false);
-                return;
-            }
             const batch = writeBatch(firestore);
 
-            const isSelfEvaluation = employee?.personNumber === personNumber;
-            let evaluatorAppraiserType = 'Worker'; // Default for self-evaluation
-
-            if (!isSelfEvaluation) {
-                const relevantMapping = appraiserMappings?.find(m => m.employeePersonNumber === employee?.personNumber);
-                if (relevantMapping) {
-                    evaluatorAppraiserType = relevantMapping.appraiserType;
-                } else {
-                    console.warn("Could not determine appraiser type for this evaluation.");
-                    toast({ title: 'Configuration Error', description: 'Could not determine your appraiser role for this document.', variant: 'destructive'});
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
-
-            // 2. Add/update evaluations to batch
+            // Add/update evaluations
             for (const section of sections) {
                 if (ratings[section.id] !== undefined || comments[section.id] !== undefined) {
-                    const existingEval = myExistingEvals?.find(e => e.sectionId === section.id);
+                    const existingEval = allEvalsForDoc?.find(e => e.sectionId === section.id && e.evaluatorPersonNumber === personNumber);
                     const evalRef = existingEval 
                         ? doc(firestore, 'evaluations', existingEval.id) 
                         : doc(collection(firestore, 'evaluations'));
@@ -201,7 +236,7 @@ export default function EvaluationPage() {
                         employeePerformanceDocumentId: documentId,
                         sectionId: section.id,
                         evaluatorPersonNumber: personNumber,
-                        appraiserType: evaluatorAppraiserType,
+                        appraiserType: currentUserRole, // Worker, Primary, or Secondary
                         rating: ratings[section.id] ?? null,
                         comment: comments[section.id] ?? '',
                         submittedAt: serverTimestamp(),
@@ -209,28 +244,36 @@ export default function EvaluationPage() {
                 }
             }
 
-            // 3. Update appraiser mapping status
-            if (!isSelfEvaluation) {
-                const relevantMapping = appraiserMappings?.find(m => m.employeePersonNumber === employee?.personNumber);
-                if (relevantMapping) {
-                    const mappingRef = doc(firestore, 'employee_appraiser_mappings', relevantMapping.id);
+            // Update appraiser mapping status (if not worker)
+            if (currentUserRole !== 'Worker') {
+                const myMapping = allMappingsForEmployee.find(m => m.appraiserPersonNumber === personNumber);
+                if (myMapping) {
+                    const mappingRef = doc(firestore, 'employee_appraiser_mappings', myMapping.id);
                     batch.update(mappingRef, { isCompleted: true });
-                } else {
-                    console.warn("Could not find a relevant appraiser mapping to update completion status.");
                 }
             }
             
-            // 4. Update document status to next step in the flow
-            const currentStatus = employeePerfDoc.status;
-            const sortedSteps = [...evaluationFlow.steps].sort((a,b) => a.sequence - b.sequence);
-            const currentStepIndex = sortedSteps.findIndex(step => step.task === currentStatus);
+            // Determine if workflow should be updated
+            let shouldUpdateWorkflow = false;
+            if (currentUserRole === 'Worker') {
+                shouldUpdateWorkflow = true;
+            } else if (currentUserRole === 'Primary') {
+                const secondaryMappings = allMappingsForEmployee.filter(m => m.appraiserType === 'Secondary');
+                const allSecondariesCompleted = secondaryMappings.every(m => m.isCompleted);
+                if (allSecondariesCompleted) {
+                    shouldUpdateWorkflow = true;
+                }
+            }
+            
+            // Update document status if needed
+            if (shouldUpdateWorkflow) {
+                const currentStatus = employeePerfDoc.status;
+                const sortedSteps = [...evaluationFlow.steps].sort((a,b) => a.sequence - b.sequence);
+                const currentStepIndex = sortedSteps.findIndex(step => step.task === currentStatus);
 
-            if (currentStepIndex !== -1 && currentStepIndex < sortedSteps.length - 1) {
-                const nextStep = sortedSteps[currentStepIndex + 1];
-                const nextStatus = nextStep.task;
-                
-                if (employeePerfDocRef) {
-                     batch.update(employeePerfDocRef, { status: nextStatus });
+                if (currentStepIndex !== -1 && currentStepIndex < sortedSteps.length - 1) {
+                    const nextStep = sortedSteps[currentStepIndex + 1];
+                    batch.update(employeePerfDocRef, { status: nextStep.task });
                 }
             }
 
@@ -251,8 +294,8 @@ export default function EvaluationPage() {
         return <div className="container mx-auto py-10">Loading evaluation...</div>;
     }
     
-    if (!employeePerfDoc) {
-        return <div className="container mx-auto py-10">Document not found.</div>;
+    if (!employeePerfDoc || !employee) {
+        return <div className="container mx-auto py-10">Document not found or employee data missing.</div>;
     }
 
     const getCycleName = () => {
@@ -319,6 +362,7 @@ export default function EvaluationPage() {
                                 ) : (
                                     <p className="text-sm text-muted-foreground">No evaluation inputs are enabled for this section.</p>
                                 )}
+                                <OtherEvaluationsDisplay evals={evaluationsToShow[section.id] || []} section={section} />
                            </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -335,3 +379,5 @@ export default function EvaluationPage() {
         </div>
     );
 }
+
+    
