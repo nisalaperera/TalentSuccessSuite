@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, writeBatch, serverTimestamp, query, where } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping, EvaluationFlow } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping, EvaluationFlow, EmployeeEvaluation } from '@/lib/types';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,7 +14,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -57,7 +57,6 @@ export default function EvaluationPage() {
     const evalFlowRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'evaluation_flows', employeePerfDoc.evaluationFlowId) : null, [firestore, employeePerfDoc]);
     const { data: evaluationFlow, isLoading: isLoadingFlow } = useDoc<EvaluationFlow>(evalFlowRef);
 
-
     // 3. Get all sections and filter
     const sectionsQuery = useMemoFirebase(() => employeePerfDoc ? collection(firestore, 'performance_template_sections') : null, [firestore, employeePerfDoc]);
     const { data: allSections, isLoading: isLoadingSections } = useCollection<PerformanceTemplateSection>(sectionsQuery);
@@ -82,8 +81,37 @@ export default function EvaluationPage() {
 
     const { data: appraiserMappings, isLoading: isLoadingMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
 
+    // 5. Get this user's existing evaluations for this document
+    const myExistingEvalsQuery = useMemoFirebase(() => 
+        (documentId && personNumber) ? query(
+            collection(firestore, 'evaluations'), 
+            where('employeePerformanceDocumentId', '==', documentId),
+            where('evaluatorPersonNumber', '==', personNumber)
+        ) : null, 
+    [firestore, documentId, personNumber]);
+    const { data: myExistingEvals, isLoading: isLoadingMyEvals } = useCollection<EmployeeEvaluation>(myExistingEvalsQuery);
 
-    const isLoading = isLoadingDoc || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc || isLoadingMappings || isLoadingFlow;
+
+    // Pre-fill state with existing evaluations
+    useEffect(() => {
+        if (myExistingEvals) {
+            const initialRatings: Record<string, number> = {};
+            const initialComments: Record<string, string> = {};
+            for (const evalDoc of myExistingEvals) {
+                if (evalDoc.rating) {
+                    initialRatings[evalDoc.sectionId] = evalDoc.rating;
+                }
+                if (evalDoc.comment) {
+                    initialComments[evalDoc.sectionId] = evalDoc.comment;
+                }
+            }
+            setRatings(initialRatings);
+            setComments(initialComments);
+        }
+    }, [myExistingEvals]);
+
+
+    const isLoading = isLoadingDoc || isLoadingEmployee || isLoadingCycle || isLoadingPeriod || isLoadingSections || isLoadingPerfDoc || isLoadingMappings || isLoadingFlow || isLoadingMyEvals;
 
     const handleRatingChange = (sectionId: string, rating: number) => {
         setRatings(prev => ({ ...prev, [sectionId]: rating }));
@@ -98,7 +126,7 @@ export default function EvaluationPage() {
 
         // 1. Validation
         for (const section of sections) {
-            if (section.sectionRatingMandatory && (!ratings[section.id] || ratings[section.id] === 0)) {
+            if (section.sectionRatingMandatory && (ratings[section.id] === undefined || ratings[section.id] === 0)) {
                 toast({ title: 'Validation Error', description: `Rating is mandatory for section: "${section.name}"`, variant: 'destructive'});
                 setIsSubmitting(false);
                 return;
@@ -130,35 +158,57 @@ export default function EvaluationPage() {
         }
 
         try {
-            if (!evaluationFlow) {
-                toast({ title: 'Error', description: 'Evaluation flow configuration could not be loaded.', variant: 'destructive'});
+            if (!evaluationFlow || !employeePerfDoc) {
+                toast({ title: 'Error', description: 'Evaluation flow or document configuration could not be loaded.', variant: 'destructive'});
                 setIsSubmitting(false);
                 return;
             }
             const batch = writeBatch(firestore);
 
-            // 2. Add evaluations to batch
+            const isSelfEvaluation = employee?.personNumber === personNumber;
+            let evaluatorAppraiserType = 'Worker'; // Default for self-evaluation
+
+            if (!isSelfEvaluation) {
+                const relevantMapping = appraiserMappings?.find(m => m.employeePersonNumber === employee?.personNumber);
+                if (relevantMapping) {
+                    evaluatorAppraiserType = relevantMapping.appraiserType;
+                } else {
+                    console.warn("Could not determine appraiser type for this evaluation.");
+                    toast({ title: 'Configuration Error', description: 'Could not determine your appraiser role for this document.', variant: 'destructive'});
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            // 2. Add/update evaluations to batch
             for (const section of sections) {
-                if (ratings[section.id] || comments[section.id]) {
-                    const evaluationRef = doc(collection(firestore, 'evaluations'));
-                    batch.set(evaluationRef, {
+                if (ratings[section.id] !== undefined || comments[section.id] !== undefined) {
+                    const existingEval = myExistingEvals?.find(e => e.sectionId === section.id);
+                    const evalRef = existingEval 
+                        ? doc(firestore, 'evaluations', existingEval.id) 
+                        : doc(collection(firestore, 'evaluations'));
+
+                    batch.set(evalRef, {
                         employeePerformanceDocumentId: documentId,
                         sectionId: section.id,
                         evaluatorPersonNumber: personNumber,
-                        rating: ratings[section.id] || null,
-                        comment: comments[section.id] || '',
+                        appraiserType: evaluatorAppraiserType,
+                        rating: ratings[section.id] ?? null,
+                        comment: comments[section.id] ?? '',
                         submittedAt: serverTimestamp(),
-                    });
+                    }, { merge: true });
                 }
             }
 
             // 3. Update appraiser mapping status
-            const relevantMapping = appraiserMappings?.find(m => m.employeePersonNumber === employee?.personNumber);
-            if (relevantMapping) {
-                const mappingRef = doc(firestore, 'employee_appraiser_mappings', relevantMapping.id);
-                batch.update(mappingRef, { isCompleted: true });
-            } else {
-                console.warn("Could not find a relevant appraiser mapping to update completion status.");
+            if (!isSelfEvaluation) {
+                const relevantMapping = appraiserMappings?.find(m => m.employeePersonNumber === employee?.personNumber);
+                if (relevantMapping) {
+                    const mappingRef = doc(firestore, 'employee_appraiser_mappings', relevantMapping.id);
+                    batch.update(mappingRef, { isCompleted: true });
+                } else {
+                    console.warn("Could not find a relevant appraiser mapping to update completion status.");
+                }
             }
             
             // 4. Update document status to next step in the flow

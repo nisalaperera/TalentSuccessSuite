@@ -267,6 +267,10 @@
           "type": "string",
           "description": "The personNumber of the user who submitted the evaluation."
         },
+        "appraiserType": {
+            "type": "string",
+            "description": "Role of the evaluator for this document (e.g., Worker, Primary, Secondary)."
+        },
         "rating": {
           "type": "number",
           "description": "The rating given for the section."
@@ -281,7 +285,7 @@
             "description": "Timestamp of when the evaluation was submitted."
         }
       },
-      "required": ["employeePerformanceDocumentId", "sectionId", "evaluatorPersonNumber", "submittedAt"]
+      "required": ["employeePerformanceDocumentId", "sectionId", "evaluatorPersonNumber", "submittedAt", "appraiserType"]
     }
   },
   "auth": {

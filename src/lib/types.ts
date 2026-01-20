@@ -163,6 +163,7 @@ export type EmployeeEvaluation = {
   employeePerformanceDocumentId: string;
   sectionId: string;
   evaluatorPersonNumber: string;
+  appraiserType: string;
   rating?: number;
   comment?: string;
   submittedAt: Date;
