@@ -8,7 +8,7 @@ import { Header } from '@/app/components/header';
 import { GlobalStateProvider } from '@/app/context/global-state-provider';
 
 export const metadata: Metadata = {
-  title: 'Talent Suite',
+  title: 'Talent Success Suite',
   description: 'Performance Management Application',
 };
 

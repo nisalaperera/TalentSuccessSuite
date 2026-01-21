@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -84,7 +85,7 @@ export function Header() {
           <Link href="/">
             <div className="space-y-1">
               <h1 className="text-2xl font-headline font-bold text-primary hover:text-primary/90">
-                Talent Suite
+                Talent Success Suite
               </h1>
               {isAdminSection && (
                 <p className="text-sm text-foreground/80 font-body hidden sm:block">
