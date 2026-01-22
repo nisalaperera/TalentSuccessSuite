@@ -322,11 +322,11 @@ function PerformanceTemplateSectionsContent() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="min-length">Min Length</Label>
-                                                <Input id="min-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.minLength} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
+                                                <Input id="min-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.minLength ?? ''} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="max-length">Max Length</Label>
-                                                <Input id="max-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
+                                                <Input id="max-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength ?? ''} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
                                             </div>
                                         </div>
                                     </CardContent>
@@ -383,11 +383,11 @@ function PerformanceTemplateSectionsContent() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="min-length">Min Length</Label>
-                                                <Input id="min-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.minLength} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
+                                                <Input id="min-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.minLength ?? ''} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="max-length">Max Length</Label>
-                                                <Input id="max-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
+                                                <Input id="max-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength ?? ''} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
                                             </div>
                                         </div>
                                     </CardContent>
