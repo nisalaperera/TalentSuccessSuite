@@ -89,6 +89,11 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     title: "Employees",
                     description: "Manage employee records.",
                     href: "/configuration/employees"
+                },
+                {
+                    title: "Manage Goals",
+                    description: "Manage goals against goal plans and employees.",
+                    href: "/configuration/goals"
                 }
             ]
         }

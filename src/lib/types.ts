@@ -27,6 +27,17 @@ export type GoalPlan = {
   status: 'Active' | 'Inactive';
 };
 
+export type Goal = {
+  id: string;
+  goalPlanId: string;
+  employeeId: string;
+  name: string;
+  description: string;
+  type: 'Work' | 'Home';
+  weight?: number;
+  status: 'Not Started' | 'In Progress' | 'Completed';
+};
+
 export type PerformanceTemplate = {
   id: string;
   name: string;
@@ -179,6 +190,7 @@ export type ConfigState = {
   reviewPeriods: ReviewPeriod[] | DocumentData[];
   performanceCycles: PerformanceCycle[] | DocumentData[];
   goalPlans: GoalPlan[] | DocumentData[];
+  goals: Goal[] | DocumentData[];
   performanceTemplates: PerformanceTemplate[] | DocumentData[];
   performanceTemplateSections: PerformanceTemplateSection[] | DocumentData[];
   evaluationFlows: EvaluationFlow[] | DocumentData[];
@@ -199,6 +211,9 @@ export type Action =
   | { type: 'ADD_GOAL_PLAN'; payload: GoalPlan }
   | { type: 'UPDATE_GOAL_PLAN'; payload: GoalPlan }
   | { type: 'DELETE_GOAL_PLAN'; payload: string }
+  | { type: 'ADD_GOAL'; payload: Goal }
+  | { type: 'UPDATE_GOAL'; payload: Goal }
+  | { type: 'DELETE_GOAL'; payload: string }
   | { type: 'ADD_PERFORMANCE_TEMPLATE'; payload: PerformanceTemplate }
   | { type: 'UPDATE_PERFORMANCE_TEMPLATE'; payload: PerformanceTemplate }
   | { type: 'DELETE_PERFORMANCE_TEMPLATE'; payload: string }

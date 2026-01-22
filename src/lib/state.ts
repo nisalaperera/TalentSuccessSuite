@@ -20,6 +20,7 @@ export const initialState: ConfigState = {
   reviewPeriods: [],
   performanceCycles: [],
   goalPlans: [],
+  goals: [],
   performanceTemplates: [],
   performanceTemplateSections: [],
   evaluationFlows: [],
