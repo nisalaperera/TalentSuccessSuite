@@ -179,10 +179,10 @@ const seedData = async (firestore: any) => {
 
         const seniorData = {
             technologist_type: 'SENIOR' as const,
-            workGoalWeight: 70,
-            homeGoalWeight: 30,
-            primaryAppraiser: 'Work Manager' as const,
-            secondaryAppraiser: 'Home Manager' as const,
+            workGoalWeight: 30,
+            homeGoalWeight: 70,
+            primaryAppraiser: 'Home Manager' as const,
+            secondaryAppraiser: 'Work Manager' as const,
         };
         if (seniorSnapshot.empty) {
             const newSeniorRef = doc(weightsCollectionRef);
@@ -193,10 +193,10 @@ const seedData = async (firestore: any) => {
 
         const juniorData = {
             technologist_type: 'JUNIOR' as const,
-            workGoalWeight: 50,
-            homeGoalWeight: 50,
-            primaryAppraiser: 'Home Manager' as const,
-            secondaryAppraiser: 'Work Manager' as const,
+            workGoalWeight: 70,
+            homeGoalWeight: 30,
+            primaryAppraiser: 'Work Manager' as const,
+            secondaryAppraiser: 'Home Manager' as const,
         };
         if (juniorSnapshot.empty) {
             const newJuniorRef = doc(weightsCollectionRef);
