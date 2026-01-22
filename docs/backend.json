@@ -146,9 +146,18 @@
                 "properties": {
                     "id": { "type": "string" },
                     "sequence": { "type": "number" },
-                    "task": { "type": "string" },
-                    "role": { "type": "string" },
-                    "flowType": { "type": "string" },
+                    "task": { 
+                        "type": "string",
+                        "enum": ["Worker Self-Evaluation", "Manager Evaluation", "Normalization", "Share Document", "Confirm Review Meeting", "Provide Final Feedback", "Close Document"]
+                    },
+                    "role": { 
+                        "type": "string",
+                        "enum": ["Primary (Worker)", "Secondary (Manager)", "Sec. Appraiser 1", "Sec. Appraiser 2", "HR / Dept Head"]
+                     },
+                    "flowType": { 
+                        "type": "string",
+                        "enum": ["Start", "Parallel", "Sequential"]
+                    },
                     "startDate": { "type": "string", "format": "date-time" },
                     "endDate": { "type": "string", "format": "date-time" }
                 },
