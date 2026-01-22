@@ -285,7 +285,7 @@
     "EmployeeEvaluation": {
       "title": "EmployeeEvaluation",
       "type": "object",
-      "description": "Stores a single evaluation (rating and/or comment) for a section of an employee's performance document.",
+      "description": "Stores a single evaluation (rating and/or comment) for a section or a goal within a section of an employee's performance document.",
       "properties": {
         "employeePerformanceDocumentId": {
           "type": "string",
@@ -294,6 +294,10 @@
         "sectionId": {
           "type": "string",
           "description": "Reference to the PerformanceTemplateSection being evaluated."
+        },
+        "goalId": {
+            "type": "string",
+            "description": "Optional. Reference to the Goal being evaluated, if applicable."
         },
         "evaluatorPersonNumber": {
           "type": "string",
@@ -305,11 +309,11 @@
         },
         "rating": {
           "type": "number",
-          "description": "The rating given for the section."
+          "description": "The rating given for the item."
         },
         "comment": {
           "type": "string",
-          "description": "The comment given for the section."
+          "description": "The comment given for the item."
         },
         "submittedAt": {
             "type": "string",

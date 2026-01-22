@@ -174,6 +174,7 @@ export type EmployeeEvaluation = {
   id: string;
   employeePerformanceDocumentId: string;
   sectionId: string;
+  goalId?: string;
   evaluatorPersonNumber: string;
   appraiserType: string;
   rating?: number;

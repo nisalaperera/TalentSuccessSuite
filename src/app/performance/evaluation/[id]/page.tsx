@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, writeBatch, serverTimestamp, query, where } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping, EvaluationFlow, EmployeeEvaluation } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping, EvaluationFlow, EmployeeEvaluation, Goal } from '@/lib/types';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useGlobalState } from '@/app/context/global-state-provider';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 function OtherEvaluationsDisplay({
   evals,
@@ -59,6 +60,68 @@ function OtherEvaluationsDisplay({
   );
 }
 
+function PerformanceGoalsContent({
+    section,
+    goals,
+    isReadOnly,
+    ratings,
+    comments,
+    onRatingChange,
+    onCommentChange
+}: {
+    section: PerformanceTemplateSection,
+    goals: Goal[],
+    isReadOnly: boolean,
+    ratings: Record<string, number>,
+    comments: Record<string, string>,
+    onRatingChange: (goalId: string, rating: number) => void,
+    onCommentChange: (goalId: string, comment: string) => void,
+}) {
+    return (
+        <div className="space-y-6">
+            {goals.map(goal => (
+                <Card key={goal.id} className="overflow-hidden">
+                    <CardHeader className="bg-muted/30">
+                        <CardTitle className="text-base font-semibold">{goal.name}</CardTitle>
+                        <CardDescription>{goal.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-4">
+                        {(section.enableItemRatings || section.enableItemComments) ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {section.enableItemRatings && (
+                                    <div className="space-y-2">
+                                        <Label>Your Rating {section.itemRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                        <StarRating
+                                            count={section.ratingScale || 5}
+                                            value={ratings[goal.id] || 0}
+                                            onChange={(value) => onRatingChange(goal.id, value)}
+                                            disabled={isReadOnly}
+                                        />
+                                    </div>
+                                )}
+                                 {section.enableItemComments && (
+                                    <div className="space-y-2">
+                                        <Label>Your Comments {section.itemCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                        <Textarea
+                                            value={comments[goal.id] || ''}
+                                            onChange={(e) => onCommentChange(goal.id, e.target.value)}
+                                            placeholder="Provide comments for this goal..."
+                                            maxLength={section.maxLength}
+                                            disabled={isReadOnly}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center">Goal evaluation inputs are not enabled for this section.</p>
+                        )}
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+}
+
 
 export default function EvaluationPage() {
     const params = useParams();
@@ -71,6 +134,8 @@ export default function EvaluationPage() {
     // State for evaluation inputs
     const [ratings, setRatings] = useState<Record<string, number>>({});
     const [comments, setComments] = useState<Record<string, string>>({});
+    const [goalRatings, setGoalRatings] = useState<Record<string, number>>({});
+    const [goalComments, setGoalComments] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // 1. Get the EmployeePerformanceDocument and its relations
@@ -102,8 +167,20 @@ export default function EvaluationPage() {
             .filter(section => section.performanceTemplateId === employeePerfDoc.performanceTemplateId)
             .sort((a, b) => a.order - b.order);
     }, [allSections, employeePerfDoc]);
+    
+    // 3. Get goals for the employee
+    const goalsQuery = useMemoFirebase(() =>
+        (perfCycle && employee?.technologist_type)
+        ? query(
+            collection(firestore, 'goals'),
+            where('goalPlanId', '==', perfCycle.goalPlanId),
+            where('technologist_type', '==', employee.technologist_type)
+        )
+        : null,
+    [firestore, perfCycle, employee?.technologist_type]);
+    const { data: goals, isLoading: isLoadingGoals } = useCollection<Goal>(goalsQuery);
 
-    // 3. Get all appraiser mappings for the employee in this cycle
+    // 4. Get all appraiser mappings for the employee in this cycle
     const allMappingsForEmployeeQuery = useMemoFirebase(() => 
         (employee && perfCycle) 
         ? query(
@@ -115,7 +192,7 @@ export default function EvaluationPage() {
     [firestore, employee, perfCycle]);
     const { data: allMappingsForEmployee } = useCollection<AppraiserMapping>(allMappingsForEmployeeQuery);
 
-    // 4. Get all evaluations for this document
+    // 5. Get all evaluations for this document
     const allEvalsForDocQuery = useMemoFirebase(() => documentId ? query(collection(firestore, 'evaluations'), where('employeePerformanceDocumentId', '==', documentId)) : null, [firestore, documentId]);
     const { data: allEvalsForDoc } = useCollection<EmployeeEvaluation>(allEvalsForDocQuery);
 
@@ -133,12 +210,22 @@ export default function EvaluationPage() {
             const myEvals = allEvalsForDoc.filter(ev => ev.evaluatorPersonNumber === personNumber);
             const initialRatings: Record<string, number> = {};
             const initialComments: Record<string, string> = {};
+            const initialGoalRatings: Record<string, number> = {};
+            const initialGoalComments: Record<string, string> = {};
+
             for (const evalDoc of myEvals) {
-                if (evalDoc.rating) initialRatings[evalDoc.sectionId] = evalDoc.rating;
-                if (evalDoc.comment) initialComments[evalDoc.sectionId] = evalDoc.comment;
+                if (evalDoc.goalId) { // This is a goal evaluation
+                    if (evalDoc.rating) initialGoalRatings[evalDoc.goalId] = evalDoc.rating;
+                    if (evalDoc.comment) initialGoalComments[evalDoc.goalId] = evalDoc.comment;
+                } else { // This is a section evaluation
+                    if (evalDoc.rating) initialRatings[evalDoc.sectionId] = evalDoc.rating;
+                    if (evalDoc.comment) initialComments[evalDoc.sectionId] = evalDoc.comment;
+                }
             }
             setRatings(initialRatings);
             setComments(initialComments);
+            setGoalRatings(initialGoalRatings);
+            setGoalComments(initialGoalComments);
         }
     }, [allEvalsForDoc, personNumber]);
 
@@ -185,7 +272,7 @@ export default function EvaluationPage() {
         return evalsBySection;
     }, [allEvalsForDoc, sections, currentUserRole, allMappingsForEmployee, employee, personNumber]);
 
-    const isLoading = isLoadingDoc || !allMappingsForEmployee || !allEvalsForDoc || !evaluationFlow || !employee;
+    const isLoading = isLoadingDoc || !allMappingsForEmployee || !allEvalsForDoc || !evaluationFlow || !employee || isLoadingGoals;
 
     const handleRatingChange = (sectionId: string, rating: number) => {
         setRatings(prev => ({ ...prev, [sectionId]: rating }));
@@ -193,6 +280,14 @@ export default function EvaluationPage() {
 
     const handleCommentChange = (sectionId: string, comment: string) => {
         setComments(prev => ({ ...prev, [sectionId]: comment }));
+    };
+    
+    const handleGoalRatingChange = (goalId: string, rating: number) => {
+        setGoalRatings(prev => ({ ...prev, [goalId]: rating }));
+    };
+
+    const handleGoalCommentChange = (goalId: string, comment: string) => {
+        setGoalComments(prev => ({ ...prev, [goalId]: comment }));
     };
 
     const handleSubmit = async () => {
@@ -207,27 +302,44 @@ export default function EvaluationPage() {
         // Validation
         for (const section of sections) {
             const permissions = section.permissions.find(p => p.role === currentUserRole);
-            if (!permissions?.rate) continue; // Skip validation if user can't rate this section
+            if (!permissions?.rate) continue;
 
-            if (section.sectionRatingMandatory && (ratings[section.id] === undefined || ratings[section.id] === 0)) {
-                toast({ title: 'Validation Error', description: `Rating is mandatory for section: "${section.name}"`, variant: 'destructive'});
-                setIsSubmitting(false);
-                return;
-            }
-            if (section.sectionCommentMandatory && (!comments[section.id] || comments[section.id].trim() === '')) {
-                toast({ title: 'Validation Error', description: `Comment is mandatory for section: "${section.name}"`, variant: 'destructive'});
-                setIsSubmitting(false);
-                return;
+            if (section.type === 'Performance Goals') {
+                if (goals) {
+                    for (const goal of goals) {
+                        if (section.itemRatingMandatory && (goalRatings[goal.id] === undefined || goalRatings[goal.id] === 0)) {
+                            toast({ title: 'Validation Error', description: `Rating is mandatory for goal: "${goal.name}"`, variant: 'destructive'});
+                            setIsSubmitting(false);
+                            return;
+                        }
+                        if (section.itemCommentMandatory && (!goalComments[goal.id] || goalComments[goal.id].trim() === '')) {
+                             toast({ title: 'Validation Error', description: `Comment is mandatory for goal: "${goal.name}"`, variant: 'destructive'});
+                            setIsSubmitting(false);
+                            return;
+                        }
+                    }
+                }
+            } else {
+                 if (section.sectionRatingMandatory && (ratings[section.id] === undefined || ratings[section.id] === 0)) {
+                    toast({ title: 'Validation Error', description: `Rating is mandatory for section: "${section.name}"`, variant: 'destructive'});
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (section.sectionCommentMandatory && (!comments[section.id] || comments[section.id].trim() === '')) {
+                    toast({ title: 'Validation Error', description: `Comment is mandatory for section: "${section.name}"`, variant: 'destructive'});
+                    setIsSubmitting(false);
+                    return;
+                }
             }
         }
         
         try {
             const batch = writeBatch(firestore);
 
-            // Add/update evaluations
+            // Add/update section evaluations
             for (const section of sections) {
                 if (ratings[section.id] !== undefined || comments[section.id] !== undefined) {
-                    const existingEval = allEvalsForDoc?.find(e => e.sectionId === section.id && e.evaluatorPersonNumber === personNumber);
+                    const existingEval = allEvalsForDoc?.find(e => e.sectionId === section.id && !e.goalId && e.evaluatorPersonNumber === personNumber);
                     const evalRef = existingEval 
                         ? doc(firestore, 'evaluations', existingEval.id) 
                         : doc(collection(firestore, 'evaluations'));
@@ -236,11 +348,37 @@ export default function EvaluationPage() {
                         employeePerformanceDocumentId: documentId,
                         sectionId: section.id,
                         evaluatorPersonNumber: personNumber,
-                        appraiserType: currentUserRole, // Worker, Primary, or Secondary
+                        appraiserType: currentUserRole,
                         rating: ratings[section.id] ?? null,
                         comment: comments[section.id] ?? '',
                         submittedAt: serverTimestamp(),
                     }, { merge: true });
+                }
+            }
+            
+             // Add/update goal evaluations
+            if (goals) {
+                for (const goal of goals) {
+                    if (goalRatings[goal.id] !== undefined || goalComments[goal.id] !== undefined) {
+                        const section = sections.find(s => s.type === 'Performance Goals');
+                        if (section) {
+                            const existingEval = allEvalsForDoc?.find(e => e.goalId === goal.id && e.evaluatorPersonNumber === personNumber);
+                            const evalRef = existingEval
+                                ? doc(firestore, 'evaluations', existingEval.id)
+                                : doc(collection(firestore, 'evaluations'));
+
+                            batch.set(evalRef, {
+                                employeePerformanceDocumentId: documentId,
+                                sectionId: section.id,
+                                goalId: goal.id,
+                                evaluatorPersonNumber: personNumber,
+                                appraiserType: currentUserRole,
+                                rating: goalRatings[goal.id] ?? null,
+                                comment: goalComments[goal.id] ?? '',
+                                submittedAt: serverTimestamp(),
+                            }, { merge: true });
+                        }
+                    }
                 }
             }
 
@@ -253,7 +391,6 @@ export default function EvaluationPage() {
                 }
             }
             
-            // Determine if workflow should be updated
             let shouldUpdateWorkflow = false;
             if (currentUserRole === 'Worker') {
                 shouldUpdateWorkflow = true;
@@ -265,7 +402,6 @@ export default function EvaluationPage() {
                 }
             }
             
-            // Update document status if needed
             if (shouldUpdateWorkflow) {
                 const currentStatus = employeePerfDoc.status;
                 const sortedSteps = [...evaluationFlow.steps].sort((a,b) => a.sequence - b.sequence);
@@ -329,38 +465,50 @@ export default function EvaluationPage() {
                         </AccordionTrigger>
                         <AccordionContent className="p-6 pt-0">
                            <div className="space-y-6">
-                                {(section.enableSectionRatings || section.enableSectionComments) ? (
-                                    <div className="space-y-4">
-                                        {section.enableSectionRatings && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
-                                                <StarRating
-                                                    count={section.ratingScale || 5}
-                                                    value={ratings[section.id] || 0}
-                                                    onChange={(value) => handleRatingChange(section.id, value)}
-                                                    disabled={isReadOnly}
-                                                />
-                                            </div>
-                                        )}
-                                        {section.enableSectionComments && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
-                                                <Textarea
-                                                    id={`comment-${section.id}`}
-                                                    value={comments[section.id] || ''}
-                                                    onChange={(e) => handleCommentChange(section.id, e.target.value)}
-                                                    placeholder="Provide your comments..."
-                                                    maxLength={section.maxLength}
-                                                    disabled={isReadOnly}
-                                                />
-                                                <p className="text-sm text-muted-foreground text-right">
-                                                    {comments[section.id]?.length || 0} / {section.maxLength}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
+                                {section.type === 'Performance Goals' ? (
+                                    <PerformanceGoalsContent
+                                        section={section}
+                                        goals={goals || []}
+                                        isReadOnly={isReadOnly}
+                                        ratings={goalRatings}
+                                        comments={goalComments}
+                                        onRatingChange={handleGoalRatingChange}
+                                        onCommentChange={handleGoalCommentChange}
+                                    />
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No evaluation inputs are enabled for this section.</p>
+                                    (section.enableSectionRatings || section.enableSectionComments) ? (
+                                        <div className="space-y-4">
+                                            {section.enableSectionRatings && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                                    <StarRating
+                                                        count={section.ratingScale || 5}
+                                                        value={ratings[section.id] || 0}
+                                                        onChange={(value) => handleRatingChange(section.id, value)}
+                                                        disabled={isReadOnly}
+                                                    />
+                                                </div>
+                                            )}
+                                            {section.enableSectionComments && (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                                    <Textarea
+                                                        id={`comment-${section.id}`}
+                                                        value={comments[section.id] || ''}
+                                                        onChange={(e) => handleCommentChange(section.id, e.target.value)}
+                                                        placeholder="Provide your comments..."
+                                                        maxLength={section.maxLength}
+                                                        disabled={isReadOnly}
+                                                    />
+                                                    <p className="text-sm text-muted-foreground text-right">
+                                                        {comments[section.id]?.length || 0} / {section.maxLength}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">No evaluation inputs are enabled for this section.</p>
+                                    )
                                 )}
                                 <OtherEvaluationsDisplay evals={evaluationsToShow[section.id] || []} section={section} />
                            </div>
@@ -379,5 +527,3 @@ export default function EvaluationPage() {
         </div>
     );
 }
-
-    
