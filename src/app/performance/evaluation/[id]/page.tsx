@@ -102,11 +102,19 @@ function PerformanceGoalsContent({
                                 )}
                                  {section.enableItemComments && (
                                     <div className="space-y-2">
-                                        <Label>Your Comments {section.itemCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                        <Label>
+                                            Your Comments {section.itemCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
+                                            {((section.itemCommentMinLength && section.itemCommentMinLength > 0) || section.itemCommentMaxLength) &&
+                                                <span className="text-muted-foreground font-normal text-xs ml-2">
+                                                    (Min: {section.itemCommentMinLength ?? 0}, Max: {section.itemCommentMaxLength ?? 'N/A'})
+                                                </span>
+                                            }
+                                        </Label>
                                         <Textarea
                                             value={comments[goal.id] || ''}
                                             onChange={(e) => onCommentChange(goal.id, e.target.value)}
                                             placeholder="Provide comments for this goal..."
+                                            minLength={section.itemCommentMinLength}
                                             maxLength={section.itemCommentMaxLength}
                                             disabled={isReadOnly}
                                         />
@@ -496,12 +504,20 @@ export default function EvaluationPage() {
                                                     )}
                                                     {section.enableSectionComments && (
                                                         <div className="space-y-2">
-                                                            <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                                            <Label htmlFor={`comment-${section.id}`}>
+                                                                Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
+                                                                {((section.minLength && section.minLength > 0) || section.maxLength) &&
+                                                                    <span className="text-muted-foreground font-normal text-xs ml-2">
+                                                                        (Min: {section.minLength ?? 0}, Max: {section.maxLength ?? 'N/A'})
+                                                                    </span>
+                                                                }
+                                                            </Label>
                                                             <Textarea
                                                                 id={`comment-${section.id}`}
                                                                 value={comments[section.id] || ''}
                                                                 onChange={(e) => handleCommentChange(section.id, e.target.value)}
                                                                 placeholder="Provide your comments..."
+                                                                minLength={section.minLength}
                                                                 maxLength={section.maxLength}
                                                                 disabled={isReadOnly}
                                                             />
@@ -539,12 +555,20 @@ export default function EvaluationPage() {
                                             )}
                                             {section.enableSectionComments && (
                                                 <div className="space-y-2">
-                                                    <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                                    <Label htmlFor={`comment-${section.id}`}>
+                                                        Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
+                                                        {((section.minLength && section.minLength > 0) || section.maxLength) &&
+                                                            <span className="text-muted-foreground font-normal text-xs ml-2">
+                                                                (Min: {section.minLength ?? 0}, Max: {section.maxLength ?? 'N/A'})
+                                                            </span>
+                                                        }
+                                                    </Label>
                                                     <Textarea
                                                         id={`comment-${section.id}`}
                                                         value={comments[section.id] || ''}
                                                         onChange={(e) => handleCommentChange(section.id, e.target.value)}
                                                         placeholder="Provide your comments..."
+                                                        minLength={section.minLength}
                                                         maxLength={section.maxLength}
                                                         disabled={isReadOnly}
                                                     />
@@ -575,3 +599,5 @@ export default function EvaluationPage() {
         </div>
     );
 }
+
+    
