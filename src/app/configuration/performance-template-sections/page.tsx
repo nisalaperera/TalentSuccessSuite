@@ -80,6 +80,15 @@ function PerformanceTemplateSectionsContent() {
     const handleSaveSection = () => {
         if (!currentSection || !currentSection.id) return;
         
+        if (currentSection.type === 'Overall Summary' && !currentSection.ratingCalculationMethod) {
+            toast({
+                title: 'Validation Error',
+                description: 'Overall Rating Calculation Method is required.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         const docRef = doc(firestore, 'performance_template_sections', currentSection.id);
         const { id, ...sectionData } = currentSection;
         updateDocumentNonBlocking(docRef, sectionData);
@@ -352,7 +361,10 @@ function PerformanceTemplateSectionsContent() {
                                     <CardHeader><CardTitle>Rating Calculation</CardTitle></CardHeader>
                                     <CardContent>
                                         <div className="space-y-2">
-                                            <Label htmlFor="rating-calculation-method">Overall Rating Calculation Method</Label>
+                                            <Label htmlFor="rating-calculation-method">
+                                                Overall Rating Calculation Method
+                                                <span className="text-destructive">*</span>
+                                            </Label>
                                             <Select onValueChange={(v) => handleConfigChange('ratingCalculationMethod', v)} value={currentSection.ratingCalculationMethod || ''}>
                                                 <SelectTrigger id="rating-calculation-method"><SelectValue placeholder="Select Method" /></SelectTrigger>
                                                 <SelectContent>
