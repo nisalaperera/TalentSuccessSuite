@@ -270,46 +270,82 @@ const seedData = async (firestore: any) => {
                 const goalsBatch = writeBatch(firestore);
                 console.log("Seeding sample goals...");
 
-                const engineeringGoalPlan = allGoalPlansSnapshot.docs.find(doc => doc.data().name.includes('Engineering'));
+                const engineeringGoalPlan = allGoalPlansSnapshot.docs.find(doc => doc.data().name.includes('FY25 Engineering Goals'));
 
                 if (engineeringGoalPlan) {
-                    // SENIOR Goals
+                    // SENIOR Goals (30% Work, 70% Home)
                     goalsBatch.set(doc(goalsCollectionRef), {
                         goalPlanId: engineeringGoalPlan.id,
                         technologist_type: 'SENIOR',
                         name: 'Work: Architect Microservices Platform',
-                        description: 'Lead the design and architecture of the new microservices platform.',
+                        description: 'Lead the design and architecture of the new microservices platform for Project Phoenix.',
                         type: 'Work',
-                        weight: 30,
+                        weight: 15,
                         status: 'Not Started'
+                    });
+                     goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        technologist_type: 'SENIOR',
+                        name: 'Work: Mentor Two Junior Engineers',
+                        description: 'Provide weekly mentorship and guidance to two junior members of the team.',
+                        type: 'Work',
+                        weight: 15,
+                        status: 'In Progress'
                     });
                     goalsBatch.set(doc(goalsCollectionRef), {
                         goalPlanId: engineeringGoalPlan.id,
                         technologist_type: 'SENIOR',
-                        name: 'Home: Publish Tech Blog Post',
-                        description: 'Write and publish a technical blog post on a relevant industry topic.',
+                        name: 'Home: Publish Tech Blog Post on Kafka',
+                        description: 'Write and publish a deep-dive technical blog post on optimizing Kafka streams.',
                         type: 'Home',
-                        weight: 70,
+                        weight: 35,
+                        status: 'Not Started'
+                    });
+                     goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        technologist_type: 'SENIOR',
+                        name: 'Home: Obtain Advanced Kubernetes Certification',
+                        description: 'Study for and pass the Certified Kubernetes Application Developer (CKAD) exam.',
+                        type: 'Home',
+                        weight: 35,
                         status: 'Not Started'
                     });
 
-                    // JUNIOR Goals
+                    // JUNIOR Goals (70% Work, 30% Home)
                      goalsBatch.set(doc(goalsCollectionRef), {
                         goalPlanId: engineeringGoalPlan.id,
                         technologist_type: 'JUNIOR',
-                        name: 'Work: Contribute to Team Project',
-                        description: 'Successfully contribute to the main team project by completing assigned tickets.',
+                        name: 'Work: Contribute to API Gateway',
+                        description: 'Successfully contribute to the main team project by implementing three new API endpoints.',
                         type: 'Work',
-                        weight: 70,
+                        weight: 35,
                         status: 'Not Started'
+                    });
+                     goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        technologist_type: 'JUNIOR',
+                        name: 'Work: Resolve 10 Bug Tickets',
+                        description: 'Address and resolve at least 10 medium-priority bugs from the project backlog.',
+                        type: 'Work',
+                        weight: 35,
+                        status: 'In Progress'
                     });
                     goalsBatch.set(doc(goalsCollectionRef), {
                         goalPlanId: engineeringGoalPlan.id,
                         technologist_type: 'JUNIOR',
-                        name: 'Home: Onboarding & Training',
-                        description: 'Complete all assigned onboarding tasks and training modules.',
+                        name: 'Home: Onboarding & Training Completion',
+                        description: 'Complete all assigned onboarding tasks and required security training modules.',
                         type: 'Home',
-                        weight: 30,
+                        weight: 15,
+                        status: 'Completed'
+                    });
+                    goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        technologist_type: 'JUNIOR',
+                        name: 'Home: Review Team\'s Code Style Guide',
+                        description: 'Read and understand the team\'s official code style guide and best practices.',
+                        type: 'Home',
+                        weight: 15,
                         status: 'In Progress'
                     });
                 }
