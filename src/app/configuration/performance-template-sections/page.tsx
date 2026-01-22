@@ -306,7 +306,7 @@ function PerformanceTemplateSectionsContent() {
                                             <div className="flex items-center justify-between"><Label>Enable Section Ratings</Label><Switch checked={currentSection.enableSectionRatings} onCheckedChange={v => handleConfigChange('enableSectionRatings', v)} /></div>
                                             <div className="flex items-center justify-between"><Label htmlFor="section-rating-mandatory">Ratings Mandatory</Label><Switch id="section-rating-mandatory" disabled={!currentSection.enableSectionRatings} checked={currentSection.sectionRatingMandatory} onCheckedChange={v => handleConfigChange('sectionRatingMandatory', v)} /></div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                        <div className="grid grid-cols-2 gap-4 mt-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="rating-scale">Maximum Rating Scale</Label>
                                                 <Input id="rating-scale" type="number" disabled={!currentSection.enableSectionRatings} value={currentSection.ratingScale || 5} onChange={e => handleConfigChange('ratingScale', parseInt(e.target.value, 10))} min="1" max="10"/>
