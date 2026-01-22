@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useReducer, useState, useMemo, useEffect, Suspense } from 'react';
@@ -301,24 +300,28 @@ function PerformanceTemplateSectionsContent() {
                                 <>
                                 <Card>
                                     <CardHeader><CardTitle>Section Ratings</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                                            <div className="flex items-center justify-between"><Label>Enable Section Ratings</Label><Switch checked={currentSection.enableSectionRatings} onCheckedChange={v => handleConfigChange('enableSectionRatings', v)} /></div>
-                                            <div className="flex items-center justify-between"><Label htmlFor="section-rating-mandatory">Ratings Mandatory</Label><Switch id="section-rating-mandatory" disabled={!currentSection.enableSectionRatings} checked={currentSection.sectionRatingMandatory} onCheckedChange={v => handleConfigChange('sectionRatingMandatory', v)} /></div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4 mt-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="rating-scale">Maximum Rating Scale</Label>
-                                                <Input id="rating-scale" type="number" disabled={!currentSection.enableSectionRatings} value={currentSection.ratingScale || 5} onChange={e => handleConfigChange('ratingScale', parseInt(e.target.value, 10))} min="1" max="10"/>
+                                            <div className="flex items-center justify-between">
+                                                <Label>Enable Section Ratings</Label>
+                                                <Switch checked={currentSection.enableSectionRatings} onCheckedChange={v => handleConfigChange('enableSectionRatings', v)} />
                                             </div>
-                                            <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="section-rating-mandatory">Ratings Mandatory</Label>
+                                                <Switch id="section-rating-mandatory" disabled={!currentSection.enableSectionRatings} checked={currentSection.sectionRatingMandatory} onCheckedChange={v => handleConfigChange('sectionRatingMandatory', v)} />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="rating-scale">Maximum Rating Scale</Label>
+                                                <Input id="rating-scale" type="number" className="w-24" disabled={!currentSection.enableSectionRatings} value={currentSection.ratingScale || 5} onChange={e => handleConfigChange('ratingScale', parseInt(e.target.value, 10))} min="1" max="10"/>
+                                            </div>
+                                            <div className="flex items-center justify-between">
                                                 <Label htmlFor="rating-calculation-method">Rating Calculation Method</Label>
                                                 <Select disabled={!currentSection.enableSectionRatings} onValueChange={(v) => handleConfigChange('ratingCalculationMethod', v)} value={currentSection.ratingCalculationMethod}>
-                                                <SelectTrigger id="rating-calculation-method"><SelectValue placeholder="Select Method" /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Manual">Manual</SelectItem>
-                                                    <SelectItem value="Automatic">Automatic</SelectItem>
-                                                </SelectContent>
+                                                    <SelectTrigger id="rating-calculation-method" className="w-48"><SelectValue placeholder="Select Method" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Manual">Manual</SelectItem>
+                                                        <SelectItem value="Automatic">Automatic</SelectItem>
+                                                    </SelectContent>
                                                 </Select>
                                             </div>
                                         </div>
@@ -482,3 +485,5 @@ export default function PerformanceTemplateSectionsPage() {
         </Suspense>
     )
 }
+
+    
