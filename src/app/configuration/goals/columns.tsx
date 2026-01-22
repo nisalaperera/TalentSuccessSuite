@@ -10,10 +10,9 @@ type ColumnsConfig = {
     onEdit: (goal: Goal) => void;
     onDelete: (id: string) => void;
     getGoalPlanName: (id: string) => string;
-    getEmployeeName: (id: string) => string;
 }
 
-export const columns = ({ onEdit, onDelete, getGoalPlanName, getEmployeeName }: ColumnsConfig): ColumnDef<Goal>[] => [
+export const columns = ({ onEdit, onDelete, getGoalPlanName }: ColumnsConfig): ColumnDef<Goal>[] => [
     {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Goal Name" />,
@@ -24,9 +23,8 @@ export const columns = ({ onEdit, onDelete, getGoalPlanName, getEmployeeName }: 
         cell: ({ row }) => getGoalPlanName(row.getValue('goalPlanId')),
     },
     {
-        accessorKey: 'employeeId',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Employee" />,
-        cell: ({ row }) => getEmployeeName(row.getValue('employeeId')),
+        accessorKey: 'technologist_type',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Technologist Type" />,
     },
     {
         accessorKey: 'type',

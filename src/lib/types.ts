@@ -30,7 +30,7 @@ export type GoalPlan = {
 export type Goal = {
   id: string;
   goalPlanId: string;
-  employeeId: string;
+  technologist_type: 'SENIOR' | 'JUNIOR';
   name: string;
   description: string;
   type: 'Work' | 'Home';

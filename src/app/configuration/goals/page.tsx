@@ -7,7 +7,7 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useToast } from '@/hooks/use-toast';
-import type { Goal, GoalPlan, Employee } from '@/lib/types';
+import type { Goal, GoalPlan } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlo
 import { Label } from '@/components/ui/label';
 
 const GOAL_STATUSES: Goal['status'][] = ['Not Started', 'In Progress', 'Completed'];
+const TECHNOLOGIST_TYPES: Goal['technologist_type'][] = ['SENIOR', 'JUNIOR'];
 
 function GoalsContent() {
     const router = useRouter();
@@ -34,29 +35,26 @@ function GoalsContent() {
     const goalPlansQuery = useMemoFirebase(() => collection(firestore, 'goal_plans'), [firestore]);
     const { data: goalPlans } = useCollection<GoalPlan>(goalPlansQuery);
 
-    const employeesQuery = useMemoFirebase(() => collection(firestore, 'employees'), [firestore]);
-    const { data: employees } = useCollection<Employee>(employeesQuery);
-
     // Dialog and form state
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [goalPlanId, setGoalPlanId] = useState('');
-    const [employeeId, setEmployeeId] = useState('');
+    const [technologistType, setTechnologistType] = useState<'SENIOR' | 'JUNIOR' | undefined>();
     const [type, setType] = useState<'Work' | 'Home' | undefined>();
     const [weight, setWeight] = useState<number | undefined>();
     const [status, setStatus] = useState<Goal['status'] | undefined>();
 
     const filterGoalPlanId = searchParams.get('goalPlanId') || '';
-    const filterEmployeeId = searchParams.get('employeeId') || '';
+    const filterTechnologistType = searchParams.get('technologistType') || '';
 
     useEffect(() => {
         if (editingGoal) {
             setName(editingGoal.name);
             setDescription(editingGoal.description);
             setGoalPlanId(editingGoal.goalPlanId);
-            setEmployeeId(editingGoal.employeeId);
+            setTechnologistType(editingGoal.technologist_type);
             setType(editingGoal.type);
             setWeight(editingGoal.weight);
             setStatus(editingGoal.status);
@@ -64,12 +62,12 @@ function GoalsContent() {
             setName('');
             setDescription('');
             setGoalPlanId(filterGoalPlanId);
-            setEmployeeId(filterEmployeeId);
+            setTechnologistType(filterTechnologistType ? (filterTechnologistType as 'SENIOR' | 'JUNIOR') : undefined);
             setType(undefined);
             setWeight(undefined);
             setStatus('Not Started');
         }
-    }, [editingGoal, filterGoalPlanId, filterEmployeeId]);
+    }, [editingGoal, filterGoalPlanId, filterTechnologistType]);
 
     const handleOpenDialog = (goal: Goal | null = null) => {
         setEditingGoal(goal);
@@ -82,7 +80,7 @@ function GoalsContent() {
     };
 
     const handleSave = () => {
-        if (!name || !goalPlanId || !employeeId || !type || !status) {
+        if (!name || !goalPlanId || !technologistType || !type || !status) {
             toast({ title: "Missing Information", description: "Please fill out all required fields.", variant: "destructive" });
             return;
         }
@@ -91,7 +89,7 @@ function GoalsContent() {
             name,
             description,
             goalPlanId,
-            employeeId,
+            technologist_type: technologistType,
             type,
             weight,
             status,
@@ -116,21 +114,9 @@ function GoalsContent() {
     };
 
     const getGoalPlanName = (id: string) => goalPlans?.find(gp => gp.id === id)?.name || 'N/A';
-    const getEmployeeName = (id: string) => {
-        const emp = employees?.find(e => e.id === id);
-        return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
-    };
 
-    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, getGoalPlanName, getEmployeeName }), [goalPlans, employees]);
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, getGoalPlanName }), [goalPlans]);
     
-    const employeeOptions = useMemo(() => {
-        if (!employees) return [];
-        return employees.map(emp => ({
-            value: emp.id,
-            label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
-        }));
-    }, [employees]);
-
     const goalPlanOptions = useMemo(() => {
         if (!goalPlans) return [];
         return goalPlans.map(gp => ({
@@ -143,17 +129,17 @@ function GoalsContent() {
         if (!goals) return [];
         return goals.filter(goal => {
             const goalPlanMatch = !filterGoalPlanId || goal.goalPlanId === filterGoalPlanId;
-            const employeeMatch = !filterEmployeeId || goal.employeeId === filterEmployeeId;
-            return goalPlanMatch && employeeMatch;
+            const technologistTypeMatch = !filterTechnologistType || goal.technologist_type === filterTechnologistType;
+            return goalPlanMatch && technologistTypeMatch;
         })
-    }, [goals, filterGoalPlanId, filterEmployeeId]);
+    }, [goals, filterGoalPlanId, filterTechnologistType]);
 
-    const handleFilterChange = (type: 'goalPlan' | 'employee', value: string) => {
+    const handleFilterChange = (type: 'goalPlan' | 'technologistType', value: string) => {
         const params = new URLSearchParams(searchParams.toString());
         if (value) {
-            params.set(type === 'goalPlan' ? 'goalPlanId' : 'employeeId', value);
+            params.set(type === 'goalPlan' ? 'goalPlanId' : 'technologistType', value);
         } else {
-            params.delete(type === 'goalPlan' ? 'goalPlanId' : 'employeeId');
+            params.delete(type === 'goalPlan' ? 'goalPlanId' : 'technologistType');
         }
         router.push(`/configuration/goals?${params.toString()}`);
     };
@@ -163,7 +149,7 @@ function GoalsContent() {
         <div className="container mx-auto py-10">
             <PageHeader
                 title="Manage Goals"
-                description="Manage goals against goal plans and employees."
+                description="Manage goals against goal plans and technologist types."
                 onAddNew={() => handleOpenDialog()}
             />
             
@@ -175,14 +161,13 @@ function GoalsContent() {
                     placeholder="Filter by Goal Plan..."
                     triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
                 />
-                <Combobox 
-                    options={employeeOptions}
-                    value={filterEmployeeId}
-                    onChange={(val) => handleFilterChange('employee', val)}
-                    placeholder="Filter by Employee..."
-                    searchPlaceholder="Search employees..."
-                    triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
-                />
+                 <Select value={filterTechnologistType} onValueChange={(v) => handleFilterChange('technologistType', v)}>
+                    <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"><SelectValue placeholder="Filter by Technologist Type..." /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="">All Types</SelectItem>
+                        {TECHNOLOGIST_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                </Select>
             </div>
 
             <DataTable columns={tableColumns} data={filteredData} filterColumn="name" />
@@ -211,8 +196,13 @@ function GoalsContent() {
                                 </Select>
                             </div>
                              <div className="space-y-2">
-                                <Label>Employee</Label>
-                                <Combobox options={employeeOptions} value={employeeId} onChange={setEmployeeId} placeholder="Select Employee" />
+                                <Label>Technologist Type</Label>
+                                <Select onValueChange={(v: 'SENIOR' | 'JUNIOR') => setTechnologistType(v)} value={technologistType}>
+                                    <SelectTrigger><SelectValue placeholder="Select Technologist Type"/></SelectTrigger>
+                                    <SelectContent>
+                                        {TECHNOLOGIST_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -264,63 +264,58 @@ const seedData = async (firestore: any) => {
         const goalsCollectionRef = collection(firestore, 'goals');
         const goalsSnapshot = await getDocs(goalsCollectionRef);
         if (goalsSnapshot.empty) {
-            const allEmployeesSnapshot = await getDocs(collection(firestore, 'employees'));
             const allGoalPlansSnapshot = await getDocs(collection(firestore, 'goal_plans'));
             
-            if (!allEmployeesSnapshot.empty && !allGoalPlansSnapshot.empty) {
+            if (!allGoalPlansSnapshot.empty) {
                 const goalsBatch = writeBatch(firestore);
                 console.log("Seeding sample goals...");
 
-                const seniorEmployee = allEmployeesSnapshot.docs.find(doc => doc.data().technologist_type === 'SENIOR');
-                const juniorEmployee = allEmployeesSnapshot.docs.find(doc => doc.data().technologist_type === 'JUNIOR');
                 const engineeringGoalPlan = allGoalPlansSnapshot.docs.find(doc => doc.data().name.includes('Engineering'));
 
-                if (seniorEmployee && engineeringGoalPlan) {
+                if (engineeringGoalPlan) {
+                    // SENIOR Goals
                     goalsBatch.set(doc(goalsCollectionRef), {
                         goalPlanId: engineeringGoalPlan.id,
-                        employeeId: seniorEmployee.id,
-                        name: 'Architect Microservices Platform',
+                        technologist_type: 'SENIOR',
+                        name: 'Work: Architect Microservices Platform',
                         description: 'Lead the design and architecture of the new microservices platform.',
+                        type: 'Work',
+                        weight: 30,
+                        status: 'Not Started'
+                    });
+                    goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        technologist_type: 'SENIOR',
+                        name: 'Home: Publish Tech Blog Post',
+                        description: 'Write and publish a technical blog post on a relevant industry topic.',
+                        type: 'Home',
+                        weight: 70,
+                        status: 'Not Started'
+                    });
+
+                    // JUNIOR Goals
+                     goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        technologist_type: 'JUNIOR',
+                        name: 'Work: Contribute to Team Project',
+                        description: 'Successfully contribute to the main team project by completing assigned tickets.',
                         type: 'Work',
                         weight: 70,
                         status: 'Not Started'
                     });
                     goalsBatch.set(doc(goalsCollectionRef), {
                         goalPlanId: engineeringGoalPlan.id,
-                        employeeId: seniorEmployee.id,
-                        name: 'Publish Tech Blog Post',
-                        description: 'Write and publish a technical blog post on a relevant industry topic.',
-                        type: 'Home',
-                        weight: 30,
-                        status: 'Not Started'
-                    });
-                }
-
-                if (juniorEmployee && engineeringGoalPlan) {
-                    goalsBatch.set(doc(goalsCollectionRef), {
-                        goalPlanId: engineeringGoalPlan.id,
-                        employeeId: juniorEmployee.id,
-                        name: 'Onboarding & Training',
+                        technologist_type: 'JUNIOR',
+                        name: 'Home: Onboarding & Training',
                         description: 'Complete all assigned onboarding tasks and training modules.',
                         type: 'Home',
-                        weight: 50,
+                        weight: 30,
                         status: 'In Progress'
-                    });
-                    goalsBatch.set(doc(goalsCollectionRef), {
-                        goalPlanId: engineeringGoalPlan.id,
-                        employeeId: juniorEmployee.id,
-                        name: 'Contribute to Team Project',
-                        description: 'Successfully contribute to the main team project by completing assigned tickets.',
-                        type: 'Work',
-                        weight: 50,
-                        status: 'Not Started'
                     });
                 }
 
-                if (seniorEmployee || juniorEmployee) {
-                    await goalsBatch.commit();
-                    console.log("Sample goals seeded.");
-                }
+                await goalsBatch.commit();
+                console.log("Sample goals seeded.");
             }
         }
     } catch (error) {

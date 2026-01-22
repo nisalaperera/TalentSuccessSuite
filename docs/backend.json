@@ -73,14 +73,14 @@
       "description": "Represents a single goal for an employee within a goal plan.",
       "properties": {
         "goalPlanId": { "type": "string", "description": "Reference to the GoalPlan." },
-        "employeeId": { "type": "string", "description": "Reference to the Employee." },
+        "technologist_type": { "type": "string", "enum": ["SENIOR", "JUNIOR"], "description": "The technologist type the goal applies to." },
         "name": { "type": "string", "description": "The name of the goal." },
         "description": { "type": "string", "description": "A detailed description of the goal." },
         "type": { "type": "string", "enum": ["Work", "Home"], "description": "The type of the goal." },
         "weight": { "type": "number", "description": "The weight of the goal in percentage." },
         "status": { "type": "string", "enum": ["Not Started", "In Progress", "Completed"], "description": "The status of the goal." }
       },
-      "required": ["goalPlanId", "employeeId", "name", "type", "status"]
+      "required": ["goalPlanId", "technologist_type", "name", "type", "status"]
     },
     "PerformanceTemplate": {
       "title": "PerformanceTemplate",
