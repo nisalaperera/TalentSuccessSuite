@@ -313,9 +313,21 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
               )}
               
               {currentSection.type === 'Overall Summary' && (
-                <p className="text-sm text-muted-foreground p-4">
-                  No specific configuration available for this section type.
-                </p>
+                <Card>
+                    <CardHeader><CardTitle>Rating Calculation</CardTitle></CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            <Label htmlFor="rating-calculation-method">Overall Rating Calculation Method</Label>
+                            <Select onValueChange={(v) => handleConfigChange('ratingCalculationMethod', v)} value={currentSection.ratingCalculationMethod || ''}>
+                                <SelectTrigger id="rating-calculation-method"><SelectValue placeholder="Select Method" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Mid-Year Rate Calculation">Mid-Year Rate Calculation</SelectItem>
+                                    <SelectItem value="Annual Rate Calculation">Annual Rate Calculation</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardContent>
+                </Card>
               )}
 
               <Card>
