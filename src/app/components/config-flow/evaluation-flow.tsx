@@ -90,17 +90,22 @@ export function EvaluationFlow({ state, dispatch, onComplete, selectedEvaluation
       return;
     }
 
-    const finalSteps: EvaluationStep[] = steps
-      .map((s, index) => ({
-        ...s,
-        sequence: s.sequence!,
-        task: s.task!,
-        role: s.role!,
-        flowType: getFlowType(s.sequence!, index),
-        startDate: s.startDate ? Timestamp.fromDate(s.startDate) : undefined,
-        endDate: s.endDate ? Timestamp.fromDate(s.endDate) : undefined,
-      } as EvaluationStep))
-      .sort((a, b) => a.sequence - b.sequence);
+    const finalSteps: EvaluationStep[] = steps.map((s, index) => {
+        const step: any = {
+            id: s.id,
+            sequence: s.sequence!,
+            task: s.task!,
+            role: s.role!,
+            flowType: getFlowType(s.sequence!, index),
+        };
+        if (s.startDate) {
+            step.startDate = Timestamp.fromDate(s.startDate);
+        }
+        if (s.endDate) {
+            step.endDate = Timestamp.fromDate(s.endDate);
+        }
+        return step;
+    }).sort((a, b) => a.sequence - b.sequence);
 
     const flowData = { 
         name: flowName, 
