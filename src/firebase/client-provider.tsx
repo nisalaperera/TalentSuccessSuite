@@ -20,8 +20,14 @@ const seedData = async (firestore: any) => {
 
     let shouldSeed = false;
     for (const coll of Object.keys(collectionsToSeed)) {
-        const snapshot = await getDocs(collection(firestore, coll));
-        if (snapshot.empty) {
+        try {
+            const snapshot = await getDocs(collection(firestore, coll));
+            if (snapshot.empty) {
+                shouldSeed = true;
+                break;
+            }
+        } catch (error) {
+            // If collection doesn't exist, it's a reason to seed.
             shouldSeed = true;
             break;
         }
@@ -156,6 +162,36 @@ const seedData = async (firestore: any) => {
 
         await batch.commit();
         console.log("Initial data seeding complete.");
+    }
+
+    // This block will run on every load to ensure existing employees have the new field.
+    // It's idempotent because it only updates if the field is missing.
+    try {
+        const employeesCollectionRef = collection(firestore, 'employees');
+        const employeeSnapshotForUpdate = await getDocs(employeesCollectionRef);
+        if (!employeeSnapshotForUpdate.empty) {
+            const updateBatch = writeBatch(firestore);
+            const technologistTypes: ('SENIOR' | 'JUNIOR')[] = ['SENIOR', 'JUNIOR'];
+            let updatedCount = 0;
+
+            employeeSnapshotForUpdate.forEach(docSnap => {
+                const employeeData = docSnap.data();
+                if (employeeData.technologist_type === undefined) {
+                    updateBatch.update(docSnap.ref, { 
+                        technologist_type: technologistTypes[Math.floor(Math.random() * technologistTypes.length)] 
+                    });
+                    updatedCount++;
+                }
+            });
+
+            if (updatedCount > 0) {
+                console.log(`Updating ${updatedCount} existing employee(s) with technologist_type...`);
+                await updateBatch.commit();
+                console.log("Employee update complete.");
+            }
+        }
+    } catch (error) {
+        console.error("Error during employee data update:", error);
     }
 };
 
