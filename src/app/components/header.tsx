@@ -1,11 +1,10 @@
-
 'use client';
 
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGlobalState } from "@/app/context/global-state-provider";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import type { PerformanceCycle, ReviewPeriod, Employee } from '@/lib/types';
@@ -15,6 +14,11 @@ import { Combobox } from "@/components/ui/combobox";
 function GlobalFilters() {
     const { personNumber, setPersonNumber, performanceCycleId, setPerformanceCycleId } = useGlobalState();
     const firestore = useFirestore();
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const reviewPeriodsQuery = useMemoFirebase(() => collection(firestore, 'review_periods'), [firestore]);
     const { data: reviewPeriods } = useCollection<ReviewPeriod>(reviewPeriodsQuery);
@@ -38,6 +42,16 @@ function GlobalFilters() {
             label: `${emp.firstName} ${emp.lastName} | ${emp.personType} | ${emp.technologist_type || 'N/A'}`,
         }));
     }, [employees]);
+
+
+    if (!isMounted) {
+        return (
+            <div className="flex items-center gap-4">
+                <div className="h-10 w-96 rounded-md bg-muted animate-pulse" />
+                <div className="h-10 w-64 rounded-md bg-muted animate-pulse" />
+            </div>
+        );
+    }
 
 
     return (
