@@ -62,7 +62,7 @@ export type PerformanceTemplateSection = {
   enableSectionRatings?: boolean;
   sectionRatingMandatory?: boolean;
   ratingScale?: number;
-  ratingCalculationMethod?: 'Manual' | 'Automatic';
+  ratingCalculationMethod?: string;
   
   enableSectionComments?: boolean;
   sectionCommentMandatory?: boolean;
