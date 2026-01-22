@@ -97,7 +97,7 @@ export type EvaluationStep = {
   id: string;
   sequence: number;
   task: 'Worker Self-Evaluation' | 'Manager Evaluation' | 'Normalization' | 'Share Document' | 'Confirm Review Meeting' | 'Provide Final Feedback' | 'Close Document';
-  role: 'Primary (Worker)' | 'Secondary (Manager)' | 'Sec. Appraiser 1' | 'Sec. Appraiser 2' | 'HR / Dept Head';
+  role: string;
   flowType: 'Start' | 'Parallel' | 'Sequential';
   startDate?: Date;
   endDate?: Date;

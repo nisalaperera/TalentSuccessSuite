@@ -19,7 +19,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { useFirestore } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { TEMPLATE_SECTION_ROLES as ROLES } from '@/lib/constants';
+import { EVALUATION_FLOW_ROLES as ROLES } from '@/lib/constants';
 
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary'];
 const surveySectionTypes: SectionType[] = [];
@@ -316,7 +316,10 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
                     <CardHeader><CardTitle>Rating Calculation</CardTitle></CardHeader>
                     <CardContent>
                         <div className="space-y-2">
-                            <Label htmlFor="rating-calculation-method">Overall Rating Calculation Method</Label>
+                            <Label htmlFor="rating-calculation-method">
+                                Overall Rating Calculation Method
+                                <span className="text-destructive">*</span>
+                            </Label>
                             <Select onValueChange={(v) => handleConfigChange('ratingCalculationMethod', v)} value={currentSection.ratingCalculationMethod || ''}>
                                 <SelectTrigger id="rating-calculation-method"><SelectValue placeholder="Select Method" /></SelectTrigger>
                                 <SelectContent>

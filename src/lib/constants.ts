@@ -10,15 +10,7 @@ export const EVALUATION_FLOW_PROCESS_PHASES: EvaluationStep['task'][] = [
     'Close Document'
 ];
 
-export const EVALUATION_FLOW_ROLES: EvaluationStep['role'][] = [
-    'Primary (Worker)', 
-    'Secondary (Manager)', 
-    'Sec. Appraiser 1', 
-    'Sec. Appraiser 2', 
-    'HR / Dept Head'
-];
-
-export const TEMPLATE_SECTION_ROLES: string[] = [
+export const EVALUATION_FLOW_ROLES: string[] = [
     'Worker', 
     'Primary Appraiser', 
     'Secondary Appraiser', 

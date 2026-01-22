@@ -152,7 +152,7 @@
                     },
                     "role": { 
                         "type": "string",
-                        "enum": ["Primary (Worker)", "Secondary (Manager)", "Sec. Appraiser 1", "Sec. Appraiser 2", "HR / Dept Head"]
+                        "enum": ["Worker", "Primary Appraiser", "Secondary Appraiser", "HR"]
                      },
                     "flowType": { 
                         "type": "string",
