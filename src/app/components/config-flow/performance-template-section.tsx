@@ -19,8 +19,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { useFirestore } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-
-const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser', 'HR'];
+import { TEMPLATE_SECTION_ROLES as ROLES } from '@/lib/constants';
 
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary'];
 const surveySectionTypes: SectionType[] = [];

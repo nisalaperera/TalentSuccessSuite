@@ -17,9 +17,7 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Label } from '@/components/ui/label';
-
-const GOAL_STATUSES: Goal['status'][] = ['Not Started', 'In Progress', 'Completed'];
-const TECHNOLOGIST_TYPES: Goal['technologist_type'][] = ['SENIOR', 'JUNIOR'];
+import { GOAL_STATUSES, TECHNOLOGIST_TYPES, GOAL_TYPES } from '@/lib/constants';
 
 function GoalsContent() {
     const router = useRouter();
@@ -211,7 +209,7 @@ function GoalsContent() {
                                 <Label>Type</Label>
                                 <Select onValueChange={(v: 'Work' | 'Home') => setType(v)} value={type}>
                                     <SelectTrigger><SelectValue placeholder="Select Type"/></SelectTrigger>
-                                    <SelectContent><SelectItem value="Work">Work</SelectItem><SelectItem value="Home">Home</SelectItem></SelectContent>
+                                    <SelectContent>{GOAL_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                              <div className="space-y-2">

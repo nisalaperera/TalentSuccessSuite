@@ -23,8 +23,8 @@ import { Badge } from '@/components/ui/badge';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { TEMPLATE_SECTION_ROLES as ROLES } from '@/lib/constants';
 
-const ROLES = ['Worker', 'Primary Appraiser', 'Secondary Appraiser', 'HR'];
 const performanceSectionTypes: SectionType[] = ['Performance Goals', 'Overall Summary'];
 const surveySectionTypes: SectionType[] = [];
 
