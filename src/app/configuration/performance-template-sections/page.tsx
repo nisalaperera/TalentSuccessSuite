@@ -192,7 +192,7 @@ function PerformanceTemplateSectionsContent() {
     };
     
     const handleTemplateSelection = (templateId: string) => {
-        router.push(`/configuration/performance-template-sections?templateId=${'templateId'}`);
+        router.push(`/configuration/performance-template-sections?templateId=${templateId}`);
     };
     
     const handleClearFilter = () => {
@@ -329,19 +329,23 @@ function PerformanceTemplateSectionsContent() {
                                 </Card>
                                 <Card>
                                     <CardHeader><CardTitle>Section Comments</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                                            <div className="flex items-center justify-between"><Label>Enable Section Comments</Label><Switch checked={currentSection.enableSectionComments} onCheckedChange={v => handleConfigChange('enableSectionComments', v)} /></div>
-                                            <div className="flex items-center justify-between"><Label htmlFor="section-comment-mandatory">Comments Mandatory</Label><Switch id="section-comment-mandatory" disabled={!currentSection.enableSectionComments} checked={currentSection.sectionCommentMandatory} onCheckedChange={v => handleConfigChange('sectionCommentMandatory', v)} /></div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="min-length">Min Length</Label>
-                                                <Input id="min-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.minLength ?? ''} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
+                                            <div className="flex items-center justify-between">
+                                                <Label>Enable Section Comments</Label>
+                                                <Switch checked={currentSection.enableSectionComments} onCheckedChange={v => handleConfigChange('enableSectionComments', v)} />
                                             </div>
-                                            <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="section-comment-mandatory">Comments Mandatory</Label>
+                                                <Switch id="section-comment-mandatory" disabled={!currentSection.enableSectionComments} checked={currentSection.sectionCommentMandatory} onCheckedChange={v => handleConfigChange('sectionCommentMandatory', v)} />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <Label htmlFor="min-length">Min Length</Label>
+                                                <Input id="min-length" type="number" className="w-24" disabled={!currentSection.enableSectionComments} value={currentSection.minLength ?? ''} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
+                                            </div>
+                                            <div className="flex items-center justify-between">
                                                 <Label htmlFor="max-length">Max Length</Label>
-                                                <Input id="max-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength ?? ''} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
+                                                <Input id="max-length" type="number" className="w-24" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength ?? ''} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
                                             </div>
                                         </div>
                                     </CardContent>
@@ -349,21 +353,19 @@ function PerformanceTemplateSectionsContent() {
 
                                 <Card>
                                     <CardHeader><CardTitle>Performance Goals</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
+                                    <CardContent>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                                             <div className="flex items-center justify-between"><Label>Ratings Enabled for Goals</Label><Switch checked={currentSection.enableItemRatings} onCheckedChange={v => handleConfigChange('enableItemRatings', v)} /></div>
                                             <div className="flex items-center justify-between"><Label>Ratings Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemRatings} checked={currentSection.itemRatingMandatory} onCheckedChange={v => handleConfigChange('itemRatingMandatory', v)} /></div>
                                             <div className="flex items-center justify-between"><Label>Comments Enabled for Goals</Label><Switch checked={currentSection.enableItemComments} onCheckedChange={v => handleConfigChange('enableItemComments', v)} /></div>
                                             <div className="flex items-center justify-between"><Label>Comments Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemComments} checked={currentSection.itemCommentMandatory} onCheckedChange={v => handleConfigChange('itemCommentMandatory', v)} /></div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                            <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
                                                 <Label htmlFor="item-min-length">Min Length (Goal Comments)</Label>
-                                                <Input id="item-min-length" type="number" disabled={!currentSection.enableItemComments} value={currentSection.itemCommentMinLength ?? ''} onChange={e => handleConfigChange('itemCommentMinLength', e.target.valueAsNumber)} />
+                                                <Input id="item-min-length" type="number" className="w-24" disabled={!currentSection.enableItemComments} value={currentSection.itemCommentMinLength ?? ''} onChange={e => handleConfigChange('itemCommentMinLength', e.target.valueAsNumber)} />
                                             </div>
-                                            <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
                                                 <Label htmlFor="item-max-length">Max Length (Goal Comments)</Label>
-                                                <Input id="item-max-length" type="number" disabled={!currentSection.enableItemComments} value={currentSection.itemCommentMaxLength ?? ''} onChange={e => handleConfigChange('itemCommentMaxLength', e.target.valueAsNumber)} />
+                                                <Input id="item-max-length" type="number" className="w-24" disabled={!currentSection.enableItemComments} value={currentSection.itemCommentMaxLength ?? ''} onChange={e => handleConfigChange('itemCommentMaxLength', e.target.valueAsNumber)} />
                                             </div>
                                         </div>
                                     </CardContent>
