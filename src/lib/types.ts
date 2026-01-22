@@ -167,6 +167,7 @@ export type Employee = {
   entity: string;
   workManager: string;
   homeManager: string;
+  technologist_type?: 'SENIOR' | 'JUNIOR';
 };
 
 export type EmployeeEvaluation = {

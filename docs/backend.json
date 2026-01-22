@@ -264,6 +264,11 @@
         "homeManager": {
           "type": "string",
           "description": "The personNumber of the employee's home manager. References another employee."
+        },
+        "technologist_type": {
+            "type": "string",
+            "enum": ["SENIOR", "JUNIOR"],
+            "description": "The technologist type of the employee."
         }
       },
       "required": ["personNumber", "personEmail", "firstName", "lastName"]

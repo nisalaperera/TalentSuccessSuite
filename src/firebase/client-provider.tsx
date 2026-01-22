@@ -104,6 +104,7 @@ const seedData = async (firestore: any) => {
             const personTypes = ['Full-Time', 'Part-Time', 'Intern', 'Contractor'];
             const departments = ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'];
             const entities = ['Global Corp', 'US Division', 'EU Division'];
+            const technologistTypes: ('SENIOR' | 'JUNIOR')[] = ['SENIOR', 'JUNIOR'];
             let personNumberCounter = 1000;
             
             const employeeShells = [];
@@ -124,7 +125,8 @@ const seedData = async (firestore: any) => {
                             department,
                             entity,
                             workManager: '',
-                            homeManager: ''
+                            homeManager: '',
+                            technologist_type: technologistTypes[Math.floor(Math.random() * technologistTypes.length)]
                         });
                     }
                 }

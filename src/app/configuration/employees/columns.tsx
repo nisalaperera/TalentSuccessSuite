@@ -31,6 +31,10 @@ export const columns = (): ColumnDef<Employee>[] => [
         header: ({ column }) => <DataTableColumnHeader column={column} title="Person Type" />,
     },
     {
+        accessorKey: 'technologist_type',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Technologist Type" />,
+    },
+    {
         accessorKey: 'department',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Department" />,
     },
