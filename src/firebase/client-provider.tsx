@@ -186,9 +186,72 @@ const seedData = async (firestore: any) => {
             });
         }
 
-
         await batch.commit();
-        console.log("Initial data seeding complete.");
+        console.log("Initial data seeding complete for core entities.");
+
+        // Seed Goals separately after core data is committed
+        const goalsCollectionRef = collection(firestore, 'goals');
+        const goalsSnapshot = await getDocs(goalsCollectionRef);
+        if (goalsSnapshot.empty) {
+            const allEmployeesSnapshot = await getDocs(collection(firestore, 'employees'));
+            const allGoalPlansSnapshot = await getDocs(collection(firestore, 'goal_plans'));
+            
+            if (!allEmployeesSnapshot.empty && !allGoalPlansSnapshot.empty) {
+                const goalsBatch = writeBatch(firestore);
+                console.log("Seeding sample goals...");
+
+                const seniorEmployee = allEmployeesSnapshot.docs.find(doc => doc.data().technologist_type === 'SENIOR');
+                const juniorEmployee = allEmployeesSnapshot.docs.find(doc => doc.data().technologist_type === 'JUNIOR');
+                const engineeringGoalPlan = allGoalPlansSnapshot.docs.find(doc => doc.data().name.includes('Engineering'));
+
+                if (seniorEmployee && engineeringGoalPlan) {
+                    goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        employeeId: seniorEmployee.id,
+                        name: 'Architect Microservices Platform',
+                        description: 'Lead the design and architecture of the new microservices platform.',
+                        type: 'Work',
+                        weight: 70,
+                        status: 'Not Started'
+                    });
+                    goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        employeeId: seniorEmployee.id,
+                        name: 'Publish Tech Blog Post',
+                        description: 'Write and publish a technical blog post on a relevant industry topic.',
+                        type: 'Home',
+                        weight: 30,
+                        status: 'Not Started'
+                    });
+                }
+
+                if (juniorEmployee && engineeringGoalPlan) {
+                    goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        employeeId: juniorEmployee.id,
+                        name: 'Onboarding & Training',
+                        description: 'Complete all assigned onboarding tasks and training modules.',
+                        type: 'Home',
+                        weight: 50,
+                        status: 'In Progress'
+                    });
+                    goalsBatch.set(doc(goalsCollectionRef), {
+                        goalPlanId: engineeringGoalPlan.id,
+                        employeeId: juniorEmployee.id,
+                        name: 'Contribute to Team Project',
+                        description: 'Successfully contribute to the main team project by completing assigned tickets.',
+                        type: 'Work',
+                        weight: 50,
+                        status: 'Not Started'
+                    });
+                }
+
+                if (seniorEmployee || juniorEmployee) {
+                    await goalsBatch.commit();
+                    console.log("Sample goals seeded.");
+                }
+            }
+        }
     }
 
     // This block will run on every load to ensure existing employees have the new fields.
