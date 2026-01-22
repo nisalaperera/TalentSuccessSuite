@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
@@ -136,10 +135,12 @@ function GoalsContent() {
 
     const handleFilterChange = (type: 'goalPlan' | 'technologistType', value: string) => {
         const params = new URLSearchParams(searchParams.toString());
-        if (value) {
-            params.set(type === 'goalPlan' ? 'goalPlanId' : 'technologistType', value);
+        const paramName = type === 'goalPlan' ? 'goalPlanId' : 'technologistType';
+
+        if (value && value !== 'all') {
+            params.set(paramName, value);
         } else {
-            params.delete(type === 'goalPlan' ? 'goalPlanId' : 'technologistType');
+            params.delete(paramName);
         }
         router.push(`/configuration/goals?${params.toString()}`);
     };
@@ -164,7 +165,7 @@ function GoalsContent() {
                  <Select value={filterTechnologistType} onValueChange={(v) => handleFilterChange('technologistType', v)}>
                     <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"><SelectValue placeholder="Filter by Technologist Type..." /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="">All Types</SelectItem>
+                        <SelectItem value="all">All Types</SelectItem>
                         {TECHNOLOGIST_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </SelectContent>
                 </Select>
