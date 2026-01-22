@@ -35,7 +35,7 @@ function GlobalFilters() {
         if (!employees) return [];
         return employees.map(emp => ({
             value: emp.personNumber,
-            label: `${emp.firstName} ${emp.lastName}`,
+            label: `${emp.firstName} ${emp.lastName} | ${emp.personType} | ${emp.technologist_type || 'N/A'}`,
         }));
     }, [employees]);
 
@@ -49,7 +49,7 @@ function GlobalFilters() {
                 placeholder="Select an employee..."
                 searchPlaceholder="Search employees..."
                 noResultsText="No employees found."
-                triggerClassName="w-64"
+                triggerClassName="w-96"
                 allowDeselect={false}
              />
              <Select onValueChange={setPerformanceCycleId} value={performanceCycleId}>
