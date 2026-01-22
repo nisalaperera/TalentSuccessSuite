@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { GripVertical, Trash2, Settings, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -165,7 +164,7 @@ function PerformanceTemplateSectionsContent() {
             enableSectionRatings: true,
             sectionRatingMandatory: false,
             ratingScale: 5,
-            ratingCalculationMethod: 'Manual Rating',
+            ratingCalculationMethod: 'Manual',
             enableSectionComments: false,
             sectionCommentMandatory: false,
             minLength: 0,
@@ -280,137 +279,128 @@ function PerformanceTemplateSectionsContent() {
                         <DialogTitle className="font-headline text-2xl">Configure: {currentSection?.name}</DialogTitle>
                     </DialogHeader>
                     {currentSection && (
-                        <div className="py-4 max-h-[70vh] overflow-y-auto pr-2">
-                            <Accordion type="multiple" defaultValue={['general']} className="w-full space-y-2">
-                                <AccordionItem value="general" className="border rounded-lg bg-card">
-                                    <AccordionTrigger className="p-4 font-semibold hover:no-underline text-base">General</AccordionTrigger>
-                                    <AccordionContent className="p-4 pt-0">
-                                        <div className="space-y-2">
-                                            <Label>Section Name</Label>
-                                            <Input value={currentSection.name || ''} onChange={e => handleConfigChange('name', e.target.value)} />
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
+                        <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+                            <div className="space-y-2">
+                                <Label>Section Name</Label>
+                                <Input value={currentSection.name || ''} onChange={e => handleConfigChange('name', e.target.value)} />
+                            </div>
 
-                                {currentSection.type === 'Performance Goals' && (
-                                    <>
-                                    <AccordionItem value="ratings" className="border rounded-lg bg-card">
-                                        <AccordionTrigger className="p-4 font-semibold hover:no-underline text-base">Section Ratings</AccordionTrigger>
-                                        <AccordionContent className="p-4 pt-0 space-y-4">
+                            {currentSection.type === 'Performance Goals' && (
+                                <>
+                                <Card>
+                                    <CardHeader><CardTitle>Section Ratings</CardTitle></CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                                             <div className="flex items-center justify-between"><Label>Enable Section Ratings</Label><Switch checked={currentSection.enableSectionRatings} onCheckedChange={v => handleConfigChange('enableSectionRatings', v)} /></div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between"><Label htmlFor="section-rating-mandatory">Ratings Mandatory</Label><Switch id="section-rating-mandatory" disabled={!currentSection.enableSectionRatings} checked={currentSection.sectionRatingMandatory} onCheckedChange={v => handleConfigChange('sectionRatingMandatory', v)} /></div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="rating-scale">Maximum Rating Scale</Label>
-                                                    <Input id="rating-scale" type="number" disabled={!currentSection.enableSectionRatings} value={currentSection.ratingScale || 5} onChange={e => handleConfigChange('ratingScale', parseInt(e.target.value, 10))} min="1" max="10"/>
-                                                </div>
-                                                <div className="space-y-2 md:col-span-2">
-                                                    <Label htmlFor="rating-calculation-method">Rating Calculation Method</Label>
-                                                    <Select disabled={!currentSection.enableSectionRatings} onValueChange={(v) => handleConfigChange('ratingCalculationMethod', v)} value={currentSection.ratingCalculationMethod}>
-                                                        <SelectTrigger id="rating-calculation-method"><SelectValue placeholder="Select Method" /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="Manual Rating">Manual Rating</SelectItem>
-                                                            <SelectItem value="Mid Year Rating Calculation">Mid Year Rating Calculation</SelectItem>
-                                                            <SelectItem value="Annual Year Rating Calculation">Annual Year Rating Calculation</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
+                                            <div className="flex items-center justify-between"><Label htmlFor="section-rating-mandatory">Ratings Mandatory</Label><Switch id="section-rating-mandatory" disabled={!currentSection.enableSectionRatings} checked={currentSection.sectionRatingMandatory} onCheckedChange={v => handleConfigChange('sectionRatingMandatory', v)} /></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="rating-scale">Maximum Rating Scale</Label>
+                                                <Input id="rating-scale" type="number" disabled={!currentSection.enableSectionRatings} value={currentSection.ratingScale || 5} onChange={e => handleConfigChange('ratingScale', parseInt(e.target.value, 10))} min="1" max="10"/>
                                             </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    <AccordionItem value="comments" className="border rounded-lg bg-card">
-                                        <AccordionTrigger className="p-4 font-semibold hover:no-underline text-base">Section Comments</AccordionTrigger>
-                                        <AccordionContent className="p-4 pt-0 space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="rating-calculation-method">Rating Calculation Method</Label>
+                                                <Select disabled={!currentSection.enableSectionRatings} onValueChange={(v: 'Manual' | 'Automatic') => handleConfigChange('ratingCalculationMethod', v)} value={currentSection.ratingCalculationMethod}>
+                                                <SelectTrigger id="rating-calculation-method"><SelectValue placeholder="Select Method" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Manual">Manual</SelectItem>
+                                                    <SelectItem value="Automatic">Automatic</SelectItem>
+                                                </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader><CardTitle>Section Comments</CardTitle></CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                                             <div className="flex items-center justify-between"><Label>Enable Section Comments</Label><Switch checked={currentSection.enableSectionComments} onCheckedChange={v => handleConfigChange('enableSectionComments', v)} /></div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between"><Label htmlFor="section-comment-mandatory">Comments Mandatory</Label><Switch id="section-comment-mandatory" disabled={!currentSection.enableSectionComments} checked={currentSection.sectionCommentMandatory} onCheckedChange={v => handleConfigChange('sectionCommentMandatory', v)} /></div>
-                                                </div>
-                                                <div/>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="min-length">Min Length</Label>
-                                                    <Input id="min-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.minLength} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="max-length">Max Length</Label>
-                                                    <Input id="max-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
-                                                </div>
+                                            <div className="flex items-center justify-between"><Label htmlFor="section-comment-mandatory">Comments Mandatory</Label><Switch id="section-comment-mandatory" disabled={!currentSection.enableSectionComments} checked={currentSection.sectionCommentMandatory} onCheckedChange={v => handleConfigChange('sectionCommentMandatory', v)} /></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="min-length">Min Length</Label>
+                                                <Input id="min-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.minLength} onChange={e => handleConfigChange('minLength', e.target.valueAsNumber)} />
                                             </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    <AccordionItem value="item-attributes" className="border rounded-lg bg-card">
-                                        <AccordionTrigger className="p-4 font-semibold hover:no-underline text-base">Goal Item Attributes</AccordionTrigger>
-                                        <AccordionContent className="p-4 pt-0">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                                                <div className="flex items-center justify-between"><Label>Ratings Enabled for Goals</Label><Switch checked={currentSection.enableItemRatings} onCheckedChange={v => handleConfigChange('enableItemRatings', v)} /></div>
-                                                <div className="flex items-center justify-between"><Label>Ratings Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemRatings} checked={currentSection.itemRatingMandatory} onCheckedChange={v => handleConfigChange('itemRatingMandatory', v)} /></div>
-                                                <div className="flex items-center justify-between"><Label>Comments Enabled for Goals</Label><Switch checked={currentSection.enableItemComments} onCheckedChange={v => handleConfigChange('enableItemComments', v)} /></div>
-                                                <div className="flex items-center justify-between"><Label>Comments Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemComments} checked={currentSection.itemCommentMandatory} onCheckedChange={v => handleConfigChange('itemCommentMandatory', v)} /></div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="max-length">Max Length</Label>
+                                                <Input id="max-length" type="number" disabled={!currentSection.enableSectionComments} value={currentSection.maxLength} onChange={e => handleConfigChange('maxLength', e.target.valueAsNumber)} />
                                             </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    </>
-                                )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
 
-                                {currentSection.type === 'Overall Summary' && (
-                                    <AccordionItem value="weights" className="border rounded-lg bg-card">
-                                        <AccordionTrigger className="p-4 font-semibold hover:no-underline text-base">Overall Normalized Rating Weights</AccordionTrigger>
-                                        <AccordionContent className="p-4 pt-0 space-y-4">
-                                            <p className="text-sm text-muted-foreground">Configure weights for blending scores.</p>
-                                            <Label>Current Document Score Weights</Label>
-                                            <div className="flex gap-4">
-                                                <Input type="number" placeholder="Primary Appraiser Weight % (e.g., 70)" />
-                                                <Input type="number" placeholder="Secondary Appraisers Weight % (e.g., 30)" />
-                                            </div>
-                                            <Label>Final Overall Normalized Rating Weights</Label>
-                                            <div className="flex gap-4">
-                                                <Input type="number" placeholder="Current Performance Weight % (e.g., 70)" />
-                                                <Input type="number" placeholder="Historical Performance Weight % (e.g., 30)" />
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                )}
+                                <Card>
+                                    <CardHeader><CardTitle>Performance Goals</CardTitle></CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                                            <div className="flex items-center justify-between"><Label>Ratings Enabled for Goals</Label><Switch checked={currentSection.enableItemRatings} onCheckedChange={v => handleConfigChange('enableItemRatings', v)} /></div>
+                                            <div className="flex items-center justify-between"><Label>Ratings Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemRatings} checked={currentSection.itemRatingMandatory} onCheckedChange={v => handleConfigChange('itemRatingMandatory', v)} /></div>
+                                            <div className="flex items-center justify-between"><Label>Comments Enabled for Goals</Label><Switch checked={currentSection.enableItemComments} onCheckedChange={v => handleConfigChange('enableItemComments', v)} /></div>
+                                            <div className="flex items-center justify-between"><Label>Comments Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemComments} checked={currentSection.itemCommentMandatory} onCheckedChange={v => handleConfigChange('itemCommentMandatory', v)} /></div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                </>
+                            )}
+                            
+                            {currentSection.type === 'Overall Summary' &&
+                                <Card>
+                                    <CardHeader><CardTitle>Overall Normalized Rating Weights</CardTitle></CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <p className="text-sm text-muted-foreground">Configure weights for blending scores.</p>
+                                        <Label>Current Document Score Weights</Label>
+                                        <div className="flex gap-4">
+                                            <Input type="number" placeholder="Primary Appraiser Weight % (e.g., 70)" />
+                                            <Input type="number" placeholder="Secondary Appraisers Weight % (e.g., 30)" />
+                                        </div>
+                                        <Label>Final Overall Normalized Rating Weights</Label>
+                                        <div className="flex gap-4">
+                                            <Input type="number" placeholder="Current Performance Weight % (e.g., 70)" />
+                                            <Input type="number" placeholder="Historical Performance Weight % (e.g., 30)" />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            }
 
-                                <AccordionItem value="permissions" className="border rounded-lg bg-card">
-                                    <AccordionTrigger className="p-4 font-semibold hover:no-underline text-base">Section Access & Permissions</AccordionTrigger>
-                                    <AccordionContent className="p-4 pt-0">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Role</TableHead>
-                                                    <TableHead className="text-center">View</TableHead>
-                                                    <TableHead className="text-center">Rate</TableHead>
-                                                    <TableHead className="text-center">View Worker Ratings</TableHead>
-                                                    <TableHead className="text-center">View Primary Appraiser Ratings</TableHead>
-                                                    <TableHead className="text-center">View Secondary Appraiser Ratings</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {currentSection.permissions?.map((p) => {
-                                                    const role = p.role;
-                                                    const isWorker = role === 'Worker';
-                                                    const isPrimary = role === 'Primary Appraiser';
-                                                    const isSecondary = role === 'Secondary Appraiser';
+                            <Card>
+                                <CardHeader><CardTitle>Section Access & Permissions</CardTitle></CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Role</TableHead>
+                                                <TableHead className="text-center">View</TableHead>
+                                                <TableHead className="text-center">Rate</TableHead>
+                                                <TableHead className="text-center">View Worker Ratings</TableHead>
+                                                <TableHead className="text-center">View Primary Appraiser Ratings</TableHead>
+                                                <TableHead className="text-center">View Secondary Appraiser Ratings</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {currentSection.permissions?.map((p) => {
+                                                const role = p.role;
+                                                const isWorker = role === 'Worker';
+                                                const isPrimary = role === 'Primary Appraiser';
+                                                const isSecondary = role === 'Secondary Appraiser';
 
-                                                    return (
-                                                        <TableRow key={role}>
-                                                            <TableCell className="font-medium">{role}</TableCell>
-                                                            <TableCell className="text-center"><Switch checked={p.view} onCheckedChange={(val) => handlePermissionChange(role, 'view', val)}/></TableCell>
-                                                            <TableCell className="text-center"><Switch checked={p.rate} onCheckedChange={(val) => handlePermissionChange(role, 'rate', val)}/></TableCell>
-                                                            <TableCell className="text-center"><Switch checked={p.viewWorkerRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewWorkerRatings', val)} disabled={isWorker} /></TableCell>
-                                                            <TableCell className="text-center"><Switch checked={p.viewPrimaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewPrimaryAppraiserRatings', val)} disabled={isPrimary} /></TableCell>
-                                                            <TableCell className="text-center"><Switch checked={p.viewSecondaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewSecondaryAppraiserRatings', val)} disabled={isSecondary} /></TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })}
-                                            </TableBody>
-                                        </Table>
-                                    </AccordionContent>
-                                </AccordionItem>
-
-                            </Accordion>
+                                                return (
+                                                    <TableRow key={role}>
+                                                        <TableCell className="font-medium">{role}</TableCell>
+                                                        <TableCell className="text-center"><Switch checked={p.view} onCheckedChange={(val) => handlePermissionChange(role, 'view', val)}/></TableCell>
+                                                        <TableCell className="text-center"><Switch checked={p.rate} onCheckedChange={(val) => handlePermissionChange(role, 'rate', val)}/></TableCell>
+                                                        <TableCell className="text-center"><Switch checked={p.viewWorkerRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewWorkerRatings', val)} disabled={isWorker} /></TableCell>
+                                                        <TableCell className="text-center"><Switch checked={p.viewPrimaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewPrimaryAppraiserRatings', val)} disabled={isPrimary} /></TableCell>
+                                                        <TableCell className="text-center"><Switch checked={p.viewSecondaryAppraiserRatings} onCheckedChange={(val) => handlePermissionChange(role, 'viewSecondaryAppraiserRatings', val)} disabled={isSecondary} /></TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
                         </div>
                     )}
                     <DialogFooter>
