@@ -304,6 +304,17 @@ export default function EvaluationPage() {
             const permissions = section.permissions.find(p => p.role === currentUserRole);
             if (!permissions?.rate) continue;
 
+            if (section.enableSectionRatingMandatory && (ratings[section.id] === undefined || ratings[section.id] === 0)) {
+                toast({ title: 'Validation Error', description: `Rating is mandatory for section: "${section.name}"`, variant: 'destructive'});
+                setIsSubmitting(false);
+                return;
+            }
+            if (section.sectionCommentMandatory && (!comments[section.id] || comments[section.id].trim() === '')) {
+                toast({ title: 'Validation Error', description: `Comment is mandatory for section: "${section.name}"`, variant: 'destructive'});
+                setIsSubmitting(false);
+                return;
+            }
+
             if (section.type === 'Performance Goals') {
                 if (goals) {
                     for (const goal of goals) {
@@ -318,17 +329,6 @@ export default function EvaluationPage() {
                             return;
                         }
                     }
-                }
-            } else {
-                 if (section.sectionRatingMandatory && (ratings[section.id] === undefined || ratings[section.id] === 0)) {
-                    toast({ title: 'Validation Error', description: `Rating is mandatory for section: "${section.name}"`, variant: 'destructive'});
-                    setIsSubmitting(false);
-                    return;
-                }
-                if (section.sectionCommentMandatory && (!comments[section.id] || comments[section.id].trim() === '')) {
-                    toast({ title: 'Validation Error', description: `Comment is mandatory for section: "${section.name}"`, variant: 'destructive'});
-                    setIsSubmitting(false);
-                    return;
                 }
             }
         }
@@ -466,15 +466,53 @@ export default function EvaluationPage() {
                         <AccordionContent className="p-6 pt-0">
                            <div className="space-y-6">
                                 {section.type === 'Performance Goals' ? (
-                                    <PerformanceGoalsContent
-                                        section={section}
-                                        goals={goals || []}
-                                        isReadOnly={isReadOnly}
-                                        ratings={goalRatings}
-                                        comments={goalComments}
-                                        onRatingChange={handleGoalRatingChange}
-                                        onCommentChange={handleGoalCommentChange}
-                                    />
+                                    <>
+                                        {(section.enableSectionRatings || section.enableSectionComments) && (
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle>Overall Section Evaluation</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    {section.enableSectionRatings && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                                            <StarRating
+                                                                count={section.ratingScale || 5}
+                                                                value={ratings[section.id] || 0}
+                                                                onChange={(value) => handleRatingChange(section.id, value)}
+                                                                disabled={isReadOnly}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {section.enableSectionComments && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`comment-${section.id}`}>Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                                            <Textarea
+                                                                id={`comment-${section.id}`}
+                                                                value={comments[section.id] || ''}
+                                                                onChange={(e) => handleCommentChange(section.id, e.target.value)}
+                                                                placeholder="Provide your comments..."
+                                                                maxLength={section.maxLength}
+                                                                disabled={isReadOnly}
+                                                            />
+                                                            <p className="text-sm text-muted-foreground text-right">
+                                                                {comments[section.id]?.length || 0} / {section.maxLength}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        )}
+                                        <PerformanceGoalsContent
+                                            section={section}
+                                            goals={goals || []}
+                                            isReadOnly={isReadOnly}
+                                            ratings={goalRatings}
+                                            comments={goalComments}
+                                            onRatingChange={handleGoalRatingChange}
+                                            onCommentChange={handleGoalCommentChange}
+                                        />
+                                    </>
                                 ) : (
                                     (section.enableSectionRatings || section.enableSectionComments) ? (
                                         <div className="space-y-4">
