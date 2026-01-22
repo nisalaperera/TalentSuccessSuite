@@ -312,24 +312,11 @@ export function PerformanceTemplateSection({ state, dispatch, onComplete, select
                 </>
               )}
               
-              {currentSection.type === 'Overall Summary' &&
-                  <Card>
-                      <CardHeader><CardTitle>Overall Normalized Rating Weights</CardTitle></CardHeader>
-                      <CardContent className="space-y-4">
-                          <p className="text-sm text-muted-foreground">Configure weights for blending scores.</p>
-                          <Label>Current Document Score Weights</Label>
-                          <div className="flex gap-4">
-                              <Input type="number" placeholder="Primary Appraiser Weight % (e.g., 70)" />
-                              <Input type="number" placeholder="Secondary Appraisers Weight % (e.g., 30)" />
-                          </div>
-                          <Label>Final Overall Normalized Rating Weights</Label>
-                          <div className="flex gap-4">
-                              <Input type="number" placeholder="Current Performance Weight % (e.g., 70)" />
-                              <Input type="number" placeholder="Historical Performance Weight % (e.g., 30)" />
-                          </div>
-                      </CardContent>
-                  </Card>
-              }
+              {currentSection.type === 'Overall Summary' && (
+                <p className="text-sm text-muted-foreground p-4">
+                  No specific configuration available for this section type.
+                </p>
+              )}
 
               <Card>
                   <CardHeader><CardTitle>Section Access & Permissions</CardTitle></CardHeader>
