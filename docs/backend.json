@@ -309,6 +309,37 @@
         }
       },
       "required": ["employeePerformanceDocumentId", "sectionId", "evaluatorPersonNumber", "submittedAt", "appraiserType"]
+    },
+    "TechnologistWeight": {
+      "title": "TechnologistWeight",
+      "type": "object",
+      "description": "Defines weight distribution and appraiser roles based on technologist type.",
+      "properties": {
+        "technologist_type": {
+          "type": "string",
+          "enum": ["SENIOR", "JUNIOR"],
+          "description": "The type of technologist."
+        },
+        "workGoalWeight": {
+          "type": "number",
+          "description": "Weight distribution for work goals."
+        },
+        "homeGoalWeight": {
+          "type": "number",
+          "description": "Weight distribution for home goals."
+        },
+        "primaryAppraiser": {
+          "type": "string",
+          "enum": ["Work Manager", "Home Manager"],
+          "description": "Who acts as the Primary Appraiser."
+        },
+        "secondaryAppraiser": {
+          "type": "string",
+          "enum": ["Work Manager", "Home Manager"],
+          "description": "Who acts as the Secondary Appraiser."
+        }
+      },
+      "required": ["technologist_type", "workGoalWeight", "homeGoalWeight", "primaryAppraiser", "secondaryAppraiser"]
     }
   },
   "auth": {
@@ -369,6 +400,10 @@
     "evaluations": {
       "schema": { "$ref": "#/entities/EmployeeEvaluation" },
       "description": "Stores individual section evaluations from users."
+    },
+    "technologist_weights": {
+      "schema": { "$ref": "#/entities/TechnologistWeight" },
+      "description": "Stores weight distribution configurations for technologist types."
     }
   }
 }

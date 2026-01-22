@@ -181,6 +181,15 @@ export type EmployeeEvaluation = {
   submittedAt: Date;
 }
 
+export type TechnologistWeight = {
+  id: string;
+  technologist_type: 'SENIOR' | 'JUNIOR';
+  workGoalWeight: number;
+  homeGoalWeight: number;
+  primaryAppraiser: 'Work Manager' | 'Home Manager';
+  secondaryAppraiser: 'Work Manager' | 'Home Manager';
+};
+
 export type LOVs = {
   personTypes: string[];
   departments: string[];
@@ -198,6 +207,7 @@ export type ConfigState = {
   eligibility: Eligibility[] | DocumentData[];
   performanceDocuments: PerformanceDocument[] | DocumentData[];
   employees: Employee[] | DocumentData[];
+  technologistWeights: TechnologistWeight[] | DocumentData[];
   lovs: LOVs;
 };
 

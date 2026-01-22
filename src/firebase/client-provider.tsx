@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, type ReactNode, useEffect } from 'react';
@@ -16,6 +17,7 @@ const seedData = async (firestore: any) => {
         evaluation_flows: true,
         eligibility_criteria: true,
         employees: true,
+        technologist_weights: true,
     };
 
     let shouldSeed = false;
@@ -103,6 +105,28 @@ const seedData = async (firestore: any) => {
             status: 'Active',
             rules: [{id: '1', type: 'Person Type', values: ['Intern', 'Contractor']}]
         });
+
+        // Technologist Weights
+        const weightsSnapshot = await getDocs(collection(firestore, 'technologist_weights'));
+        if (weightsSnapshot.empty) {
+            const seniorConfigRef = doc(collection(firestore, 'technologist_weights'));
+            batch.set(seniorConfigRef, {
+                technologist_type: 'SENIOR',
+                workGoalWeight: 70,
+                homeGoalWeight: 30,
+                primaryAppraiser: 'Work Manager',
+                secondaryAppraiser: 'Home Manager'
+            });
+
+            const juniorConfigRef = doc(collection(firestore, 'technologist_weights'));
+            batch.set(juniorConfigRef, {
+                technologist_type: 'JUNIOR',
+                workGoalWeight: 50,
+                homeGoalWeight: 50,
+                primaryAppraiser: 'Home Manager',
+                secondaryAppraiser: 'Work Manager'
+            });
+        }
 
         // Employees
         const employeeSnapshot = await getDocs(collection(firestore, 'employees'));

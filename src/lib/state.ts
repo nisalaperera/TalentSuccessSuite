@@ -1,3 +1,4 @@
+
 import {
   collection,
   doc,
@@ -26,6 +27,7 @@ export const initialState: ConfigState = {
   evaluationFlows: [],
   eligibility: [],
   performanceDocuments: [],
+  technologistWeights: [],
   lovs: {
     personTypes: ['Full-Time', 'Part-Time', 'Intern', 'Contractor'],
     departments: ['Engineering', 'HR', 'Sales', 'Marketing', 'Delivery', 'AMST-VNL-SBU-Core'],

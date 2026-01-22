@@ -94,6 +94,11 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     title: "Manage Goals",
                     description: "Manage goals against goal plans and employees.",
                     href: "/configuration/goals"
+                },
+                {
+                    title: "Technologist Weight Distribution",
+                    description: "Manage weight distribution by technologist type.",
+                    href: "/configuration/technologist-weights"
                 }
             ]
         }
