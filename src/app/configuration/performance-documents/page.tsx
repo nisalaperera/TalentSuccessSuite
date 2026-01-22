@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useReducer, useState, useMemo, useEffect } from 'react';
@@ -7,7 +6,7 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useToast } from '@/hooks/use-toast';
-import type { PerformanceDocument as PerfDocType, ReviewPeriod, PerformanceCycle, Employee, PerformanceTemplate, EvaluationFlow, Eligibility, PerformanceTemplateSection, EmployeePerformanceDocument, GoalPlan, AppraiserMapping } from '@/lib/types';
+import type { PerformanceDocument as PerfDocType, ReviewPeriod, PerformanceCycle, Employee, PerformanceTemplate, EvaluationFlow, Eligibility, PerformanceTemplateSection, EmployeePerformanceDocument, GoalPlan, AppraiserMapping, TechnologistWeight } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +48,9 @@ export default function PerformanceDocumentsPage() {
     
     const performanceDocumentsQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
     const { data: performanceDocuments } = useCollection<PerfDocType>(performanceDocumentsQuery);
+
+    const technologistWeightsQuery = useMemoFirebase(() => collection(firestore, 'technologist_weights'), [firestore]);
+    const { data: technologistWeights } = useCollection<TechnologistWeight>(technologistWeightsQuery);
 
     // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -127,7 +129,7 @@ export default function PerformanceDocumentsPage() {
     };
 
      const handleLaunch = async (perfDoc: PerfDocType) => {
-        if (!employees || !eligibilityCriteria || !evaluationFlows) {
+        if (!employees || !eligibilityCriteria || !evaluationFlows || !technologistWeights) {
             toast({ title: "Data not loaded", description: "Core data is not available yet. Please try again in a moment.", variant: "destructive"});
             return;
         }
@@ -192,34 +194,67 @@ export default function PerformanceDocumentsPage() {
             };
             batch.set(newEmployeeDocRef, newDoc);
 
-            // Create Primary Appraiser Mapping
-            if (emp.workManager) {
-                const primaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
-                const primaryMapping: Omit<AppraiserMapping, 'id'> = {
-                    employeePersonNumber: emp.personNumber,
-                    performanceCycleId: perfDoc.performanceCycleId,
-                    appraiserType: 'Primary',
-                    appraiserPersonNumber: emp.workManager,
-                    evalGoalTypes: 'Work',
-                    isCompleted: false,
-                };
-                batch.set(primaryMappingRef, primaryMapping);
-            } else {
-                 console.warn(`Could not find primary appraiser (work manager) for employee ${emp.personNumber}. Skipping primary appraiser mapping.`);
+            // Determine appraisers based on technologist type
+            const empTechnologistType = emp.technologist_type || 'JUNIOR';
+            const weightConfig = technologistWeights.find(w => w.technologist_type === empTechnologistType);
+
+            if (!weightConfig) {
+                console.warn(`No weight configuration found for technologist type: ${empTechnologistType}. Skipping appraiser mapping for employee ${emp.personNumber}.`);
+                continue;
             }
 
-            // Create Secondary Appraiser Mapping
-            if (emp.homeManager) {
-                const secondaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
-                const secondaryMapping: Omit<AppraiserMapping, 'id'> = {
+            const primaryAppraiserRole = weightConfig.primaryAppraiser;
+            const secondaryAppraiserRole = weightConfig.secondaryAppraiser;
+
+            const primaryAppraiserPersonNumber = primaryAppraiserRole === 'Work Manager' ? emp.workManager : emp.homeManager;
+            const primaryEvalGoalType = primaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
+            
+            const secondaryAppraiserPersonNumber = secondaryAppraiserRole === 'Work Manager' ? emp.workManager : emp.homeManager;
+            const secondaryEvalGoalType = secondaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
+
+            // If the same person is both primary and secondary, create a single combined mapping
+            if (primaryAppraiserPersonNumber && primaryAppraiserPersonNumber === secondaryAppraiserPersonNumber) {
+                const mappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                const mapping: Omit<AppraiserMapping, 'id'> = {
                     employeePersonNumber: emp.personNumber,
                     performanceCycleId: perfDoc.performanceCycleId,
-                    appraiserType: 'Secondary',
-                    appraiserPersonNumber: emp.homeManager,
-                    evalGoalTypes: 'Home',
+                    appraiserType: 'Primary', // Designate as Primary
+                    appraiserPersonNumber: primaryAppraiserPersonNumber,
+                    evalGoalTypes: 'Work,Home', // They evaluate both goal types
                     isCompleted: false,
                 };
-                batch.set(secondaryMappingRef, secondaryMapping);
+                batch.set(mappingRef, mapping);
+            } else {
+                // Otherwise, create separate mappings for each role
+                if (primaryAppraiserPersonNumber) {
+                    const primaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                    const primaryMapping: Omit<AppraiserMapping, 'id'> = {
+                        employeePersonNumber: emp.personNumber,
+                        performanceCycleId: perfDoc.performanceCycleId,
+                        appraiserType: 'Primary',
+                        appraiserPersonNumber: primaryAppraiserPersonNumber,
+                        evalGoalTypes: primaryEvalGoalType,
+                        isCompleted: false,
+                    };
+                    batch.set(primaryMappingRef, primaryMapping);
+                } else {
+                     console.warn(`Could not find primary appraiser (${primaryAppraiserRole}) for employee ${emp.personNumber}. Skipping primary appraiser mapping.`);
+                }
+
+                if (secondaryAppraiserPersonNumber) {
+                    const secondaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                    const secondaryMapping: Omit<AppraiserMapping, 'id'> = {
+                        employeePersonNumber: emp.personNumber,
+                        performanceCycleId: perfDoc.performanceCycleId,
+                        appraiserType: 'Secondary',
+                        appraiserPersonNumber: secondaryAppraiserPersonNumber,
+                        evalGoalTypes: secondaryEvalGoalType,
+                        isCompleted: false,
+                    };
+                    batch.set(secondaryMappingRef, secondaryMapping);
+                } else {
+                    console.warn(`Could not find secondary appraiser (${secondaryAppraiserRole}) for employee ${emp.personNumber}. Skipping secondary appraiser mapping.`);
+                }
             }
         }
 
@@ -249,7 +284,7 @@ export default function PerformanceDocumentsPage() {
         }
     }
     
-    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows]);
+    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows, technologistWeights]);
 
     return (
         <div className="container mx-auto py-10">
@@ -283,4 +318,5 @@ export default function PerformanceDocumentsPage() {
             </Dialog>
         </div>
     );
-}
+
+    
