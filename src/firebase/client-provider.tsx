@@ -5,7 +5,7 @@ import React, { useMemo, type ReactNode, useEffect } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, query, where } from 'firebase/firestore';
 
 const seedData = async (firestore: any) => {
     const collectionsToSeed = {
@@ -17,7 +17,6 @@ const seedData = async (firestore: any) => {
         evaluation_flows: true,
         eligibility_criteria: true,
         employees: true,
-        technologist_weights: true,
     };
 
     let shouldSeed = false;
@@ -84,7 +83,7 @@ const seedData = async (firestore: any) => {
             enableSectionRatings: true,
             sectionRatingMandatory: true,
             ratingScale: 5,
-            ratingCalculationMethod: 'Manual Rating'
+            ratingCalculationMethod: 'Manual'
         });
 
         // Evaluation Flows
@@ -105,28 +104,6 @@ const seedData = async (firestore: any) => {
             status: 'Active',
             rules: [{id: '1', type: 'Person Type', values: ['Intern', 'Contractor']}]
         });
-
-        // Technologist Weights
-        const weightsSnapshot = await getDocs(collection(firestore, 'technologist_weights'));
-        if (weightsSnapshot.empty) {
-            const seniorConfigRef = doc(collection(firestore, 'technologist_weights'));
-            batch.set(seniorConfigRef, {
-                technologist_type: 'SENIOR',
-                workGoalWeight: 70,
-                homeGoalWeight: 30,
-                primaryAppraiser: 'Work Manager',
-                secondaryAppraiser: 'Home Manager'
-            });
-
-            const juniorConfigRef = doc(collection(firestore, 'technologist_weights'));
-            batch.set(juniorConfigRef, {
-                technologist_type: 'JUNIOR',
-                workGoalWeight: 50,
-                homeGoalWeight: 50,
-                primaryAppraiser: 'Home Manager',
-                secondaryAppraiser: 'Work Manager'
-            });
-        }
 
         // Employees
         const employeeSnapshot = await getDocs(collection(firestore, 'employees'));
@@ -188,8 +165,102 @@ const seedData = async (firestore: any) => {
 
         await batch.commit();
         console.log("Initial data seeding complete for core entities.");
+    }
+    
+    // Technologist Weights - This block runs independently to ensure weights are always set or updated.
+    try {
+        const weightsCollectionRef = collection(firestore, 'technologist_weights');
+        const updateWeightsBatch = writeBatch(firestore);
 
-        // Seed Goals separately after core data is committed
+        const seniorQuery = query(weightsCollectionRef, where('technologist_type', '==', 'SENIOR'));
+        const juniorQuery = query(weightsCollectionRef, where('technologist_type', '==', 'JUNIOR'));
+
+        const [seniorSnapshot, juniorSnapshot] = await Promise.all([getDocs(seniorQuery), getDocs(juniorQuery)]);
+
+        const seniorData = {
+            technologist_type: 'SENIOR' as const,
+            workGoalWeight: 70,
+            homeGoalWeight: 30,
+            primaryAppraiser: 'Work Manager' as const,
+            secondaryAppraiser: 'Home Manager' as const,
+        };
+        if (seniorSnapshot.empty) {
+            const newSeniorRef = doc(weightsCollectionRef);
+            updateWeightsBatch.set(newSeniorRef, seniorData);
+        } else {
+            updateWeightsBatch.set(seniorSnapshot.docs[0].ref, seniorData);
+        }
+
+        const juniorData = {
+            technologist_type: 'JUNIOR' as const,
+            workGoalWeight: 50,
+            homeGoalWeight: 50,
+            primaryAppraiser: 'Home Manager' as const,
+            secondaryAppraiser: 'Work Manager' as const,
+        };
+        if (juniorSnapshot.empty) {
+            const newJuniorRef = doc(weightsCollectionRef);
+            updateWeightsBatch.set(newJuniorRef, juniorData);
+        } else {
+            updateWeightsBatch.set(juniorSnapshot.docs[0].ref, juniorData);
+        }
+
+        await updateWeightsBatch.commit();
+        console.log("Technologist weight distribution is up to date.");
+
+    } catch (error) {
+        console.error("Error updating technologist weights:", error);
+    }
+
+
+    // This block will run on every load to ensure existing employees have the new fields.
+    // It's idempotent because it only updates if the field is missing or incorrect.
+    try {
+        const employeesCollectionRef = collection(firestore, 'employees');
+        const employeeSnapshotForUpdate = await getDocs(employeesCollectionRef);
+        if (!employeeSnapshotForUpdate.empty) {
+            const updateBatch = writeBatch(firestore);
+            const technologistTypes: ('SENIOR' | 'JUNIOR')[] = ['SENIOR', 'JUNIOR'];
+            let updatedCount = 0;
+
+            employeeSnapshotForUpdate.forEach(docSnap => {
+                const employeeData = docSnap.data();
+                const updatePayload: { technologist_type?: 'SENIOR' | 'JUNIOR', designation?: string } = {};
+                let needsUpdate = false;
+
+                let currentTechnologistType = employeeData.technologist_type;
+                if (currentTechnologistType === undefined) {
+                    currentTechnologistType = technologistTypes[Math.floor(Math.random() * technologistTypes.length)];
+                    updatePayload.technologist_type = currentTechnologistType;
+                    needsUpdate = true;
+                }
+                
+                const designationPrefix = currentTechnologistType === 'SENIOR' ? 'Sr.' : 'Jr.';
+                const newDesignation = `${designationPrefix} ${employeeData.department?.slice(0, 4) || ''}`;
+
+                if (employeeData.designation !== newDesignation && employeeData.department) {
+                    updatePayload.designation = newDesignation;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    updateBatch.update(docSnap.ref, updatePayload);
+                    updatedCount++;
+                }
+            });
+
+            if (updatedCount > 0) {
+                console.log(`Updating ${updatedCount} existing employee(s) with designation and/or technologist_type...`);
+                await updateBatch.commit();
+                console.log("Employee update complete.");
+            }
+        }
+    } catch (error) {
+        console.error("Error during employee data update:", error);
+    }
+    
+    // Seed Goals separately after core data is committed
+    try {
         const goalsCollectionRef = collection(firestore, 'goals');
         const goalsSnapshot = await getDocs(goalsCollectionRef);
         if (goalsSnapshot.empty) {
@@ -252,52 +323,8 @@ const seedData = async (firestore: any) => {
                 }
             }
         }
-    }
-
-    // This block will run on every load to ensure existing employees have the new fields.
-    // It's idempotent because it only updates if the field is missing or incorrect.
-    try {
-        const employeesCollectionRef = collection(firestore, 'employees');
-        const employeeSnapshotForUpdate = await getDocs(employeesCollectionRef);
-        if (!employeeSnapshotForUpdate.empty) {
-            const updateBatch = writeBatch(firestore);
-            const technologistTypes: ('SENIOR' | 'JUNIOR')[] = ['SENIOR', 'JUNIOR'];
-            let updatedCount = 0;
-
-            employeeSnapshotForUpdate.forEach(docSnap => {
-                const employeeData = docSnap.data();
-                const updatePayload: { technologist_type?: 'SENIOR' | 'JUNIOR', designation?: string } = {};
-                let needsUpdate = false;
-
-                let currentTechnologistType = employeeData.technologist_type;
-                if (currentTechnologistType === undefined) {
-                    currentTechnologistType = technologistTypes[Math.floor(Math.random() * technologistTypes.length)];
-                    updatePayload.technologist_type = currentTechnologistType;
-                    needsUpdate = true;
-                }
-                
-                const designationPrefix = currentTechnologistType === 'SENIOR' ? 'Sr.' : 'Jr.';
-                const newDesignation = `${designationPrefix} ${employeeData.department?.slice(0, 4) || ''}`;
-
-                if (employeeData.designation !== newDesignation && employeeData.department) {
-                    updatePayload.designation = newDesignation;
-                    needsUpdate = true;
-                }
-
-                if (needsUpdate) {
-                    updateBatch.update(docSnap.ref, updatePayload);
-                    updatedCount++;
-                }
-            });
-
-            if (updatedCount > 0) {
-                console.log(`Updating ${updatedCount} existing employee(s) with designation and/or technologist_type...`);
-                await updateBatch.commit();
-                console.log("Employee update complete.");
-            }
-        }
     } catch (error) {
-        console.error("Error during employee data update:", error);
+        console.error("Error seeding goals:", error);
     }
 };
 
