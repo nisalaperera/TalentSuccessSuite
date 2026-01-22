@@ -85,6 +85,8 @@ export type PerformanceTemplateSection = {
   itemRatingMandatory?: boolean;
   enableItemComments?: boolean;
   itemCommentMandatory?: boolean;
+  itemCommentMinLength?: number;
+  itemCommentMaxLength?: number;
 
   // Section Weights
   enableSectionWeights?: boolean;

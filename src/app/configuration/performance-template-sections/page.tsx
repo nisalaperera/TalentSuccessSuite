@@ -183,6 +183,8 @@ function PerformanceTemplateSectionsContent() {
             itemRatingMandatory: false,
             enableItemComments: false,
             itemCommentMandatory: false,
+            itemCommentMinLength: 0,
+            itemCommentMaxLength: 500,
         };
         
         const collRef = collection(firestore, 'performance_template_sections');
@@ -350,6 +352,16 @@ function PerformanceTemplateSectionsContent() {
                                             <div className="flex items-center justify-between"><Label>Ratings Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemRatings} checked={currentSection.itemRatingMandatory} onCheckedChange={v => handleConfigChange('itemRatingMandatory', v)} /></div>
                                             <div className="flex items-center justify-between"><Label>Comments Enabled for Goals</Label><Switch checked={currentSection.enableItemComments} onCheckedChange={v => handleConfigChange('enableItemComments', v)} /></div>
                                             <div className="flex items-center justify-between"><Label>Comments Mandatory for Goals</Label><Switch disabled={!currentSection.enableItemComments} checked={currentSection.itemCommentMandatory} onCheckedChange={v => handleConfigChange('itemCommentMandatory', v)} /></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="item-min-length">Min Length (Goal Comments)</Label>
+                                                <Input id="item-min-length" type="number" disabled={!currentSection.enableItemComments} value={currentSection.itemCommentMinLength ?? ''} onChange={e => handleConfigChange('itemCommentMinLength', e.target.valueAsNumber)} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="item-max-length">Max Length (Goal Comments)</Label>
+                                                <Input id="item-max-length" type="number" disabled={!currentSection.enableItemComments} value={currentSection.itemCommentMaxLength ?? ''} onChange={e => handleConfigChange('itemCommentMaxLength', e.target.valueAsNumber)} />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>

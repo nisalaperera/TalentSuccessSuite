@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -106,9 +107,12 @@ function PerformanceGoalsContent({
                                             value={comments[goal.id] || ''}
                                             onChange={(e) => onCommentChange(goal.id, e.target.value)}
                                             placeholder="Provide comments for this goal..."
-                                            maxLength={section.maxLength}
+                                            maxLength={section.itemCommentMaxLength}
                                             disabled={isReadOnly}
                                         />
+                                        <p className="text-sm text-muted-foreground text-right">
+                                            {comments[goal.id]?.length || 0} / {section.itemCommentMaxLength}
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -325,6 +329,12 @@ export default function EvaluationPage() {
                         }
                         if (section.itemCommentMandatory && (!goalComments[goal.id] || goalComments[goal.id].trim() === '')) {
                              toast({ title: 'Validation Error', description: `Comment is mandatory for goal: "${goal.name}"`, variant: 'destructive'});
+                            setIsSubmitting(false);
+                            return;
+                        }
+                        const comment = goalComments[goal.id] || '';
+                        if (section.enableItemComments && section.itemCommentMinLength && comment.length < section.itemCommentMinLength) {
+                            toast({ title: 'Validation Error', description: `Comment for goal "${goal.name}" must be at least ${section.itemCommentMinLength} characters.`, variant: 'destructive'});
                             setIsSubmitting(false);
                             return;
                         }

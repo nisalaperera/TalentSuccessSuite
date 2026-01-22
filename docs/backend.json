@@ -129,7 +129,9 @@
             "enableItemRatings": { "type": "boolean" },
             "itemRatingMandatory": { "type": "boolean" },
             "enableItemComments": { "type": "boolean" },
-            "itemCommentMandatory": { "type": "boolean" }
+            "itemCommentMandatory": { "type": "boolean" },
+            "itemCommentMinLength": { "type": "number" },
+            "itemCommentMaxLength": { "type": "number" }
         },
         "required": ["name", "type", "performanceTemplateId", "order", "permissions"]
     },
