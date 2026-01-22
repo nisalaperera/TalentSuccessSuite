@@ -24,7 +24,7 @@ export function PageHeader({ title, description, onAddNew, showAddNew = true }: 
             <Breadcrumb className="mb-4">
                 <BreadcrumbList>
                     <BreadcrumbItem>
-                    <BreadcrumbLink href="/admin">Home</BreadcrumbLink>
+                    <BreadcrumbLink href="/admin">Admin</BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
