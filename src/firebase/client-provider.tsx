@@ -121,18 +121,21 @@ const seedData = async (firestore: any) => {
                         const personNumber = String(personNumberCounter++);
                         const firstName = `User${personNumber}`;
                         const lastName = `Test`;
+                        const technologistType = technologistTypes[Math.floor(Math.random() * technologistTypes.length)];
+                        const designationPrefix = technologistType === 'SENIOR' ? 'Sr.' : 'Jr.';
+
                         employeeShells.push({
                             personNumber,
                             personEmail: `${firstName}.${lastName}@example.com`.toLowerCase(),
                             firstName,
                             lastName,
-                            designation: `Sr. ${department.slice(0, 4)}`,
+                            designation: `${designationPrefix} ${department.slice(0, 4)}`,
                             personType,
                             department,
                             entity,
                             workManager: '',
                             homeManager: '',
-                            technologist_type: technologistTypes[Math.floor(Math.random() * technologistTypes.length)]
+                            technologist_type: technologistType,
                         });
                     }
                 }
@@ -164,8 +167,8 @@ const seedData = async (firestore: any) => {
         console.log("Initial data seeding complete.");
     }
 
-    // This block will run on every load to ensure existing employees have the new field.
-    // It's idempotent because it only updates if the field is missing.
+    // This block will run on every load to ensure existing employees have the new fields.
+    // It's idempotent because it only updates if the field is missing or incorrect.
     try {
         const employeesCollectionRef = collection(firestore, 'employees');
         const employeeSnapshotForUpdate = await getDocs(employeesCollectionRef);
@@ -176,16 +179,32 @@ const seedData = async (firestore: any) => {
 
             employeeSnapshotForUpdate.forEach(docSnap => {
                 const employeeData = docSnap.data();
-                if (employeeData.technologist_type === undefined) {
-                    updateBatch.update(docSnap.ref, { 
-                        technologist_type: technologistTypes[Math.floor(Math.random() * technologistTypes.length)] 
-                    });
+                const updatePayload: { technologist_type?: 'SENIOR' | 'JUNIOR', designation?: string } = {};
+                let needsUpdate = false;
+
+                let currentTechnologistType = employeeData.technologist_type;
+                if (currentTechnologistType === undefined) {
+                    currentTechnologistType = technologistTypes[Math.floor(Math.random() * technologistTypes.length)];
+                    updatePayload.technologist_type = currentTechnologistType;
+                    needsUpdate = true;
+                }
+                
+                const designationPrefix = currentTechnologistType === 'SENIOR' ? 'Sr.' : 'Jr.';
+                const newDesignation = `${designationPrefix} ${employeeData.department?.slice(0, 4) || ''}`;
+
+                if (employeeData.designation !== newDesignation && employeeData.department) {
+                    updatePayload.designation = newDesignation;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    updateBatch.update(docSnap.ref, updatePayload);
                     updatedCount++;
                 }
             });
 
             if (updatedCount > 0) {
-                console.log(`Updating ${updatedCount} existing employee(s) with technologist_type...`);
+                console.log(`Updating ${updatedCount} existing employee(s) with designation and/or technologist_type...`);
                 await updateBatch.commit();
                 console.log("Employee update complete.");
             }
