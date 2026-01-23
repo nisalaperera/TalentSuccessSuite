@@ -9,6 +9,7 @@ import type { Employee, EmployeePerformanceDocument, PerformanceDocument, Apprai
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useGlobalState } from '@/app/context/global-state-provider';
 
 interface MyTeamPerformanceCyclesProps {
     workTeamData: EmployeePerformanceDocument[] | null;
@@ -26,6 +27,7 @@ interface TeamTableProps {
 }
 
 function TeamTable({ data, allEmployees, allPerformanceDocuments, allAppraiserMappings }: TeamTableProps) {
+    const { personNumber } = useGlobalState();
     const [openRowId, setOpenRowId] = useState<string | null>(null);
 
     const getEmployeeName = (employeeId: string) => {
@@ -59,14 +61,32 @@ function TeamTable({ data, allEmployees, allPerformanceDocuments, allAppraiserMa
                     return 0;
                 });
             
+            const myMappingForThisEmployee = appraisers.find(m => m.appraiserPersonNumber === personNumber);
+            const isMyEvalComplete = myMappingForThisEmployee?.isCompleted ?? false;
+            
+            let buttonText = 'View Evaluation';
+            if (cycle.status === 'Manager Evaluation' && !isMyEvalComplete) {
+                const isPrimary = myMappingForThisEmployee?.appraiserType === 'Primary';
+                const allOthersComplete = appraisers
+                    .filter(m => m.appraiserPersonNumber !== personNumber)
+                    .every(m => m.isCompleted);
+                
+                if (isPrimary && allOthersComplete) {
+                    buttonText = 'Submit Evaluation';
+                } else {
+                    buttonText = 'Evaluate';
+                }
+            }
+            
             return {
                 ...cycle,
                 employeeName: getEmployeeName(cycle.employeeId),
                 documentName: getDocumentName(cycle.performanceDocumentId),
                 appraisers: appraisers,
+                buttonText,
             }
         });
-    }, [data, allEmployees, allPerformanceDocuments, allAppraiserMappings]);
+    }, [data, allEmployees, allPerformanceDocuments, allAppraiserMappings, personNumber]);
 
     return (
         <Table>
@@ -83,7 +103,6 @@ function TeamTable({ data, allEmployees, allPerformanceDocuments, allAppraiserMa
                 {tableData.length > 0 ? (
                     tableData.map(cycle => {
                         const showButton = cycle.status !== 'Worker Self-Evaluation';
-                        const buttonText = cycle.status === 'Manager Evaluation' ? 'Evaluate' : 'View Evaluation';
                         
                         return (
                             <React.Fragment key={cycle.id}>
@@ -101,7 +120,7 @@ function TeamTable({ data, allEmployees, allPerformanceDocuments, allAppraiserMa
                                         {showButton ? (
                                             <Link href={`/performance/evaluation/${cycle.id}`}>
                                                 <Button variant="outline" size="sm">
-                                                    {buttonText}
+                                                    {cycle.buttonText}
                                                     <ArrowRight className="ml-2 h-4 w-4" />
                                                 </Button>
                                             </Link>

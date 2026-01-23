@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -614,14 +612,14 @@ export default function EvaluationPage() {
             }
             
             let shouldUpdateWorkflow = false;
-            if (currentUserRole === 'Worker') {
+            if (employeePerfDoc.status === 'Worker Self-Evaluation' && currentUserRole === 'Worker') {
                 shouldUpdateWorkflow = true;
-            } else {
-                 const allOtherAppraisersCompleted = allMappingsForEmployee
+            } else if (employeePerfDoc.status === 'Manager Evaluation' && currentUserRole === 'Primary') {
+                const allOtherAppraisersCompleted = allMappingsForEmployee
                     .filter(m => m.appraiserPersonNumber !== personNumber)
                     .every(m => m.isCompleted);
                 
-                if(allOtherAppraisersCompleted) {
+                if (allOtherAppraisersCompleted) {
                     shouldUpdateWorkflow = true;
                 }
             }
