@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { User, UserCheck, UserCog } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 function EvaluationStatusIcons({
@@ -199,75 +200,107 @@ function PerformanceGoalsContent({
     workerRatings?: Record<string, number>,
     workerComments?: Record<string, string>,
 }) {
-    return (
-        <div className="space-y-6">
-            {goals.map(goal => (
-                <Card key={goal.id} className="overflow-hidden">
-                    <CardHeader className="bg-muted/30">
-                        <div className="flex justify-between items-start gap-4">
-                            <div>
-                                <CardTitle className="text-base font-semibold">{goal.name}</CardTitle>
-                                <CardDescription>{goal.description}</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0 mt-1">
-                                <Badge variant="outline">Type: {goal.type}</Badge>
-                                {goal.weight !== undefined && <Badge variant="outline">Weight: {goal.weight}%</Badge>}
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-4 space-y-4">
-                        {(section.enableItemRatings || section.enableItemComments) ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {section.enableItemRatings && (
-                                    <div className="space-y-2">
-                                        <Label>Your Rating {section.itemRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
-                                        <StarRating
-                                            count={section.ratingScale || 5}
-                                            value={ratings[goal.id] || 0}
-                                            onChange={(value) => onRatingChange(goal.id, value)}
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                )}
-                                 {section.enableItemComments && (
-                                    <div className="space-y-2">
-                                        <Label>
-                                            Your Comments {section.itemCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
-                                            {((section.itemCommentMinLength && section.itemCommentMinLength > 0) || section.itemCommentMaxLength) &&
-                                                <span className="text-muted-foreground font-normal text-xs ml-2">
-                                                    (Min: {section.itemCommentMinLength ?? 0}, Max: {section.itemCommentMaxLength ?? 'N/A'})
-                                                </span>
-                                            }
-                                        </Label>
-                                        <Textarea
-                                            value={comments[goal.id] || ''}
-                                            onChange={(e) => onCommentChange(goal.id, e.target.value)}
-                                            placeholder="Provide comments for this goal..."
-                                            minLength={section.itemCommentMinLength}
-                                            maxLength={section.itemCommentMaxLength}
-                                            disabled={isReadOnly}
-                                        />
-                                        <p className="text-sm text-muted-foreground text-right">
-                                            {comments[goal.id]?.length || 0} / {section.itemCommentMaxLength}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center">Goal evaluation inputs are not enabled for this section.</p>
-                        )}
-                        {permissions?.viewWorkerRatings && (
-                            <WorkerEvaluationDisplay
-                                goal={goal}
-                                section={section}
-                                workerRating={workerRatings?.[goal.id]}
-                                workerComment={workerComments?.[goal.id]}
-                            />
-                        )}
+    const workGoals = useMemo(() => goals.filter(g => g.type === 'Work'), [goals]);
+    const homeGoals = useMemo(() => goals.filter(g => g.type === 'Home'), [goals]);
+
+    const defaultTab = workGoals.length > 0 ? "work" : "home";
+
+    const renderGoals = (goalsToRender: Goal[]) => {
+        if (goalsToRender.length === 0) {
+            return (
+                <Card className="mt-4">
+                    <CardContent className="p-6">
+                        <p className="text-center text-muted-foreground">No goals of this type assigned.</p>
                     </CardContent>
                 </Card>
-            ))}
-        </div>
+            )
+        }
+
+        return (
+            <div className="space-y-6 mt-4">
+                {goalsToRender.map(goal => (
+                    <Card key={goal.id} className="overflow-hidden">
+                        <CardHeader className="bg-muted/30">
+                            <div className="flex justify-between items-start gap-4">
+                                <div>
+                                    <CardTitle className="text-base font-semibold">{goal.name}</CardTitle>
+                                    <CardDescription>{goal.description}</CardDescription>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0 mt-1">
+                                    <Badge variant="outline">Type: {goal.type}</Badge>
+                                    {goal.weight !== undefined && <Badge variant="outline">Weight: {goal.weight}%</Badge>}
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-4">
+                            {(section.enableItemRatings || section.enableItemComments) ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {section.enableItemRatings && (
+                                        <div className="space-y-2">
+                                            <Label>Your Rating {section.itemRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                            <StarRating
+                                                count={section.ratingScale || 5}
+                                                value={ratings[goal.id] || 0}
+                                                onChange={(value) => onRatingChange(goal.id, value)}
+                                                disabled={isReadOnly}
+                                            />
+                                        </div>
+                                    )}
+                                    {section.enableItemComments && (
+                                        <div className="space-y-2">
+                                            <Label>
+                                                Your Comments {section.itemCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
+                                                {((section.itemCommentMinLength && section.itemCommentMinLength > 0) || section.itemCommentMaxLength) &&
+                                                    <span className="text-muted-foreground font-normal text-xs ml-2">
+                                                        (Min: {section.itemCommentMinLength ?? 0}, Max: {section.itemCommentMaxLength ?? 'N/A'})
+                                                    </span>
+                                                }
+                                            </Label>
+                                            <Textarea
+                                                value={comments[goal.id] || ''}
+                                                onChange={(e) => onCommentChange(goal.id, e.target.value)}
+                                                placeholder="Provide comments for this goal..."
+                                                minLength={section.itemCommentMinLength}
+                                                maxLength={section.itemCommentMaxLength}
+                                                disabled={isReadOnly}
+                                            />
+                                            <p className="text-sm text-muted-foreground text-right">
+                                                {comments[goal.id]?.length || 0} / {section.itemCommentMaxLength}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center">Goal evaluation inputs are not enabled for this section.</p>
+                            )}
+                            {permissions?.viewWorkerRatings && (
+                                <WorkerEvaluationDisplay
+                                    goal={goal}
+                                    section={section}
+                                    workerRating={workerRatings?.[goal.id]}
+                                    workerComment={workerComments?.[goal.id]}
+                                />
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
+
+    return (
+        <Tabs defaultValue={defaultTab} className="w-full">
+            <TabsList>
+                <TabsTrigger value="work" disabled={workGoals.length === 0}>Work Goals ({workGoals.length})</TabsTrigger>
+                <TabsTrigger value="home" disabled={homeGoals.length === 0}>Home Goals ({homeGoals.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="work">
+                {renderGoals(workGoals)}
+            </TabsContent>
+            <TabsContent value="home">
+                {renderGoals(homeGoals)}
+            </TabsContent>
+        </Tabs>
     );
 }
 
