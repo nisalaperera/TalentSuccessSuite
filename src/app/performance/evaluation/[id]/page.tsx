@@ -25,41 +25,123 @@ import { Button } from '@/components/ui/button';
 import { useGlobalState } from '@/app/context/global-state-provider';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { User, UserCheck, UserCog } from 'lucide-react';
 
-function OtherEvaluationsDisplay({
-  evals,
+
+function EvaluationStatusIcons({
   section,
+  currentUserRole,
+  allEvalsForDoc,
+  allEmployees,
+  allMappingsForEmployee,
+  evaluatedEmployee,
 }: {
-  evals: (EmployeeEvaluation & { evaluatorRole: string })[];
   section: PerformanceTemplateSection;
+  currentUserRole: string | null;
+  allEvalsForDoc: EmployeeEvaluation[];
+  allEmployees: Employee[];
+  allMappingsForEmployee: AppraiserMapping[];
+  evaluatedEmployee: Employee;
 }) {
-  if (evals.length === 0) {
-    return null;
+  const permissions = section.permissions.find(p => p.role === currentUserRole);
+
+  const getEvaluatorInfo = (role: 'Worker' | 'Primary Appraiser' | 'Secondary Appraiser') => {
+    let personNumber: string | undefined;
+    let name: string | undefined;
+
+    if (role === 'Worker') {
+      if(currentUserRole === 'Worker') return { visible: false }; // Don't show self
+      personNumber = evaluatedEmployee.personNumber;
+      name = `${evaluatedEmployee.firstName} ${evaluatedEmployee.lastName}`;
+    } else {
+       if(currentUserRole === role) return { visible: false }; // Don't show self
+      const mapping = allMappingsForEmployee.find(m => m.appraiserType === role);
+      if (mapping) {
+        personNumber = mapping.appraiserPersonNumber;
+        const appraiser = allEmployees.find(e => e.personNumber === personNumber);
+        if (appraiser) {
+          name = `${appraiser.firstName} ${appraiser.lastName}`;
+        }
+      }
+    }
+
+    if (!personNumber) {
+      return { visible: false };
+    }
+    
+    const evaluation = allEvalsForDoc.find(e => 
+      e.evaluatorPersonNumber === personNumber && 
+      e.sectionId === section.id &&
+      !e.goalId 
+    );
+
+    return {
+      visible: true,
+      hasData: !!evaluation,
+      name: name || 'Unknown User',
+      rating: evaluation?.rating,
+      comment: evaluation?.comment,
+    };
+  };
+
+  const workerInfo = getEvaluatorInfo('Worker');
+  const primaryInfo = getEvaluatorInfo('Primary Appraiser');
+  const secondaryInfo = getEvaluatorInfo('Secondary Appraiser');
+
+  const iconMap = {
+    Worker: <User className="h-5 w-5" />,
+    'Primary Appraiser': <UserCheck className="h-5 w-5" />,
+    'Secondary Appraiser': <UserCog className="h-5 w-5" />,
+  };
+  
+  const rolesToShow: ('Worker' | 'Primary Appraiser' | 'Secondary Appraiser')[] = [];
+  if (permissions?.viewWorkerRatings) rolesToShow.push('Worker');
+  if (permissions?.viewPrimaryAppraiserRatings) rolesToShow.push('Primary Appraiser');
+  if (permissions?.viewSecondaryAppraiserRatings) rolesToShow.push('Secondary Appraiser');
+
+  const infos = {
+      Worker: workerInfo,
+      'Primary Appraiser': primaryInfo,
+      'Secondary Appraiser': secondaryInfo
   }
 
   return (
-    <div className="mt-6 space-y-4 pt-4 border-t">
-      <h4 className="font-semibold text-muted-foreground">Other Evaluations for this Section</h4>
-      {evals.map((e) => (
-        <div key={e.id} className="space-y-2 rounded-md border bg-muted/50 p-4">
-          <p className="font-medium text-sm">{e.evaluatorRole}</p>
-          {section.enableSectionRatings && e.rating !== null && e.rating !== undefined && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Rating:</span>
-              <StarRating count={section.ratingScale || 5} value={e.rating} onChange={() => {}} disabled />
-            </div>
-          )}
-          {section.enableSectionComments && e.comment && (
-             <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Comment:</p>
-                <p className="text-sm whitespace-pre-wrap rounded-md bg-background p-3">{e.comment}</p>
-             </div>
-          )}
-        </div>
-      ))}
+    <div className="flex items-center gap-3">
+      {rolesToShow.map(role => {
+        const info = infos[role];
+        if (!info.visible) return null;
+
+        return (
+            <Tooltip key={role}>
+            <TooltipTrigger asChild>
+                <span className={!info.hasData ? 'opacity-30' : ''}>{iconMap[role]}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top" align="center" className="max-w-xs w-full">
+                <div className="space-y-2 p-1">
+                    <p className="font-bold">{info.name || role}</p>
+                    {info.hasData ? (
+                        <>
+                            {section.enableSectionRatings && info.rating !== undefined && info.rating !== null && (
+                                <StarRating count={section.ratingScale || 5} value={info.rating} onChange={() => {}} disabled />
+                            )}
+                            {section.enableSectionComments && info.comment && (
+                                <p className="text-sm whitespace-pre-wrap bg-muted/50 p-2 rounded-md">{info.comment}</p>
+                            )}
+                             {(!section.enableSectionRatings || info.rating === undefined || info.rating === null) && (!section.enableSectionComments || !info.comment) && (
+                                <p className="text-sm text-muted-foreground">No rating or comment provided.</p>
+                            )}
+                        </>
+                    ) : <p className="text-sm text-muted-foreground">Evaluation not yet submitted.</p>}
+                </div>
+            </TooltipContent>
+            </Tooltip>
+        )
+      })}
     </div>
   );
 }
+
 
 function WorkerEvaluationDisplay({
     goal,
@@ -224,6 +306,9 @@ export default function EvaluationPage() {
     const evalFlowRef = useMemoFirebase(() => employeePerfDoc ? doc(firestore, 'evaluation_flows', employeePerfDoc.evaluationFlowId) : null, [firestore, employeePerfDoc]);
     const { data: evaluationFlow } = useDoc<EvaluationFlow>(evalFlowRef);
     
+    const allEmployeesQuery = useMemoFirebase(() => collection(firestore, 'employees'), [firestore]);
+    const { data: allEmployees, isLoading: isLoadingAllEmployees } = useCollection<Employee>(allEmployeesQuery);
+    
     // 2. Get sections for the template
     const sectionsQuery = useMemoFirebase(() => employeePerfDoc ? collection(firestore, 'performance_template_sections') : null, [firestore, employeePerfDoc]);
     const { data: allSections } = useCollection<PerformanceTemplateSection>(sectionsQuery);
@@ -347,39 +432,7 @@ export default function EvaluationPage() {
         return false;
     }, [employeePerfDoc, currentUserRole, myMapping]);
 
-
-    const evaluationsToShow = useMemo(() => {
-        const evalsBySection: Record<string, (EmployeeEvaluation & { evaluatorRole: string })[]> = {};
-        if (!allEvalsForDoc || !currentUserRole || !allMappingsForEmployee || !employee) return evalsBySection;
-
-        const getEvaluatorRole = (evaluatorPersonNumber: string) => {
-            if (evaluatorPersonNumber === employee.personNumber) return 'Worker';
-            const mapping = allMappingsForEmployee.find(m => m.appraiserPersonNumber === evaluatorPersonNumber);
-            return mapping?.appraiserType || 'Unknown';
-        };
-
-        for (const section of sections) {
-            const permissions = section.permissions.find(p => p.role === currentUserRole);
-            if (!permissions) continue;
-
-            const visibleEvals = allEvalsForDoc.filter(ev => {
-                if (ev.evaluatorPersonNumber === personNumber) return false; // Don't show my own
-                
-                const evaluatorRole = getEvaluatorRole(ev.evaluatorPersonNumber);
-
-                if (evaluatorRole === 'Worker' && permissions.viewWorkerRatings) return true;
-                if (evaluatorRole === 'Primary' && permissions.viewPrimaryAppraiserRatings) return true;
-                if (evaluatorRole === 'Secondary' && permissions.viewSecondaryAppraiserRatings) return true;
-                
-                return false;
-            }).map(ev => ({ ...ev, evaluatorRole: getEvaluatorRole(ev.evaluatorPersonNumber) }));
-
-            evalsBySection[section.id] = visibleEvals;
-        }
-        return evalsBySection;
-    }, [allEvalsForDoc, sections, currentUserRole, allMappingsForEmployee, employee, personNumber]);
-
-    const isLoading = isLoadingDoc || !allMappingsForEmployee || !allEvalsForDoc || !evaluationFlow || !employee || isLoadingGoals;
+    const isLoading = isLoadingDoc || !allMappingsForEmployee || !allEvalsForDoc || !evaluationFlow || !employee || isLoadingGoals || isLoadingAllEmployees;
 
     const handleRatingChange = useCallback((sectionId: string, rating: number) => {
         setRatings(prev => ({ ...prev, [sectionId]: rating }));
@@ -568,7 +621,7 @@ export default function EvaluationPage() {
         return <div className="container mx-auto py-10">Loading evaluation...</div>;
     }
     
-    if (!employeePerfDoc || !employee) {
+    if (!employeePerfDoc || !employee || !allEmployees) {
         return <div className="container mx-auto py-10">Document not found or employee data missing.</div>;
     }
 
@@ -595,129 +648,144 @@ export default function EvaluationPage() {
                 <Badge>{employeePerfDoc.status}</Badge>
             </header>
             
-            <Accordion type="multiple" defaultValue={sections.map(s => s.id)} className="w-full space-y-4">
-                 {sections.map(section => {
-                    const isSectionRatingDisabled = isReadOnly || (section.type === 'Performance Goals' && section.ratingCalculationMethod === 'Automatic');
-                    const permissions = section.permissions.find(p => p.role === currentUserRole);
-                    return (
-                        <AccordionItem key={section.id} value={section.id} className="border rounded-lg bg-card">
-                            <AccordionTrigger className="p-6 text-xl font-headline hover:no-underline">
-                            {section.name}
-                            </AccordionTrigger>
-                            <AccordionContent className="p-6 pt-0">
-                            <div className="space-y-6">
-                                    {section.type === 'Performance Goals' ? (
-                                        <>
-                                            {(section.enableSectionRatings || section.enableSectionComments) && (
-                                                <Card>
-                                                    <CardHeader>
-                                                        <CardTitle>Overall Section Evaluation</CardTitle>
-                                                    </CardHeader>
-                                                    <CardContent className="space-y-4">
-                                                        {section.enableSectionRatings && (
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor={`rating-${section.id}`}>
-                                                                    Your Rating {section.ratingCalculationMethod && `(${section.ratingCalculationMethod})`}
-                                                                    {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}
-                                                                </Label>
-                                                                <StarRating
-                                                                    count={section.ratingScale || 5}
-                                                                    value={ratings[section.id] || 0}
-                                                                    onChange={(value) => handleRatingChange(section.id, value)}
-                                                                    disabled={isSectionRatingDisabled}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        {section.enableSectionComments && (
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor={`comment-${section.id}`}>
-                                                                    Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
-                                                                    {((section.minLength && section.minLength > 0) || section.maxLength) &&
-                                                                        <span className="text-muted-foreground font-normal text-xs ml-2">
-                                                                            (Min: {section.minLength ?? 0}, Max: {section.maxLength ?? 'N/A'})
-                                                                        </span>
-                                                                    }
-                                                                </Label>
-                                                                <Textarea
-                                                                    id={`comment-${section.id}`}
-                                                                    value={comments[section.id] || ''}
-                                                                    onChange={(e) => handleCommentChange(section.id, e.target.value)}
-                                                                    placeholder="Provide your comments..."
-                                                                    minLength={section.minLength}
-                                                                    maxLength={section.maxLength}
-                                                                    disabled={isReadOnly}
-                                                                />
-                                                                <p className="text-sm text-muted-foreground text-right">
-                                                                    {comments[section.id]?.length || 0} / {section.maxLength}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </CardContent>
-                                                </Card>
+            <TooltipProvider>
+                <Accordion type="multiple" defaultValue={sections.map(s => s.id)} className="w-full space-y-4">
+                    {sections.map(section => {
+                        const isSectionRatingDisabled = isReadOnly || (section.type === 'Performance Goals' && section.ratingCalculationMethod === 'Automatic');
+                        const permissions = section.permissions.find(p => p.role === currentUserRole);
+                        return (
+                            <AccordionItem key={section.id} value={section.id} className="border rounded-lg bg-card">
+                                <AccordionTrigger className="p-6 text-xl font-headline hover:no-underline">
+                                    <div className="flex justify-between items-center w-full">
+                                        <span>{section.name}</span>
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            {allEvalsForDoc && allMappingsForEmployee && allEmployees && (
+                                                <EvaluationStatusIcons
+                                                    section={section}
+                                                    currentUserRole={currentUserRole}
+                                                    allEvalsForDoc={allEvalsForDoc}
+                                                    allEmployees={allEmployees}
+                                                    allMappingsForEmployee={allMappingsForEmployee}
+                                                    evaluatedEmployee={employee}
+                                                />
                                             )}
-                                            <PerformanceGoalsContent
-                                                section={section}
-                                                goals={filteredGoals || []}
-                                                isReadOnly={isReadOnly}
-                                                ratings={goalRatings}
-                                                comments={goalComments}
-                                                onRatingChange={handleGoalRatingChange}
-                                                onCommentChange={handleGoalCommentChange}
-                                                permissions={permissions}
-                                                workerRatings={workerGoalRatings}
-                                                workerComments={workerGoalComments}
-                                            />
-                                        </>
-                                    ) : (
-                                        (section.enableSectionRatings || section.enableSectionComments) ? (
-                                            <div className="space-y-4">
-                                                {section.enableSectionRatings && (
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
-                                                        <StarRating
-                                                            count={section.ratingScale || 5}
-                                                            value={ratings[section.id] || 0}
-                                                            onChange={(value) => handleRatingChange(section.id, value)}
-                                                            disabled={isReadOnly}
-                                                        />
-                                                    </div>
+                                        </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-6 pt-0">
+                                <div className="space-y-6">
+                                        {section.type === 'Performance Goals' ? (
+                                            <>
+                                                {(section.enableSectionRatings || section.enableSectionComments) && (
+                                                    <Card>
+                                                        <CardHeader>
+                                                            <CardTitle>Overall Section Evaluation</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className="space-y-4">
+                                                            {section.enableSectionRatings && (
+                                                                <div className="space-y-2">
+                                                                    <Label htmlFor={`rating-${section.id}`}>
+                                                                        Your Rating {section.ratingCalculationMethod && `(${section.ratingCalculationMethod})`}
+                                                                        {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}
+                                                                    </Label>
+                                                                    <StarRating
+                                                                        count={section.ratingScale || 5}
+                                                                        value={ratings[section.id] || 0}
+                                                                        onChange={(value) => handleRatingChange(section.id, value)}
+                                                                        disabled={isSectionRatingDisabled}
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                            {section.enableSectionComments && (
+                                                                <div className="space-y-2">
+                                                                    <Label htmlFor={`comment-${section.id}`}>
+                                                                        Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
+                                                                        {((section.minLength && section.minLength > 0) || section.maxLength) &&
+                                                                            <span className="text-muted-foreground font-normal text-xs ml-2">
+                                                                                (Min: {section.minLength ?? 0}, Max: {section.maxLength ?? 'N/A'})
+                                                                            </span>
+                                                                        }
+                                                                    </Label>
+                                                                    <Textarea
+                                                                        id={`comment-${section.id}`}
+                                                                        value={comments[section.id] || ''}
+                                                                        onChange={(e) => handleCommentChange(section.id, e.target.value)}
+                                                                        placeholder="Provide your comments..."
+                                                                        minLength={section.minLength}
+                                                                        maxLength={section.maxLength}
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                    <p className="text-sm text-muted-foreground text-right">
+                                                                        {comments[section.id]?.length || 0} / {section.maxLength}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </CardContent>
+                                                    </Card>
                                                 )}
-                                                {section.enableSectionComments && (
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor={`comment-${section.id}`}>
-                                                            Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
-                                                            {((section.minLength && section.minLength > 0) || section.maxLength) &&
-                                                                <span className="text-muted-foreground font-normal text-xs ml-2">
-                                                                    (Min: {section.minLength ?? 0}, Max: {section.maxLength ?? 'N/A'})
-                                                                </span>
-                                                            }
-                                                        </Label>
-                                                        <Textarea
-                                                            id={`comment-${section.id}`}
-                                                            value={comments[section.id] || ''}
-                                                            onChange={(e) => handleCommentChange(section.id, e.target.value)}
-                                                            placeholder="Provide your comments..."
-                                                            minLength={section.minLength}
-                                                            maxLength={section.maxLength}
-                                                            disabled={isReadOnly}
-                                                        />
-                                                        <p className="text-sm text-muted-foreground text-right">
-                                                            {comments[section.id]?.length || 0} / {section.maxLength}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                <PerformanceGoalsContent
+                                                    section={section}
+                                                    goals={filteredGoals || []}
+                                                    isReadOnly={isReadOnly}
+                                                    ratings={goalRatings}
+                                                    comments={goalComments}
+                                                    onRatingChange={handleGoalRatingChange}
+                                                    onCommentChange={handleGoalCommentChange}
+                                                    permissions={permissions}
+                                                    workerRatings={workerGoalRatings}
+                                                    workerComments={workerGoalComments}
+                                                />
+                                            </>
                                         ) : (
-                                            <p className="text-sm text-muted-foreground">No evaluation inputs are enabled for this section.</p>
-                                        )
-                                    )}
-                                    <OtherEvaluationsDisplay evals={evaluationsToShow[section.id] || []} section={section} />
-                            </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    )
-                })}
-            </Accordion>
+                                            (section.enableSectionRatings || section.enableSectionComments) ? (
+                                                <div className="space-y-4">
+                                                    {section.enableSectionRatings && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`rating-${section.id}`}>Your Rating {section.sectionRatingMandatory && !isReadOnly && <span className="text-destructive">*</span>}</Label>
+                                                            <StarRating
+                                                                count={section.ratingScale || 5}
+                                                                value={ratings[section.id] || 0}
+                                                                onChange={(value) => handleRatingChange(section.id, value)}
+                                                                disabled={isReadOnly}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {section.enableSectionComments && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`comment-${section.id}`}>
+                                                                Your Comments {section.sectionCommentMandatory && !isReadOnly && <span className="text-destructive">*</span>}
+                                                                {((section.minLength && section.minLength > 0) || section.maxLength) &&
+                                                                    <span className="text-muted-foreground font-normal text-xs ml-2">
+                                                                        (Min: {section.minLength ?? 0}, Max: {section.maxLength ?? 'N/A'})
+                                                                    </span>
+                                                                }
+                                                            </Label>
+                                                            <Textarea
+                                                                id={`comment-${section.id}`}
+                                                                value={comments[section.id] || ''}
+                                                                onChange={(e) => handleCommentChange(section.id, e.target.value)}
+                                                                placeholder="Provide your comments..."
+                                                                minLength={section.minLength}
+                                                                maxLength={section.maxLength}
+                                                                disabled={isReadOnly}
+                                                            />
+                                                            <p className="text-sm text-muted-foreground text-right">
+                                                                {comments[section.id]?.length || 0} / {section.maxLength}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground">No evaluation inputs are enabled for this section.</p>
+                                            )
+                                        )}
+                                </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                    })}
+                </Accordion>
+            </TooltipProvider>
 
             <div className="flex justify-end mt-8">
                 {!isReadOnly && (
