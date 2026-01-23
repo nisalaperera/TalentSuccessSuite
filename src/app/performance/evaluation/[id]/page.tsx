@@ -454,13 +454,29 @@ export default function EvaluationPage() {
     }, [allEvalsForDoc, personNumber]);
 
     const isReadOnly = useMemo(() => {
-        if (!employeePerfDoc || !currentUserRole) return true; // Read-only if we don't know role
-        if (currentUserRole === 'Worker' && employeePerfDoc.status !== 'Worker Self-Evaluation') return true;
-        if ((currentUserRole === 'Primary' || currentUserRole === 'Secondary') && employeePerfDoc.status !== 'Manager Evaluation') return true;
-        
-        if (myMapping?.isCompleted) return true;
+        if (!employeePerfDoc || !currentUserRole) return true;
 
-        return false;
+        if (currentUserRole === 'Worker') {
+            return employeePerfDoc.status !== 'Worker Self-Evaluation';
+        }
+
+        // For all appraiser roles, they must be in the Manager Evaluation step to write.
+        if (employeePerfDoc.status !== 'Manager Evaluation') {
+            return true;
+        }
+        
+        if (currentUserRole === 'Primary') {
+            // The Primary Appraiser can always edit during the Manager Evaluation step.
+            return false;
+        }
+
+        if (currentUserRole === 'Secondary') {
+            // Secondary appraisers are locked out after they submit their evaluation.
+            return myMapping?.isCompleted ?? false;
+        }
+        
+        // Default to read-only for any other role or unhandled cases.
+        return true;
     }, [employeePerfDoc, currentUserRole, myMapping]);
 
     const isLoading = isLoadingDoc || !allMappingsForEmployee || !allEvalsForDoc || !evaluationFlow || !employee || isLoadingGoals || isLoadingAllEmployees;
@@ -615,10 +631,12 @@ export default function EvaluationPage() {
             if (employeePerfDoc.status === 'Worker Self-Evaluation' && currentUserRole === 'Worker') {
                 shouldUpdateWorkflow = true;
             } else if (employeePerfDoc.status === 'Manager Evaluation' && currentUserRole === 'Primary') {
+                // The Primary Appraiser's submission triggers the workflow update,
+                // but only if all other appraisers have already completed their part.
                 const allOtherAppraisersCompleted = allMappingsForEmployee
                     .filter(m => m.appraiserPersonNumber !== personNumber)
                     .every(m => m.isCompleted);
-                
+
                 if (allOtherAppraisersCompleted) {
                     shouldUpdateWorkflow = true;
                 }

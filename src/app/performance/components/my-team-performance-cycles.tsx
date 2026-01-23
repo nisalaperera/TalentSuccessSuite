@@ -63,18 +63,27 @@ function TeamTable({ data, allEmployees, allPerformanceDocuments, allAppraiserMa
             
             const myMappingForThisEmployee = appraisers.find(m => m.appraiserPersonNumber === personNumber);
             const isMyEvalComplete = myMappingForThisEmployee?.isCompleted ?? false;
+            const isPrimary = myMappingForThisEmployee?.appraiserType === 'Primary';
             
-            let buttonText = 'View Evaluation';
-            if (cycle.status === 'Manager Evaluation' && !isMyEvalComplete) {
-                const isPrimary = myMappingForThisEmployee?.appraiserType === 'Primary';
-                const allOthersComplete = appraisers
-                    .filter(m => m.appraiserPersonNumber !== personNumber)
-                    .every(m => m.isCompleted);
-                
-                if (isPrimary && allOthersComplete) {
-                    buttonText = 'Submit Evaluation';
-                } else {
-                    buttonText = 'Evaluate';
+            let buttonText = 'View Evaluation'; // Default for completed/other statuses
+
+            if (cycle.status === 'Manager Evaluation') {
+                if (isPrimary) {
+                    const allOthersComplete = appraisers
+                        .filter(m => m.appraiserPersonNumber !== personNumber)
+                        .every(m => m.isCompleted);
+
+                    if (allOthersComplete) {
+                        buttonText = 'Submit Evaluation'; // This is the final action to move workflow
+                    } else {
+                        buttonText = 'Evaluate'; // They can provide/edit their rating
+                    }
+                } else { // User is a Secondary Appraiser
+                    if (!isMyEvalComplete) {
+                        buttonText = 'Evaluate';
+                    } else {
+                        buttonText = 'View Evaluation'; // Already submitted
+                    }
                 }
             }
             
