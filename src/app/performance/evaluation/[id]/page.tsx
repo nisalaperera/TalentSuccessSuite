@@ -122,8 +122,16 @@ function PerformanceGoalsContent({
             {goals.map(goal => (
                 <Card key={goal.id} className="overflow-hidden">
                     <CardHeader className="bg-muted/30">
-                        <CardTitle className="text-base font-semibold">{goal.name}</CardTitle>
-                        <CardDescription>{goal.description}</CardDescription>
+                        <div className="flex justify-between items-start gap-4">
+                            <div>
+                                <CardTitle className="text-base font-semibold">{goal.name}</CardTitle>
+                                <CardDescription>{goal.description}</CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0 mt-1">
+                                <Badge variant="outline">Type: {goal.type}</Badge>
+                                {goal.weight !== undefined && <Badge variant="outline">Weight: {goal.weight}%</Badge>}
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
                         {(section.enableItemRatings || section.enableItemComments) ? (
