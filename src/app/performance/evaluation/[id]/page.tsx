@@ -5,7 +5,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, writeBatch, serverTimestamp, query, where } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping, EvaluationFlow, EmployeeEvaluation, Goal } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceTemplate, PerformanceTemplateSection, PerformanceDocument, Employee, PerformanceCycle, ReviewPeriod, AppraiserMapping, EvaluationFlow, EmployeeEvaluation, Goal, AccessPermission } from '@/lib/types';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -61,6 +61,39 @@ function OtherEvaluationsDisplay({
   );
 }
 
+function WorkerEvaluationDisplay({
+    goal,
+    section,
+    workerRating,
+    workerComment,
+}: {
+    goal: Goal,
+    section: PerformanceTemplateSection,
+    workerRating?: number,
+    workerComment?: string,
+}) {
+    const hasWorkerEval = workerRating !== undefined || (workerComment && workerComment.trim() !== '');
+    if (!hasWorkerEval) return null;
+
+    return (
+        <div className="mt-4 space-y-3 rounded-md border bg-amber-50 p-4 dark:bg-amber-950/50">
+          <h5 className="font-semibold text-sm text-amber-800 dark:text-amber-300">Worker's Evaluation</h5>
+          {section.enableItemRatings && workerRating !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Rating:</span>
+              <StarRating count={section.ratingScale || 5} value={workerRating} onChange={() => {}} disabled />
+            </div>
+          )}
+          {section.enableItemComments && workerComment && (
+             <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Comment:</p>
+                <p className="text-sm whitespace-pre-wrap rounded-md bg-background p-3">{workerComment}</p>
+             </div>
+          )}
+        </div>
+    )
+}
+
 function PerformanceGoalsContent({
     section,
     goals,
@@ -68,7 +101,10 @@ function PerformanceGoalsContent({
     ratings,
     comments,
     onRatingChange,
-    onCommentChange
+    onCommentChange,
+    permissions,
+    workerRatings,
+    workerComments,
 }: {
     section: PerformanceTemplateSection,
     goals: Goal[],
@@ -77,6 +113,9 @@ function PerformanceGoalsContent({
     comments: Record<string, string>,
     onRatingChange: (goalId: string, rating: number) => void,
     onCommentChange: (goalId: string, comment: string) => void,
+    permissions?: AccessPermission,
+    workerRatings?: Record<string, number>,
+    workerComments?: Record<string, string>,
 }) {
     return (
         <div className="space-y-6">
@@ -126,6 +165,14 @@ function PerformanceGoalsContent({
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground text-center">Goal evaluation inputs are not enabled for this section.</p>
+                        )}
+                        {permissions?.viewWorkerRatings && (
+                            <WorkerEvaluationDisplay
+                                goal={goal}
+                                section={section}
+                                workerRating={workerRatings?.[goal.id]}
+                                workerComment={workerComments?.[goal.id]}
+                            />
                         )}
                     </CardContent>
                 </Card>
@@ -216,6 +263,47 @@ export default function EvaluationPage() {
         return mapping?.appraiserType || null; // 'Primary' or 'Secondary'
     }, [personNumber, employee, allMappingsForEmployee]);
     
+    const myMapping = useMemo(() => {
+        if (!currentUserRole || currentUserRole === 'Worker' || !allMappingsForEmployee) return null;
+        return allMappingsForEmployee.find(m => m.appraiserPersonNumber === personNumber) || null;
+    }, [currentUserRole, allMappingsForEmployee, personNumber]);
+
+    const filteredGoals = useMemo(() => {
+        if (!goals) return [];
+        // Workers and anyone without a specific appraiser role see all goals for the employee's type
+        if (currentUserRole !== 'Primary' && currentUserRole !== 'Secondary') {
+            return goals;
+        }
+        if (!myMapping) {
+            // An appraiser with no specific mapping for this employee/cycle sees nothing
+            return [];
+        }
+        const allowedTypes = myMapping.evalGoalTypes.split(','); // "Work,Home" -> ["Work", "Home"]
+        return goals.filter(goal => allowedTypes.includes(goal.type));
+    }, [goals, currentUserRole, myMapping]);
+
+    const workerEvals = useMemo(() => {
+        if (!allEvalsForDoc || !employee) return [];
+        return allEvalsForDoc.filter(e => e.evaluatorPersonNumber === employee.personNumber);
+    }, [allEvalsForDoc, employee]);
+
+    const workerGoalRatings = useMemo(() => {
+        const ratings: Record<string, number> = {};
+        workerEvals.filter(e => e.goalId && e.rating !== undefined && e.rating !== null).forEach(e => {
+            ratings[e.goalId!] = e.rating!;
+        });
+        return ratings;
+    }, [workerEvals]);
+
+    const workerGoalComments = useMemo(() => {
+        const comments: Record<string, string> = {};
+        workerEvals.filter(e => e.goalId && e.comment).forEach(e => {
+            comments[e.goalId!] = e.comment!;
+        });
+        return comments;
+    }, [workerEvals]);
+
+
     // Pre-fill state with existing evaluations for the current user
     useEffect(() => {
         if (allEvalsForDoc && personNumber) {
@@ -246,11 +334,10 @@ export default function EvaluationPage() {
         if (currentUserRole === 'Worker' && employeePerfDoc.status !== 'Worker Self-Evaluation') return true;
         if ((currentUserRole === 'Primary' || currentUserRole === 'Secondary') && employeePerfDoc.status !== 'Manager Evaluation') return true;
         
-        const myMapping = allMappingsForEmployee?.find(m => m.appraiserPersonNumber === personNumber);
         if (myMapping?.isCompleted) return true;
 
         return false;
-    }, [employeePerfDoc, currentUserRole, allMappingsForEmployee, personNumber]);
+    }, [employeePerfDoc, currentUserRole, myMapping]);
 
 
     const evaluationsToShow = useMemo(() => {
@@ -352,8 +439,8 @@ export default function EvaluationPage() {
             }
 
             if (section.type === 'Performance Goals') {
-                if (goals) {
-                    for (const goal of goals) {
+                if (filteredGoals) {
+                    for (const goal of filteredGoals) {
                         if (section.itemRatingMandatory && (goalRatings[goal.id] === undefined || goalRatings[goal.id] === 0)) {
                             toast({ title: 'Validation Error', description: `Rating is mandatory for goal: "${goal.name}"`, variant: 'destructive'});
                             setIsSubmitting(false);
@@ -399,8 +486,8 @@ export default function EvaluationPage() {
             }
             
              // Add/update goal evaluations
-            if (goals) {
-                for (const goal of goals) {
+            if (filteredGoals) {
+                for (const goal of filteredGoals) {
                     if (goalRatings[goal.id] !== undefined || goalComments[goal.id] !== undefined) {
                         const section = sections.find(s => s.type === 'Performance Goals');
                         if (section) {
@@ -426,7 +513,6 @@ export default function EvaluationPage() {
 
             // Update appraiser mapping status (if not worker)
             if (currentUserRole !== 'Worker') {
-                const myMapping = allMappingsForEmployee.find(m => m.appraiserPersonNumber === personNumber);
                 if (myMapping) {
                     const mappingRef = doc(firestore, 'employee_appraiser_mappings', myMapping.id);
                     batch.update(mappingRef, { isCompleted: true });
@@ -436,10 +522,12 @@ export default function EvaluationPage() {
             let shouldUpdateWorkflow = false;
             if (currentUserRole === 'Worker') {
                 shouldUpdateWorkflow = true;
-            } else if (currentUserRole === 'Primary') {
-                const secondaryMappings = allMappingsForEmployee.filter(m => m.appraiserType === 'Secondary');
-                const allSecondariesCompleted = secondaryMappings.every(m => m.isCompleted);
-                if (allSecondariesCompleted) {
+            } else {
+                 const allOtherAppraisersCompleted = allMappingsForEmployee
+                    .filter(m => m.appraiserPersonNumber !== personNumber)
+                    .every(m => m.isCompleted);
+                
+                if(allOtherAppraisersCompleted) {
                     shouldUpdateWorkflow = true;
                 }
             }
@@ -502,6 +590,7 @@ export default function EvaluationPage() {
             <Accordion type="multiple" defaultValue={sections.map(s => s.id)} className="w-full space-y-4">
                  {sections.map(section => {
                     const isSectionRatingDisabled = isReadOnly || (section.type === 'Performance Goals' && section.ratingCalculationMethod === 'Automatic');
+                    const permissions = section.permissions.find(p => p.role === currentUserRole);
                     return (
                         <AccordionItem key={section.id} value={section.id} className="border rounded-lg bg-card">
                             <AccordionTrigger className="p-6 text-xl font-headline hover:no-underline">
@@ -560,12 +649,15 @@ export default function EvaluationPage() {
                                             )}
                                             <PerformanceGoalsContent
                                                 section={section}
-                                                goals={goals || []}
+                                                goals={filteredGoals || []}
                                                 isReadOnly={isReadOnly}
                                                 ratings={goalRatings}
                                                 comments={goalComments}
                                                 onRatingChange={handleGoalRatingChange}
                                                 onCommentChange={handleGoalCommentChange}
+                                                permissions={permissions}
+                                                workerRatings={workerGoalRatings}
+                                                workerComments={workerGoalComments}
                                             />
                                         </>
                                     ) : (
@@ -629,7 +721,3 @@ export default function EvaluationPage() {
         </div>
     );
 }
-
-    
-
-    
