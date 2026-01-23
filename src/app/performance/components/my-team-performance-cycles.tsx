@@ -159,6 +159,10 @@ function TeamTable({ data, allEmployees, allPerformanceDocuments, allAppraiserMa
 }
 
 export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmployees, allPerformanceDocuments, allAppraiserMappings }: MyTeamPerformanceCyclesProps) {
+    const isWorkDataEmpty = !workTeamData || workTeamData.length === 0;
+    const isHomeDataEmpty = !homeTeamData || homeTeamData.length === 0;
+    const defaultTab = isWorkDataEmpty && !isHomeDataEmpty ? 'home' : 'work';
+
     return (
         <Card>
             <CardHeader>
@@ -166,10 +170,10 @@ export function MyTeamPerformanceCycles({ workTeamData, homeTeamData, allEmploye
                 <CardDescription>Performance documents for your direct reports in the selected cycle.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Tabs defaultValue="work">
+                <Tabs defaultValue={defaultTab}>
                     <TabsList>
-                        <TabsTrigger value="work">Work</TabsTrigger>
-                        <TabsTrigger value="home">Home</TabsTrigger>
+                        <TabsTrigger value="work" disabled={isWorkDataEmpty}>Work</TabsTrigger>
+                        <TabsTrigger value="home" disabled={isHomeDataEmpty}>Home</TabsTrigger>
                     </TabsList>
                     <TabsContent value="work">
                         <TeamTable 
