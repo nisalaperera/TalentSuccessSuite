@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
@@ -14,14 +13,14 @@ type ColumnsConfig = {
 
 export const columns = ({ getEmployeeName, getCycleName, getTemplateName }: ColumnsConfig): ColumnDef<EmployeePerformanceDocument>[] => [
     {
-        accessorKey: 'employeeId',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Employee" />,
-        cell: ({ row }) => getEmployeeName(row.getValue('employeeId')),
-    },
-    {
         accessorKey: 'performanceCycleId',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Performance Cycle" />,
         cell: ({ row }) => getCycleName(row.getValue('performanceCycleId')),
+    },
+    {
+        accessorKey: 'employeeId',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Employee" />,
+        cell: ({ row }) => getEmployeeName(row.getValue('employeeId')),
     },
     {
         accessorKey: 'performanceTemplateId',
