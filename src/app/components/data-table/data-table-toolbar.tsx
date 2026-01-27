@@ -11,12 +11,14 @@ interface DataTableToolbarProps<TData> {
   table: Table<TData>;
   children?: React.ReactNode;
   filterColumn?: string;
+  toolbarActions?: (table: Table<TData>) => React.ReactNode;
 }
 
 export function DataTableToolbar<TData>({
   table,
   children,
   filterColumn,
+  toolbarActions,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
@@ -34,6 +36,7 @@ export function DataTableToolbar<TData>({
             />
         )}
         {children}
+        {toolbarActions && toolbarActions(table)}
         {isFiltered && (
           <Button
             variant="ghost"

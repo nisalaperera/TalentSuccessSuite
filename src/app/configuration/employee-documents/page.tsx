@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
@@ -6,15 +7,16 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping } from '@/lib/types';
+import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
+import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping, EvaluationFlow } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, ArrowUpWideNarrow } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { Card, CardContent } from '@/components/ui/card';
 import { EVALUATION_FLOW_PROCESS_PHASES } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
+import type { Table as TanstackTable } from '@tanstack/react-table';
 
 function EmployeeDocumentsContent() {
     const router = useRouter();
@@ -39,6 +41,9 @@ function EmployeeDocumentsContent() {
     
     const appraiserMappingsQuery = useMemoFirebase(() => collection(firestore, 'employee_appraiser_mappings'), [firestore]);
     const { data: allAppraiserMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
+
+    const evaluationFlowsQuery = useMemoFirebase(() => collection(firestore, 'evaluation_flows'), [firestore]);
+    const { data: evaluationFlows } = useCollection<EvaluationFlow>(evaluationFlowsQuery);
     
     // State for filter inputs, initialized from URL params
     const [selectedCycleId, setSelectedCycleId] = useState(searchParams.get('cycleId') || '');
@@ -131,6 +136,71 @@ function EmployeeDocumentsContent() {
     }, [employeeDocuments, cycleFilter, employeeFilter, statusFilter]);
     
     const hasActiveFilters = cycleFilter || employeeFilter || statusFilter;
+    
+    const handlePromoteStatus = async (table: TanstackTable<EmployeePerformanceDocument>) => {
+        const selectedRows = table.getFilteredSelectedRowModel().rows;
+        if (selectedRows.length === 0) {
+            toast({ title: "No documents selected", description: "Please select documents to promote.", variant: "destructive" });
+            return;
+        }
+
+        const selectedDocs = selectedRows.map(row => row.original);
+        const firstDoc = selectedDocs[0];
+        const currentStatus = firstDoc.status;
+        const currentCycleId = firstDoc.performanceCycleId;
+
+        const allSameStatusAndCycle = selectedDocs.every(
+            doc => doc.status === currentStatus && doc.performanceCycleId === currentCycleId
+        );
+
+        if (!allSameStatusAndCycle) {
+            toast({ title: "Inconsistent Selection", description: "All selected documents must have the same status and performance cycle.", variant: "destructive" });
+            return;
+        }
+
+        const flow = evaluationFlows?.find(f => f.id === firstDoc.evaluationFlowId);
+        if (!flow) {
+            toast({ title: "Workflow Error", description: "Could not find the evaluation flow for the selected documents.", variant: "destructive" });
+            return;
+        }
+        
+        const sortedSteps = [...flow.steps].sort((a,b) => a.sequence - b.sequence);
+        const currentStepIndex = sortedSteps.findIndex(step => step.task === currentStatus);
+
+        if (currentStepIndex === -1 || currentStepIndex >= sortedSteps.length - 1) {
+            toast({ title: "Workflow End", description: "The selected documents are already at the final step of the workflow.", variant: "destructive" });
+            return;
+        }
+        
+        const nextStep = sortedSteps[currentStepIndex + 1];
+        const nextStatus = nextStep.task;
+
+        try {
+            const batch = writeBatch(firestore);
+            selectedDocs.forEach(docToUpdate => {
+                const docRef = doc(firestore, 'employee_performance_documents', docToUpdate.id);
+                batch.update(docRef, { status: nextStatus });
+            });
+            await batch.commit();
+
+            toast({ title: "Success", description: `${selectedDocs.length} document(s) have been promoted to "${nextStatus}".`});
+            table.resetRowSelection();
+        } catch (error) {
+            console.error("Error promoting documents:", error);
+            toast({ title: "Update Failed", description: "An error occurred while updating the document statuses.", variant: "destructive" });
+        }
+    };
+    
+    const toolbarActions = (table: TanstackTable<EmployeePerformanceDocument>) => (
+        <Button
+            onClick={() => handlePromoteStatus(table)}
+            disabled={table.getFilteredSelectedRowModel().rows.length === 0}
+            size="sm"
+        >
+            <ArrowUpWideNarrow className="mr-2 h-4 w-4" />
+            Promote Status
+        </Button>
+    );
 
     return (
         <div className="container mx-auto py-10">
@@ -183,7 +253,11 @@ function EmployeeDocumentsContent() {
             </div>
 
             {cycleFilter ? (
-                <DataTable columns={tableColumns} data={filteredData} />
+                <DataTable 
+                    columns={tableColumns} 
+                    data={filteredData} 
+                    toolbarActions={toolbarActions}
+                />
             ) : (
                 <Card className="mt-6">
                     <CardContent className="pt-6">

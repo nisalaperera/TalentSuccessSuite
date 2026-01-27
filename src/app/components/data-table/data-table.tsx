@@ -15,6 +15,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  Table as TanstackTable,
 } from '@tanstack/react-table';
 
 import {
@@ -35,6 +36,7 @@ interface DataTableProps<TData, TValue> {
   toolbarContent?: React.ReactNode;
   filterColumn?: string;
   initialSorting?: SortingState;
+  toolbarActions?: (table: TanstackTable<TData>) => React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -43,6 +45,7 @@ export function DataTable<TData, TValue>({
   toolbarContent,
   filterColumn,
   initialSorting = [],
+  toolbarActions
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -76,7 +79,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <DataTableToolbar table={table} filterColumn={filterColumn}>{toolbarContent}</DataTableToolbar>
+      <DataTableToolbar table={table} filterColumn={filterColumn} toolbarActions={toolbarActions}>{toolbarContent}</DataTableToolbar>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
