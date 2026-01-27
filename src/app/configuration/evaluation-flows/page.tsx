@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useReducer, useState, useEffect, useMemo } from 'react';
+import { useReducer, useState, useEffect, useMemo, useCallback } from 'react';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -20,6 +20,7 @@ import { collection, doc, Timestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { DocumentData } from 'firebase/firestore';
 import { EVALUATION_FLOW_PROCESS_PHASES as PROCESS_PHASES, EVALUATION_FLOW_ROLES as ROLES } from '@/lib/constants';
+import { format } from 'date-fns';
 
 const SEQUENCE_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -35,6 +36,8 @@ export default function EvaluationFlowsPage() {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingFlow, setEditingFlow] = useState<EvaluationFlowType | null>(null);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [viewingFlow, setViewingFlow] = useState<EvaluationFlowType | null>(null);
     const { toast } = useToast();
 
     // Form state
@@ -64,6 +67,11 @@ export default function EvaluationFlowsPage() {
         setEditingFlow(null);
         setIsDialogOpen(false);
     };
+
+    const handleViewDetails = useCallback((flow: EvaluationFlowType) => {
+        setViewingFlow(flow);
+        setIsViewDialogOpen(true);
+    }, []);
 
     const handleAddStep = () => setSteps([...steps, { id: `step-${Date.now()}` }]);
     const handleRemoveStep = (id?: string) => { if (id) setSteps(steps.filter(step => step.id !== id)); };
@@ -178,7 +186,7 @@ export default function EvaluationFlowsPage() {
         toast({ title: 'Success', description: `Flow status set to ${newStatus}.` });
     };
 
-    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isFlowInUse }), [performanceDocuments]);
+    const tableColumns = useMemo(() => columns({ onEdit: handleOpenDialog, onDelete: handleDelete, onToggleStatus: handleToggleStatus, isFlowInUse, onView: handleViewDetails }), [performanceDocuments, handleViewDetails]);
 
     return (
         <div className="container mx-auto py-10">
@@ -220,6 +228,50 @@ export default function EvaluationFlowsPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
                         <Button onClick={handleSave}>{editingFlow ? 'Save Changes' : 'Save Flow'}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+                <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle className="font-headline text-2xl">View Evaluation Flow: {viewingFlow?.name}</DialogTitle>
+                        <DialogDescription>
+                            Below are the details for this evaluation flow.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {viewingFlow && (
+                        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Seq.</TableHead>
+                                            <TableHead>Process Phase (Task)</TableHead>
+                                            <TableHead>Role</TableHead>
+                                            <TableHead>Start Date</TableHead>
+                                            <TableHead>End Date</TableHead>
+                                            <TableHead>Flow Type</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {viewingFlow.steps.map((step) => (
+                                            <TableRow key={step.id}>
+                                                <TableCell>{step.sequence}</TableCell>
+                                                <TableCell>{step.task}</TableCell>
+                                                <TableCell>{step.role}</TableCell>
+                                                <TableCell>{step.startDate ? format(step.startDate instanceof Timestamp ? step.startDate.toDate() : step.startDate, 'PPP') : 'N/A'}</TableCell>
+                                                <TableCell>{step.endDate ? format(step.endDate instanceof Timestamp ? step.endDate.toDate() : step.endDate, 'PPP') : 'N/A'}</TableCell>
+                                                <TableCell>{step.flowType}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button onClick={() => setIsViewDialogOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
