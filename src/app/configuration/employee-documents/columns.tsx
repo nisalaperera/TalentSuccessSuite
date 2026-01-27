@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 
 type ColumnsConfig = {
     getEmployeeName: (id: string) => string;
@@ -64,7 +66,7 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
                                     <span className="sr-only">View Appraisers</span>
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80">
+                            <PopoverContent className="w-auto">
                                 <div className="grid gap-4">
                                     <div className="space-y-2">
                                         <h4 className="font-medium leading-none">Appraiser List</h4>
@@ -72,18 +74,31 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
                                             Appraisers for this document.
                                         </p>
                                     </div>
-                                    <div className="divide-y">
-                                        {appraisers.map(appraiser => (
-                                            <div key={appraiser.id} className="py-2 flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-semibold">{getEmployeeNameByPersonNumber(appraiser.appraiserPersonNumber)}</p>
-                                                    <p className="text-sm text-muted-foreground">{appraiser.appraiserType}</p>
-                                                </div>
-                                                <Badge variant={appraiser.isCompleted ? 'default' : 'secondary'}>
-                                                    {appraiser.isCompleted ? 'Completed' : 'Pending'}
-                                                </Badge>
-                                            </div>
-                                        ))}
+                                    <div>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Appraiser</TableHead>
+                                                    <TableHead>Type</TableHead>
+                                                    <TableHead>Eval Types</TableHead>
+                                                    <TableHead>Status</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {appraisers.map(appraiser => (
+                                                    <TableRow key={appraiser.id}>
+                                                        <TableCell>{getEmployeeNameByPersonNumber(appraiser.appraiserPersonNumber)}</TableCell>
+                                                        <TableCell>{appraiser.appraiserType}</TableCell>
+                                                        <TableCell>{appraiser.evalGoalTypes}</TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={appraiser.isCompleted ? 'default' : 'secondary'}>
+                                                                {appraiser.isCompleted ? 'Completed' : 'Pending'}
+                                                            </Badge>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </div>
                                 </div>
                             </PopoverContent>
