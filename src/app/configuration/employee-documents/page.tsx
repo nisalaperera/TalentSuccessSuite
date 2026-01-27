@@ -6,8 +6,8 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate } from '@/lib/types';
+import { collection, query, where } from 'firebase/firestore';
+import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -36,6 +36,9 @@ function EmployeeDocumentsContent() {
     
     const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
     const { data: performanceTemplates } = useCollection<PerformanceTemplate>(performanceTemplatesQuery);
+    
+    const appraiserMappingsQuery = useMemoFirebase(() => collection(firestore, 'employee_appraiser_mappings'), [firestore]);
+    const { data: allAppraiserMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
     
     // State for filter inputs, initialized from URL params
     const [selectedCycleId, setSelectedCycleId] = useState(searchParams.get('cycleId') || '');
@@ -85,6 +88,11 @@ function EmployeeDocumentsContent() {
         return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
     };
 
+    const getEmployeeNameByPersonNumber = (personNumber: string) => {
+        const emp = employees?.find(e => e.personNumber === personNumber);
+        return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
+    };
+
     const getCycleName = (id: string) => {
         const cycle = performanceCycles?.find(c => c.id === id);
         if (!cycle) return 'N/A';
@@ -93,8 +101,24 @@ function EmployeeDocumentsContent() {
     };
     
     const getTemplateName = (id: string) => performanceTemplates?.find(t => t.id === id)?.name || 'N/A';
+    
+    const getAppraisersForDocument = (doc: EmployeePerformanceDocument): AppraiserMapping[] => {
+        if (!allAppraiserMappings || !employees) return [];
+        const docEmployee = employees.find(e => e.id === doc.employeeId);
+        if (!docEmployee) return [];
 
-    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName }), [employees, performanceCycles, reviewPeriods, performanceTemplates]);
+        return allAppraiserMappings.filter(
+            (mapping) =>
+                mapping.employeePersonNumber === docEmployee.personNumber &&
+                mapping.performanceCycleId === doc.performanceCycleId
+        ).sort((a, b) => { // Sort by Primary first
+            if (a.appraiserType === 'Primary' && b.appraiserType !== 'Primary') return -1;
+            if (a.appraiserType !== 'Primary' && b.appraiserType === 'Primary') return 1;
+            return 0;
+        });
+    };
+
+    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber }), [employees, performanceCycles, reviewPeriods, performanceTemplates, allAppraiserMappings]);
 
     const filteredData = useMemo(() => {
         if (!employeeDocuments || !cycleFilter) return [];
