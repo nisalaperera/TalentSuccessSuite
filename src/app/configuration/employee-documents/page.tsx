@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, Suspense, useCallback } from 'react';
@@ -20,6 +19,7 @@ import type { Table as TanstackTable } from '@tanstack/react-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 
 function EmployeeDocumentsContent() {
     const router = useRouter();
@@ -148,7 +148,7 @@ function EmployeeDocumentsContent() {
         setIsManageAppraisersOpen(true);
     }, [employees, allAppraiserMappings, toast]);
 
-    const handleAppraiserPropChange = (appraiserId: string, prop: keyof AppraiserMapping, value: any) => {
+    const handleAppraiserPropChange = useCallback((appraiserId: string, prop: keyof AppraiserMapping, value: any) => {
         setAppraisersToManage(current =>
             current.map(appraiser =>
                 appraiser.id === appraiserId
@@ -156,7 +156,7 @@ function EmployeeDocumentsContent() {
                     : appraiser
             )
         );
-    };
+    }, []);
 
     const handleAppraiserTypeChange = (appraiserIdToChange: string, newType: 'Primary' | 'Secondary') => {
         setAppraisersToManage(current => {
@@ -419,11 +419,42 @@ function EmployeeDocumentsContent() {
                                 </div>
                                  <div className="space-y-2">
                                     <Label>Evaluation Goal Type(s)</Label>
-                                     <Input 
-                                        value={appraiser.evalGoalTypes} 
-                                        onChange={(e) => handleAppraiserPropChange(appraiser.id, 'evalGoalTypes', e.target.value)}
-                                        placeholder="e.g., Work,Home"
-                                    />
+                                    <div className="flex items-center gap-4 pt-2">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id={`work-goal-${appraiser.id}`}
+                                                checked={appraiser.evalGoalTypes.includes('Work')}
+                                                onCheckedChange={(checked) => {
+                                                    const currentTypes = appraiser.evalGoalTypes.split(',').filter(t => t);
+                                                    let newTypes;
+                                                    if (checked) {
+                                                        newTypes = [...new Set([...currentTypes, 'Work'])];
+                                                    } else {
+                                                        newTypes = currentTypes.filter(t => t !== 'Work');
+                                                    }
+                                                    handleAppraiserPropChange(appraiser.id, 'evalGoalTypes', newTypes.join(','));
+                                                }}
+                                            />
+                                            <Label htmlFor={`work-goal-${appraiser.id}`} className="font-normal">Work</Label>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id={`home-goal-${appraiser.id}`}
+                                                checked={appraiser.evalGoalTypes.includes('Home')}
+                                                onCheckedChange={(checked) => {
+                                                    const currentTypes = appraiser.evalGoalTypes.split(',').filter(t => t);
+                                                    let newTypes;
+                                                    if (checked) {
+                                                        newTypes = [...new Set([...currentTypes, 'Home'])];
+                                                    } else {
+                                                        newTypes = currentTypes.filter(t => t !== 'Home');
+                                                    }
+                                                    handleAppraiserPropChange(appraiser.id, 'evalGoalTypes', newTypes.join(','));
+                                                }}
+                                            />
+                                            <Label htmlFor={`home-goal-${appraiser.id}`} className="font-normal">Home</Label>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div>
                                     <Button 
