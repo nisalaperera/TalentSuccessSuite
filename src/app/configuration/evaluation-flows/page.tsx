@@ -71,11 +71,22 @@ export default function EvaluationFlowsPage() {
         setSteps(steps.map(step => (step.id === id ? { ...step, [key]: value } : step)));
     };
 
-    const getFlowType = (sequence: number, index: number): EvaluationStep['flowType'] => {
-        if (index === 0) return 'Start';
-        const sortedSteps = steps.filter(s => s.sequence).sort((a,b) => a.sequence! - b.sequence!);
-        const currentSortedIndex = sortedSteps.findIndex(s => s.sequence === sequence);
-        if (currentSortedIndex > 0 && sequence === sortedSteps[currentSortedIndex - 1].sequence) return 'Parallel';
+    const getFlowTypeForStep = (currentStep: Partial<EvaluationStep>, allSteps: Partial<EvaluationStep>[]): EvaluationStep['flowType'] => {
+        if (!currentStep.sequence || !currentStep.id) return 'Sequential';
+        const sortedSteps = [...allSteps]
+            .filter(s => s.sequence && s.id)
+            .sort((a, b) => a.sequence! - b.sequence!);
+        
+        const currentIndex = sortedSteps.findIndex(s => s.id === currentStep.id);
+
+        if (currentIndex === 0) return 'Start';
+        if (currentIndex > 0) {
+            const prevStep = sortedSteps[currentIndex - 1];
+            if (prevStep.sequence === currentStep.sequence) {
+                return 'Parallel';
+            }
+        }
+        
         return 'Sequential';
     }
 
@@ -102,22 +113,37 @@ export default function EvaluationFlowsPage() {
             return;
         }
 
-        const finalSteps: EvaluationStep[] = steps.map((s, index) => {
+        const sortedSteps = [...steps].sort((a, b) => a.sequence! - b.sequence!);
+
+        const finalSteps: EvaluationStep[] = sortedSteps.map((s, index, arr) => {
+            let flowType: EvaluationStep['flowType'];
+            if (index === 0) {
+                flowType = 'Start';
+            } else {
+                const prevStep = arr[index - 1];
+                if (s.sequence === prevStep.sequence) {
+                    flowType = 'Parallel';
+                } else {
+                    flowType = 'Sequential';
+                }
+            }
+            
             const step: any = {
                 id: s.id,
                 sequence: s.sequence!,
                 task: s.task!,
                 role: s.role!,
-                flowType: getFlowType(s.sequence!, index),
+                flowType: flowType,
             };
+    
             if (s.startDate) {
-                step.startDate = Timestamp.fromDate(s.startDate);
+                step.startDate = Timestamp.fromDate(s.startDate as Date);
             }
             if (s.endDate) {
-                step.endDate = Timestamp.fromDate(s.endDate);
+                step.endDate = Timestamp.fromDate(s.endDate as Date);
             }
             return step;
-        }).sort((a, b) => a.sequence - b.sequence);
+        });
 
         const flowData = {
             name: flowName,
@@ -182,7 +208,7 @@ export default function EvaluationFlowsPage() {
                                     <TableCell><Select onValueChange={(val) => handleStepChange(step.id!, 'role', val)} value={step.role}><SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger><SelectContent>{ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></TableCell>
                                     <TableCell><DatePicker date={step.startDate} setDate={d => handleStepChange(step.id!, 'startDate', d)} placeholder="Start Date"/></TableCell>
                                     <TableCell><DatePicker date={step.endDate} setDate={d => handleStepChange(step.id!, 'endDate', d)} placeholder="End Date"/></TableCell>
-                                    <TableCell>{step.sequence && getFlowType(step.sequence, index)}</TableCell>
+                                    <TableCell>{step.sequence && getFlowTypeForStep(step, steps)}</TableCell>
                                     <TableCell><Button variant="ghost" size="icon" onClick={() => handleRemoveStep(step.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                     </TableRow>
                                 ))}
