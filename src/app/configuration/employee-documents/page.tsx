@@ -167,12 +167,19 @@ function EmployeeDocumentsContent() {
         const sortedSteps = [...flow.steps].sort((a,b) => a.sequence - b.sequence);
         const currentStepIndex = sortedSteps.findIndex(step => step.task === currentStatus);
 
-        if (currentStepIndex === -1 || currentStepIndex >= sortedSteps.length - 1) {
+        if (currentStepIndex === -1) {
+            toast({ title: "Workflow Error", description: "Could not determine current workflow step.", variant: "destructive" });
+            return;
+        }
+
+        const currentStep = sortedSteps[currentStepIndex];
+        const nextStep = sortedSteps.find(step => step.sequence > currentStep.sequence);
+
+        if (!nextStep) {
             toast({ title: "Workflow End", description: "The selected documents are already at the final step of the workflow.", variant: "destructive" });
             return;
         }
         
-        const nextStep = sortedSteps[currentStepIndex + 1];
         const nextStatus = nextStep.task;
 
         try {
