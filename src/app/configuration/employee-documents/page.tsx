@@ -151,9 +151,9 @@ function EmployeeDocumentsContent() {
                 <Button onClick={handleSearch}>Search</Button>
 
                 {hasActiveFilters && (
-                    <Button variant="ghost" onClick={clearFilters}>
+                    <Button variant="outline" onClick={clearFilters}>
                         <X className="mr-2 h-4 w-4" />
-                        Clear Filters
+                        Clear Search
                     </Button>
                 )}
             </div>
