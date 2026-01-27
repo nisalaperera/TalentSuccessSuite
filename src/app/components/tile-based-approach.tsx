@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -74,11 +73,6 @@ export function TileBasedApproach({ state }: TileBasedProps) {
                     title: "Employee Performance Documents",
                     description: "View and manage launched employee performance documents.",
                     href: "/configuration/employee-documents"
-                },
-                {
-                    title: "Performance Appraiser Mappings",
-                    description: "View performance appraiser mappings.",
-                    href: "/configuration/appraiser-mappings"
                 }
             ]
         },
@@ -129,5 +123,3 @@ export function TileBasedApproach({ state }: TileBasedProps) {
         </div>
     );
 }
-
-    
