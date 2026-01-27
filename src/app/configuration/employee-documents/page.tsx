@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Table as TanstackTable } from '@tanstack/react-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 function EmployeeDocumentsContent() {
     const router = useRouter();
@@ -95,26 +96,26 @@ function EmployeeDocumentsContent() {
         }));
     }, [employees]);
 
-    const getEmployeeName = (id: string) => {
+    const getEmployeeName = useCallback((id: string) => {
         const emp = employees?.find(e => e.id === id);
         return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
-    };
+    }, [employees]);
 
-    const getEmployeeNameByPersonNumber = (personNumber: string) => {
+    const getEmployeeNameByPersonNumber = useCallback((personNumber: string) => {
         const emp = employees?.find(e => e.personNumber === personNumber);
         return emp ? `${emp.firstName} ${emp.lastName}` : 'N/A';
-    };
+    }, [employees]);
 
-    const getCycleName = (id: string) => {
+    const getCycleName = useCallback((id: string) => {
         const cycle = performanceCycles?.find(c => c.id === id);
         if (!cycle) return 'N/A';
         const period = reviewPeriods?.find(p => p.id === cycle.reviewPeriodId);
         return `${cycle.name} (${period?.name || 'N/A'})`;
-    };
+    }, [performanceCycles, reviewPeriods]);
     
-    const getTemplateName = (id: string) => performanceTemplates?.find(t => t.id === id)?.name || 'N/A';
+    const getTemplateName = useCallback((id: string) => performanceTemplates?.find(t => t.id === id)?.name || 'N/A', [performanceTemplates]);
     
-    const getAppraisersForDocument = (doc: EmployeePerformanceDocument): AppraiserMapping[] => {
+    const getAppraisersForDocument = useCallback((doc: EmployeePerformanceDocument): AppraiserMapping[] => {
         if (!allAppraiserMappings || !employees) return [];
         const docEmployee = employees.find(e => e.id === doc.employeeId);
         if (!docEmployee) return [];
@@ -128,9 +129,9 @@ function EmployeeDocumentsContent() {
             if (a.appraiserType !== 'Primary' && b.appraiserType === 'Primary') return 1;
             return 0;
         });
-    };
+    }, [allAppraiserMappings, employees]);
 
-    const handleManageAppraisers = (doc: EmployeePerformanceDocument) => {
+    const handleManageAppraisers = useCallback((doc: EmployeePerformanceDocument) => {
         const docEmployee = employees?.find(e => e.id === doc.employeeId);
         if (!docEmployee) {
             toast({ title: 'Error', description: 'Could not find employee for this document.', variant: 'destructive'});
@@ -145,6 +146,16 @@ function EmployeeDocumentsContent() {
         setAppraisersToManage(JSON.parse(JSON.stringify(currentAppraisers)));
         setOriginalAppraisers(currentAppraisers);
         setIsManageAppraisersOpen(true);
+    }, [employees, allAppraiserMappings, toast]);
+
+    const handleAppraiserPropChange = (appraiserId: string, prop: keyof AppraiserMapping, value: any) => {
+        setAppraisersToManage(current =>
+            current.map(appraiser =>
+                appraiser.id === appraiserId
+                    ? { ...appraiser, [prop]: value }
+                    : appraiser
+            )
+        );
     };
 
     const handleAppraiserTypeChange = (appraiserIdToChange: string, newType: 'Primary' | 'Secondary') => {
@@ -215,7 +226,7 @@ function EmployeeDocumentsContent() {
         }
     };
 
-    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers }), [employees, performanceCycles, reviewPeriods, performanceTemplates, allAppraiserMappings]);
+    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers: handleManageAppraisers }), [getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, handleManageAppraisers]);
 
     const filteredData = useMemo(() => {
         if (!employeeDocuments || !cycleFilter) return [];
