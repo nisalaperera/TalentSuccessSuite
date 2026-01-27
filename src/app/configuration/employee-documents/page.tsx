@@ -11,18 +11,25 @@ import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
 import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping, EvaluationFlow } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { X, ArrowUpWideNarrow } from 'lucide-react';
+import { X, ArrowUpWideNarrow, Trash2 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { Card, CardContent } from '@/components/ui/card';
 import { EVALUATION_FLOW_PROCESS_PHASES } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import type { Table as TanstackTable } from '@tanstack/react-table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 function EmployeeDocumentsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const firestore = useFirestore();
     const { toast } = useToast();
+
+    const [isManageAppraisersOpen, setIsManageAppraisersOpen] = useState(false);
+    const [documentToManage, setDocumentToManage] = useState<EmployeePerformanceDocument | null>(null);
+    const [appraisersToManage, setAppraisersToManage] = useState<AppraiserMapping[]>([]);
+    const [originalAppraisers, setOriginalAppraisers] = useState<AppraiserMapping[]>([]);
 
     const employeeDocumentsQuery = useMemoFirebase(() => collection(firestore, 'employee_performance_documents'), [firestore]);
     const { data: employeeDocuments } = useCollection<EmployeePerformanceDocument>(employeeDocumentsQuery);
@@ -123,7 +130,92 @@ function EmployeeDocumentsContent() {
         });
     };
 
-    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber }), [employees, performanceCycles, reviewPeriods, performanceTemplates, allAppraiserMappings]);
+    const handleManageAppraisers = (doc: EmployeePerformanceDocument) => {
+        const docEmployee = employees?.find(e => e.id === doc.employeeId);
+        if (!docEmployee) {
+            toast({ title: 'Error', description: 'Could not find employee for this document.', variant: 'destructive'});
+            return;
+        };
+
+        const currentAppraisers = (allAppraiserMappings || []).filter(
+            m => m.employeePersonNumber === docEmployee.personNumber && m.performanceCycleId === doc.performanceCycleId
+        ).sort((a, b) => a.appraiserType.localeCompare(b.appraiserType));
+        
+        setDocumentToManage(doc);
+        setAppraisersToManage(JSON.parse(JSON.stringify(currentAppraisers)));
+        setOriginalAppraisers(currentAppraisers);
+        setIsManageAppraisersOpen(true);
+    };
+
+    const handleAppraiserTypeChange = (appraiserIdToChange: string, newType: 'Primary' | 'Secondary') => {
+        setAppraisersToManage(current => {
+            let newAppraisers = [...current];
+
+            if (newType === 'Primary') {
+                 newAppraisers = newAppraisers.map(a => {
+                    if (a.id === appraiserIdToChange) return { ...a, appraiserType: 'Primary' };
+                    if (a.appraiserType === 'Primary') return { ...a, appraiserType: 'Secondary' };
+                    return a;
+                });
+            } else { // newType is 'Secondary'
+                newAppraisers = newAppraisers.map(a => 
+                    a.id === appraiserIdToChange ? { ...a, appraiserType: 'Secondary' } : a
+                );
+            }
+
+            return newAppraisers;
+        });
+    };
+
+    const handleAppraiserPersonChange = (appraiserId: string, newPersonNumber: string) => {
+        setAppraisersToManage(current => 
+            current.map(appraiser => 
+                appraiser.id === appraiserId 
+                    ? { ...appraiser, appraiserPersonNumber: newPersonNumber } 
+                    : appraiser
+            )
+        );
+    };
+
+    const handleDeleteAppraiser = (appraiserId: string) => {
+        setAppraisersToManage(current => current.filter(appraiser => appraiser.id !== appraiserId));
+    };
+
+    const handleSaveAppraisers = async () => {
+        if (!documentToManage) return;
+
+        if (appraisersToManage.length > 0 && appraisersToManage.filter(a => a.appraiserType === 'Primary').length !== 1) {
+            toast({ title: 'Validation Error', description: 'There must be exactly one Primary Appraiser.', variant: 'destructive'});
+            return;
+        }
+
+        try {
+            const batch = writeBatch(firestore);
+
+            originalAppraisers.forEach(orig => {
+                if (!appraisersToManage.find(managed => managed.id === orig.id)) {
+                    batch.delete(doc(firestore, 'employee_appraiser_mappings', orig.id));
+                }
+            });
+
+            appraisersToManage.forEach(managed => {
+                const orig = originalAppraisers.find(o => o.id === managed.id);
+                if (orig && JSON.stringify(orig) !== JSON.stringify(managed)) {
+                    const { id, ...data } = managed;
+                    batch.update(doc(firestore, 'employee_appraiser_mappings', id), data);
+                }
+            });
+            
+            await batch.commit();
+            toast({ title: 'Success', description: 'Appraiser list updated.' });
+            setIsManageAppraisersOpen(false);
+        } catch (error) {
+            console.error('Error updating appraisers:', error);
+            toast({ title: 'Error', description: 'Failed to update appraisers.', variant: 'destructive' });
+        }
+    };
+
+    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers }), [employees, performanceCycles, reviewPeriods, performanceTemplates, allAppraiserMappings]);
 
     const filteredData = useMemo(() => {
         if (!employeeDocuments || !cycleFilter) return [];
@@ -165,14 +257,13 @@ function EmployeeDocumentsContent() {
         }
         
         const sortedSteps = [...flow.steps].sort((a,b) => a.sequence - b.sequence);
-        const currentStepIndex = sortedSteps.findIndex(step => step.task === currentStatus);
+        const currentStep = sortedSteps.find(step => step.task === currentStatus);
 
-        if (currentStepIndex === -1) {
+        if (!currentStep) {
             toast({ title: "Workflow Error", description: "Could not determine current workflow step.", variant: "destructive" });
             return;
         }
-
-        const currentStep = sortedSteps[currentStepIndex];
+        
         const nextStep = sortedSteps.find(step => step.sequence > currentStep.sequence);
 
         if (!nextStep) {
@@ -208,6 +299,15 @@ function EmployeeDocumentsContent() {
             Promote Status
         </Button>
     );
+
+    const appraiserOptions = useMemo(() => {
+        if (!employees) return [];
+        return employees.map(emp => ({
+            value: emp.personNumber,
+            label: `${emp.firstName} ${emp.lastName} | ${emp.personNumber}`
+        }));
+    }, [employees]);
+
 
     return (
         <div className="container mx-auto py-10">
@@ -272,6 +372,68 @@ function EmployeeDocumentsContent() {
                     </CardContent>
                 </Card>
             )}
+
+             <Dialog open={isManageAppraisersOpen} onOpenChange={setIsManageAppraisersOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="font-headline">Manage Appraisers</DialogTitle>
+                        <DialogDescription>
+                            Modify the appraisers for {documentToManage ? getEmployeeName(documentToManage.employeeId) : ''}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                        {appraisersToManage.map(appraiser => (
+                            <div key={appraiser.id} className="p-4 border rounded-lg grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div className="space-y-2 md:col-span-3">
+                                    <Label>Appraiser</Label>
+                                    <Combobox
+                                        options={appraiserOptions}
+                                        value={appraiser.appraiserPersonNumber}
+                                        onChange={(val) => handleAppraiserPersonChange(appraiser.id, val)}
+                                        placeholder="Select an appraiser..."
+                                        triggerClassName='w-full'
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                     <Label>Appraiser Type</Label>
+                                     <Select value={appraiser.appraiserType} onValueChange={(v: 'Primary' | 'Secondary') => handleAppraiserTypeChange(appraiser.id, v)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Primary">Primary</SelectItem>
+                                            <SelectItem value="Secondary">Secondary</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label>Evaluation Goal Type(s)</Label>
+                                     <Input 
+                                        value={appraiser.evalGoalTypes} 
+                                        onChange={(e) => handleAppraiserPropChange(appraiser.id, 'evalGoalTypes', e.target.value)}
+                                        placeholder="e.g., Work,Home"
+                                    />
+                                </div>
+                                <div>
+                                    <Button 
+                                        variant="destructive" 
+                                        onClick={() => handleDeleteAppraiser(appraiser.id)}
+                                        disabled={appraiser.appraiserType === 'Primary'}
+                                        className="w-full"
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsManageAppraisersOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveAppraisers}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

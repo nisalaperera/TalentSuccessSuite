@@ -7,9 +7,10 @@ import { DataTableColumnHeader } from '@/app/components/data-table/data-table-co
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, UserCog } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from '@/components/ui/checkbox';
+import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
 
 
 type ColumnsConfig = {
@@ -18,9 +19,10 @@ type ColumnsConfig = {
     getTemplateName: (id: string) => string;
     getAppraisersForDocument: (doc: EmployeePerformanceDocument) => AppraiserMapping[];
     getEmployeeNameByPersonNumber: (personNumber: string) => string;
+    onManageAppraisers: (doc: EmployeePerformanceDocument) => void;
 }
 
-export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber }: ColumnsConfig): ColumnDef<EmployeePerformanceDocument>[] => [
+export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers }: ColumnsConfig): ColumnDef<EmployeePerformanceDocument>[] => [
     {
         id: 'select',
         header: ({ table }) => (
@@ -133,5 +135,31 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
                 </div>
             );
         }
+    },
+    {
+        id: 'actions',
+        cell: ({ row }) => {
+            const doc = row.original;
+            const customActions = [];
+            if (doc.status === 'Worker Self-Evaluation') {
+                customActions.push({
+                    label: "Manage Appraisers",
+                    icon: <UserCog className="mr-2 h-3.5 w-3.5" />,
+                    onClick: onManageAppraisers,
+                });
+            }
+            if (customActions.length === 0) {
+                return null;
+            }
+            return (
+                 <DataTableRowActions
+                    row={row}
+                    customActions={customActions}
+                    isToggleable={false}
+                    canEdit={false}
+                    canDelete={false}
+                />
+            )
+        },
     },
 ];
