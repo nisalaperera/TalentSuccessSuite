@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, Suspense } from 'react';
@@ -8,18 +7,20 @@ import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, GoalPlan } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { Card, CardContent } from '@/components/ui/card';
 import { EVALUATION_FLOW_PROCESS_PHASES } from '@/lib/constants';
+import { useToast } from '@/hooks/use-toast';
 
 function EmployeeDocumentsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     const employeeDocumentsQuery = useMemoFirebase(() => collection(firestore, 'employee_performance_documents'), [firestore]);
     const { data: employeeDocuments } = useCollection<EmployeePerformanceDocument>(employeeDocumentsQuery);
@@ -35,31 +36,41 @@ function EmployeeDocumentsContent() {
     
     const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
     const { data: performanceTemplates } = useCollection<PerformanceTemplate>(performanceTemplatesQuery);
+    
+    // State for filter inputs, initialized from URL params
+    const [selectedCycleId, setSelectedCycleId] = useState(searchParams.get('cycleId') || '');
+    const [selectedEmployeeId, setSelectedEmployeeId] = useState(searchParams.get('employeeId') || '');
+    const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || '');
 
+    // Filters from URL for data filtering
     const cycleFilter = searchParams.get('cycleId');
     const employeeFilter = searchParams.get('employeeId');
     const statusFilter = searchParams.get('status');
 
-    const handleFilterChange = (type: 'cycle' | 'employee' | 'status', value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        let paramName: string;
-        switch(type) {
-            case 'cycle': paramName = 'cycleId'; break;
-            case 'employee': paramName = 'employeeId'; break;
-            case 'status': paramName = 'status'; break;
+    const handleSearch = () => {
+        if (!selectedCycleId) {
+            toast({
+                title: "Required Field",
+                description: "Please select a Performance Cycle to begin your search.",
+                variant: "destructive",
+            });
+            return;
         }
-        
-        if (value && value !== 'all') {
-            params.set(paramName, value);
-        } else {
-            params.delete(paramName);
-        }
+
+        const params = new URLSearchParams();
+        if (selectedCycleId && selectedCycleId !== 'all') params.set('cycleId', selectedCycleId);
+        if (selectedEmployeeId && selectedEmployeeId !== 'all') params.set('employeeId', selectedEmployeeId);
+        if (selectedStatus && selectedStatus !== 'all') params.set('status', selectedStatus);
+
         router.push(`/configuration/employee-documents?${params.toString()}`);
     };
 
     const clearFilters = () => {
+        setSelectedCycleId('');
+        setSelectedEmployeeId('');
+        setSelectedStatus('');
         router.push('/configuration/employee-documents');
-    }
+    };
 
     const employeeOptions = useMemo(() => {
         if (!employees) return [];
@@ -106,7 +117,7 @@ function EmployeeDocumentsContent() {
             />
 
             <div className="flex flex-wrap items-center gap-4 mb-4">
-                <Select value={cycleFilter || ''} onValueChange={(value) => handleFilterChange('cycle', value)}>
+                <Select value={selectedCycleId} onValueChange={setSelectedCycleId}>
                     <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]">
                         <SelectValue placeholder="Select Performance Cycle... (Required)" />
                     </SelectTrigger>
@@ -118,14 +129,14 @@ function EmployeeDocumentsContent() {
                 </Select>
                 <Combobox
                     options={employeeOptions}
-                    value={employeeFilter || ''}
-                    onChange={(value) => handleFilterChange('employee', value)}
+                    value={selectedEmployeeId}
+                    onChange={setSelectedEmployeeId}
                     placeholder="Filter by Employee..."
                     searchPlaceholder="Search employees..."
                     noResultsText="No employees found."
                     triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
                 />
-                 <Select value={statusFilter || ''} onValueChange={(value) => handleFilterChange('status', value)}>
+                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                     <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]">
                         <SelectValue placeholder="Filter by Status..." />
                     </SelectTrigger>
@@ -136,6 +147,9 @@ function EmployeeDocumentsContent() {
                         ))}
                     </SelectContent>
                 </Select>
+                
+                <Button onClick={handleSearch}>Search</Button>
+
                 {hasActiveFilters && (
                     <Button variant="ghost" onClick={clearFilters}>
                         <X className="mr-2 h-4 w-4" />
@@ -149,7 +163,7 @@ function EmployeeDocumentsContent() {
             ) : (
                 <Card className="mt-6">
                     <CardContent className="pt-6">
-                        <p className="text-center text-muted-foreground">Please select a Performance Cycle to begin your search.</p>
+                        <p className="text-center text-muted-foreground">Please select a Performance Cycle and click Search to view documents.</p>
                     </CardContent>
                 </Card>
             )}
