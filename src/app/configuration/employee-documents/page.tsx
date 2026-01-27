@@ -12,6 +12,9 @@ import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Emplo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { Combobox } from '@/components/ui/combobox';
+import { Card, CardContent } from '@/components/ui/card';
+import { EVALUATION_FLOW_PROCESS_PHASES } from '@/lib/constants';
 
 function EmployeeDocumentsContent() {
     const router = useRouter();
@@ -35,13 +38,21 @@ function EmployeeDocumentsContent() {
 
     const cycleFilter = searchParams.get('cycleId');
     const employeeFilter = searchParams.get('employeeId');
+    const statusFilter = searchParams.get('status');
 
-    const handleFilterChange = (type: 'cycle' | 'employee', value: string) => {
+    const handleFilterChange = (type: 'cycle' | 'employee' | 'status', value: string) => {
         const params = new URLSearchParams(searchParams.toString());
-        if (value) {
-            params.set(type === 'cycle' ? 'cycleId' : 'employeeId', value);
+        let paramName: string;
+        switch(type) {
+            case 'cycle': paramName = 'cycleId'; break;
+            case 'employee': paramName = 'employeeId'; break;
+            case 'status': paramName = 'status'; break;
+        }
+        
+        if (value && value !== 'all') {
+            params.set(paramName, value);
         } else {
-            params.delete(type === 'cycle' ? 'cycleId' : 'employeeId');
+            params.delete(paramName);
         }
         router.push(`/configuration/employee-documents?${params.toString()}`);
     };
@@ -49,6 +60,14 @@ function EmployeeDocumentsContent() {
     const clearFilters = () => {
         router.push('/configuration/employee-documents');
     }
+
+    const employeeOptions = useMemo(() => {
+        if (!employees) return [];
+        return employees.map(emp => ({
+            value: emp.id,
+            label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
+        }));
+    }, [employees]);
 
     const getEmployeeName = (id: string) => {
         const emp = employees?.find(e => e.id === id);
@@ -67,44 +86,53 @@ function EmployeeDocumentsContent() {
     const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName }), [employees, performanceCycles, reviewPeriods, performanceTemplates]);
 
     const filteredData = useMemo(() => {
-        if (!employeeDocuments) return [];
+        if (!employeeDocuments || !cycleFilter) return [];
         return employeeDocuments.filter(doc => {
-            const cycleMatch = !cycleFilter || doc.performanceCycleId === cycleFilter;
+            const cycleMatch = doc.performanceCycleId === cycleFilter;
             const employeeMatch = !employeeFilter || doc.employeeId === employeeFilter;
-            return cycleMatch && employeeMatch;
+            const statusMatch = !statusFilter || doc.status === statusFilter;
+            return cycleMatch && employeeMatch && statusMatch;
         });
-    }, [employeeDocuments, cycleFilter, employeeFilter]);
+    }, [employeeDocuments, cycleFilter, employeeFilter, statusFilter]);
     
-    const hasActiveFilters = cycleFilter || employeeFilter;
+    const hasActiveFilters = cycleFilter || employeeFilter || statusFilter;
 
     return (
         <div className="container mx-auto py-10">
             <PageHeader
                 title="Employee Performance Documents"
-                description="View all launched employee performance documents."
+                description="Search for launched employee performance documents."
                 showAddNew={false}
             />
 
-            <div className="flex items-center gap-4 mb-4">
+            <div className="flex flex-wrap items-center gap-4 mb-4">
                 <Select value={cycleFilter || ''} onValueChange={(value) => handleFilterChange('cycle', value)}>
-                    <SelectTrigger className="w-[250px]">
-                        <SelectValue placeholder="Filter by Performance Cycle..." />
+                    <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]">
+                        <SelectValue placeholder="Select Performance Cycle... (Required)" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Cycles</SelectItem>
                         {(performanceCycles || []).map(cycle => (
                             <SelectItem key={cycle.id} value={cycle.id}>{getCycleName(cycle.id)}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
-                <Select value={employeeFilter || ''} onValueChange={(value) => handleFilterChange('employee', value)}>
-                    <SelectTrigger className="w-[250px]">
-                        <SelectValue placeholder="Filter by Employee..." />
+                <Combobox
+                    options={employeeOptions}
+                    value={employeeFilter || ''}
+                    onChange={(value) => handleFilterChange('employee', value)}
+                    placeholder="Filter by Employee..."
+                    searchPlaceholder="Search employees..."
+                    noResultsText="No employees found."
+                    triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
+                />
+                 <Select value={statusFilter || ''} onValueChange={(value) => handleFilterChange('status', value)}>
+                    <SelectTrigger className="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]">
+                        <SelectValue placeholder="Filter by Status..." />
                     </SelectTrigger>
                     <SelectContent>
-                         <SelectItem value="all">All Employees</SelectItem>
-                        {(employees || []).map(emp => (
-                            <SelectItem key={emp.id} value={emp.id}>{getEmployeeName(emp.id)}</SelectItem>
+                         <SelectItem value="all">All Statuses</SelectItem>
+                        {EVALUATION_FLOW_PROCESS_PHASES.map(status => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -116,7 +144,15 @@ function EmployeeDocumentsContent() {
                 )}
             </div>
 
-            <DataTable columns={tableColumns} data={filteredData} />
+            {cycleFilter ? (
+                <DataTable columns={tableColumns} data={filteredData} />
+            ) : (
+                <Card className="mt-6">
+                    <CardContent className="pt-6">
+                        <p className="text-center text-muted-foreground">Please select a Performance Cycle to begin your search.</p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
