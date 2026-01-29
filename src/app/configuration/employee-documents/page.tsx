@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, Suspense, useCallback } from 'react';
+import { useState, useMemo, Suspense, useCallback, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
@@ -11,7 +11,7 @@ import { collection, query, where, writeBatch, doc, getDocs } from 'firebase/fir
 import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping, EvaluationFlow, PerformanceDocument } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { X, ArrowUpWideNarrow, Trash2, Users, Upload, Download } from 'lucide-react';
+import { X, ArrowUpWideNarrow, Trash2, Users, Upload, Download, PlusCircle } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -41,17 +41,18 @@ function EmployeeDocumentsContent() {
     // Data for dialogs
     const [documentToManage, setDocumentToManage] = useState<EmployeePerformanceDocument | null>(null);
     const [documentToView, setDocumentToView] = useState<EmployeePerformanceDocument | null>(null);
-    const [appraisersToManage, setAppraisersToManage] = useState<AppraiserMapping[]>([]);
-    const [originalAppraisers, setOriginalAppraisers] = useState<AppraiserMapping[]>([]);
     const [promotionDetails, setPromotionDetails] = useState<{ count: number; currentStatus: string; nextStatus: string; docsToUpdate: EmployeePerformanceDocument[]; } | null>(null);
+    const [selectedDocsForBulkUpdate, setSelectedDocsForBulkUpdate] = useState<EmployeePerformanceDocument[]>([]);
     
+    // Manage appraisers state
+    const [primaryAppraiserToManage, setPrimaryAppraiserToManage] = useState<Partial<AppraiserMapping> | null>(null);
+    const [secondaryAppraisersToManage, setSecondaryAppraisersToManage] = useState<Partial<AppraiserMapping>[]>([]);
+    const [originalAppraisers, setOriginalAppraisers] = useState<AppraiserMapping[]>([]);
+
     // Bulk appraiser form state
     const [bulkPrimaryAppraiser, setBulkPrimaryAppraiser] = useState('');
-    const [bulkSecondaryAppraiser, setBulkSecondaryAppraiser] = useState('');
     const [bulkPrimaryEvalTypes, setBulkPrimaryEvalTypes] = useState<string[]>([]);
-    const [bulkSecondaryEvalTypes, setBulkSecondaryEvalTypes] = useState<string[]>([]);
-    const [selectedDocsForBulkUpdate, setSelectedDocsForBulkUpdate] = useState<EmployeePerformanceDocument[]>([]);
-
+    const [bulkSecondaryAppraisers, setBulkSecondaryAppraisers] = useState<Array<{ id: string; personNumber: string; evalGoalTypes: string[] }>>([{ id: `new-${Date.now()}`, personNumber: '', evalGoalTypes: [] }]);
 
     const employeeDocumentsQuery = useMemoFirebase(() => collection(firestore, 'employee_performance_documents'), [firestore]);
     const { data: employeeDocuments } = useCollection<EmployeePerformanceDocument>(employeeDocumentsQuery);
@@ -172,93 +173,81 @@ function EmployeeDocumentsContent() {
     }, [allAppraiserMappings, employees]);
 
     const handleManageAppraisers = useCallback((doc: EmployeePerformanceDocument) => {
-        const docEmployee = employees?.find(e => e.id === doc.employeeId);
-        if (!docEmployee) {
-            toast({ title: 'Error', description: 'Could not find employee for this document.', variant: 'destructive'});
-            return;
-        };
-
-        const currentAppraisers = (allAppraiserMappings || []).filter(
-            m => m.employeePersonNumber === docEmployee.personNumber && m.performanceCycleId === doc.performanceCycleId
-        ).sort((a, b) => a.appraiserType.localeCompare(b.appraiserType));
-        
         setDocumentToManage(doc);
-        setAppraisersToManage(JSON.parse(JSON.stringify(currentAppraisers)));
-        setOriginalAppraisers(currentAppraisers);
         setIsManageAppraisersOpen(true);
-    }, [employees, allAppraiserMappings, toast]);
+    }, []);
+
+     useEffect(() => {
+        if (isManageAppraisersOpen && documentToManage && allAppraiserMappings && employees) {
+            const docEmployee = employees.find(e => e.id === documentToManage.employeeId);
+            if (!docEmployee) return;
+
+            const currentAppraisers = allAppraiserMappings.filter(
+                m => m.employeePersonNumber === docEmployee.personNumber && m.performanceCycleId === documentToManage.performanceCycleId
+            );
+            
+            setOriginalAppraisers(currentAppraisers);
+            setPrimaryAppraiserToManage(currentAppraisers.find(a => a.appraiserType === 'Primary') || {
+                employeePersonNumber: docEmployee.personNumber,
+                performanceCycleId: documentToManage.performanceCycleId,
+                appraiserType: 'Primary',
+                isCompleted: false,
+                evalGoalTypes: 'Work'
+            });
+            setSecondaryAppraisersToManage(currentAppraisers.filter(a => a.appraiserType === 'Secondary'));
+
+        } else {
+            setPrimaryAppraiserToManage(null);
+            setSecondaryAppraisersToManage([]);
+            setOriginalAppraisers([]);
+        }
+    }, [isManageAppraisersOpen, documentToManage, allAppraiserMappings, employees]);
     
     const handleViewDetails = useCallback((doc: EmployeePerformanceDocument) => {
         setDocumentToView(doc);
         setIsViewDetailsOpen(true);
     }, []);
 
-    const handleAppraiserPropChange = useCallback((appraiserId: string, prop: keyof AppraiserMapping, value: any) => {
-        setAppraisersToManage(current =>
-            current.map(appraiser =>
-                appraiser.id === appraiserId
-                    ? { ...appraiser, [prop]: value }
-                    : appraiser
-            )
-        );
-    }, []);
-
-    const handleAppraiserTypeChange = (appraiserIdToChange: string, newType: 'Primary' | 'Secondary') => {
-        setAppraisersToManage(current => {
-            let newAppraisers = [...current];
-
-            if (newType === 'Primary') {
-                 newAppraisers = newAppraisers.map(a => {
-                    if (a.id === appraiserIdToChange) return { ...a, appraiserType: 'Primary' };
-                    if (a.appraiserType === 'Primary') return { ...a, appraiserType: 'Secondary' };
-                    return a;
-                });
-            } else { // newType is 'Secondary'
-                newAppraisers = newAppraisers.map(a => 
-                    a.id === appraiserIdToChange ? { ...a, appraiserType: 'Secondary' } : a
-                );
-            }
-
-            return newAppraisers;
-        });
-    };
-
-    const handleAppraiserPersonChange = (appraiserId: string, newPersonNumber: string) => {
-        setAppraisersToManage(current => 
-            current.map(appraiser => 
-                appraiser.id === appraiserId 
-                    ? { ...appraiser, appraiserPersonNumber: newPersonNumber } 
-                    : appraiser
-            )
-        );
-    };
-
-    const handleDeleteAppraiser = (appraiserId: string) => {
-        setAppraisersToManage(current => current.filter(appraiser => appraiser.id !== appraiserId));
-    };
-
     const handleSaveAppraisers = async () => {
-        if (!documentToManage) return;
+        if (!documentToManage || !primaryAppraiserToManage) return;
 
-        if (appraisersToManage.length > 0 && appraisersToManage.filter(a => a.appraiserType === 'Primary').length !== 1) {
-            toast({ title: 'Validation Error', description: 'There must be exactly one Primary Appraiser.', variant: 'destructive'});
+        const allNewAppraisers = [primaryAppraiserToManage, ...secondaryAppraisersToManage];
+        if (!primaryAppraiserToManage.appraiserPersonNumber) {
+             toast({ title: 'Validation Error', description: 'Primary Appraiser must be assigned.', variant: 'destructive'});
+            return;
+        }
+
+        const appraiserPersonNumbers = allNewAppraisers.map(a => a.appraiserPersonNumber).filter(Boolean);
+        const hasDuplicates = new Set(appraiserPersonNumbers).size !== appraiserPersonNumbers.length;
+        if(hasDuplicates) {
+            toast({ title: 'Validation Error', description: 'An employee cannot be assigned as an appraiser more than once.', variant: 'destructive'});
             return;
         }
 
         try {
             const batch = writeBatch(firestore);
+            const finalMappings = [primaryAppraiserToManage, ...secondaryAppraisersToManage];
 
+            // Delete mappings that are no longer in the list
             originalAppraisers.forEach(orig => {
-                if (!appraisersToManage.find(managed => managed.id === orig.id)) {
+                if (!finalMappings.find(managed => managed.id === orig.id)) {
                     batch.delete(doc(firestore, 'employee_appraiser_mappings', orig.id));
                 }
             });
 
-            appraisersToManage.forEach(managed => {
-                const orig = originalAppraisers.find(o => o.id === managed.id);
-                if (orig && JSON.stringify(orig) !== JSON.stringify(managed)) {
-                    const { id, ...data } = managed;
-                    batch.update(doc(firestore, 'employee_appraiser_mappings', id), data);
+            // Update or add new mappings
+            finalMappings.forEach(managed => {
+                if (managed.id && !managed.id.startsWith('new-')) { // This is an existing mapping
+                    const orig = originalAppraisers.find(o => o.id === managed.id);
+                    if (orig && JSON.stringify(orig) !== JSON.stringify(managed)) {
+                        const { id, ...data } = managed;
+                        batch.update(doc(firestore, 'employee_appraiser_mappings', managed.id), data);
+                    }
+                } else { // This is a new secondary appraiser
+                    if (managed.appraiserPersonNumber) { // Only add if an appraiser is selected
+                        const { id, ...data } = managed;
+                        batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), data);
+                    }
                 }
             });
             
@@ -276,6 +265,11 @@ function EmployeeDocumentsContent() {
     const handlePromoteClick = (table: TanstackTable<EmployeePerformanceDocument>) => {
         const selectedDocs = table.getFilteredSelectedRowModel().rows.map(row => row.original);
         
+        if (selectedDocs.length === 0) {
+            toast({ title: "No Selection", description: "Please select documents to promote.", variant: "destructive" });
+            return;
+        }
+
         const firstDoc = selectedDocs[0];
         const currentStatus = firstDoc.status;
         const currentCycleId = firstDoc.performanceCycleId;
@@ -298,19 +292,26 @@ function EmployeeDocumentsContent() {
             return;
         }
 
-        let nextSequence = Infinity;
+        let nextStep = null;
+        let minNextSequence = Infinity;
+
+        // Find the lowest sequence number that is greater than the current one
         for (const step of sortedSteps) {
             if (step.sequence > currentStep.sequence) {
-                nextSequence = step.sequence;
-                break;
+                if (step.sequence < minNextSequence) {
+                    minNextSequence = step.sequence;
+                }
             }
         }
         
-        if (nextSequence === Infinity) {
+        if (minNextSequence === Infinity) {
             toast({ title: "Workflow End", description: "Documents are already at the final step.", variant: "destructive" });
             return;
         }
-        const nextStep = sortedSteps.find(step => step.sequence === nextSequence);
+        
+        // Find the first step with that sequence number
+        nextStep = sortedSteps.find(step => step.sequence === minNextSequence);
+
         if (!nextStep) {
             toast({ title: "Workflow Error", description: "Could not determine the next step.", variant: "destructive" });
             return;
@@ -348,22 +349,31 @@ function EmployeeDocumentsContent() {
     };
     
     const handleBulkUpdateClick = (table: TanstackTable<EmployeePerformanceDocument>) => {
-        setSelectedDocsForBulkUpdate(table.getFilteredSelectedRowModel().rows.map(r => r.original));
+        const selected = table.getFilteredSelectedRowModel().rows.map(r => r.original);
+        if (selected.length === 0) {
+            toast({ title: "No Selection", description: "Please select documents to update.", variant: "destructive"});
+            return;
+        }
+        setSelectedDocsForBulkUpdate(selected);
         setBulkPrimaryAppraiser('');
-        setBulkSecondaryAppraiser('');
         setBulkPrimaryEvalTypes([]);
-        setBulkSecondaryEvalTypes([]);
+        setBulkSecondaryAppraisers([{ id: `new-${Date.now()}`, personNumber: '', evalGoalTypes: [] }]);
         setIsBulkUpdateOpen(true);
     };
 
     const executeBulkAppraiserUpdate = async () => {
         if (selectedDocsForBulkUpdate.length === 0) return;
-        if (!bulkPrimaryAppraiser && !bulkSecondaryAppraiser) {
+        
+        const validSecondaries = bulkSecondaryAppraisers.filter(s => s.personNumber);
+        if (!bulkPrimaryAppraiser && validSecondaries.length === 0) {
             toast({ title: "Input Required", description: "Please select at least one appraiser to apply.", variant: "destructive"});
             return;
         }
-        if (bulkPrimaryAppraiser && bulkPrimaryAppraiser === bulkSecondaryAppraiser) {
-            toast({ title: "Validation Error", description: "Primary and Secondary appraisers cannot be the same person.", variant: "destructive" });
+        
+        const allAppraiserPersonNumbers = [bulkPrimaryAppraiser, ...validSecondaries.map(s => s.personNumber)].filter(Boolean);
+        const hasDuplicates = new Set(allAppraiserPersonNumbers).size !== allAppraiserPersonNumbers.length;
+        if(hasDuplicates) {
+            toast({ title: "Validation Error", description: "An employee cannot be assigned as an appraiser more than once.", variant: "destructive"});
             return;
         }
 
@@ -387,13 +397,13 @@ function EmployeeDocumentsContent() {
                         isCompleted: false
                     });
                 }
-                if (bulkSecondaryAppraiser) {
+                for (const secondary of validSecondaries) {
                      batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), {
                         employeePersonNumber: personNumber,
                         performanceCycleId: cycleId,
                         appraiserType: 'Secondary',
-                        appraiserPersonNumber: bulkSecondaryAppraiser,
-                        evalGoalTypes: bulkSecondaryEvalTypes.join(','),
+                        appraiserPersonNumber: secondary.personNumber,
+                        evalGoalTypes: secondary.evalGoalTypes.join(','),
                         isCompleted: false
                     });
                 }
@@ -423,37 +433,35 @@ function EmployeeDocumentsContent() {
     };
 
     const handleDownloadTemplate = () => {
-        const header = "EmployeePersonNumber,PrimaryAppraiserPersonNumber,SecondaryAppraiserPersonNumber,PrimaryEvalGoalTypes,SecondaryEvalGoalTypes\n";
+        const header = "EmployeePersonNumber,AppraiserPersonNumber,AppraiserType,EvalGoalTypes\n";
         downloadCSV(header, 'appraiser_template.csv');
     };
 
-    const handleDownloadExisting = async () => {
-        if (!cycleFilter) {
-            toast({ title: "Cycle Required", description: "Please select a performance cycle to download its appraiser data.", variant: "destructive" });
+    const handleDownloadSelected = async () => {
+         if (selectedDocsForBulkUpdate.length === 0) {
+            toast({ title: 'No Selection', description: 'Please select documents from the table to download their appraiser data.', variant: 'destructive'});
             return;
         }
         
-        const cycleMappingsQuery = query(collection(firestore, 'employee_appraiser_mappings'), where('performanceCycleId', '==', cycleFilter));
-        const snapshot = await getDocs(cycleMappingsQuery);
+        let csvContent = "EmployeePersonNumber,AppraiserPersonNumber,AppraiserType,EvalGoalTypes\n";
 
-        const mappingsByEmployee: Record<string, Partial<Record<'Primary' | 'Secondary', AppraiserMapping>>> = {};
+        const employeePersonNumbers = selectedDocsForBulkUpdate.map(doc => employees?.find(e => e.id === doc.employeeId)?.personNumber).filter((pn): pn is string => !!pn);
 
-        snapshot.forEach(doc => {
-            const data = doc.data() as AppraiserMapping;
-            if (!mappingsByEmployee[data.employeePersonNumber]) {
-                mappingsByEmployee[data.employeePersonNumber] = {};
-            }
-            mappingsByEmployee[data.employeePersonNumber][data.appraiserType] = data;
-        });
+        if (employeePersonNumbers.length === 0) {
+            toast({ title: 'No Employees Found', description: 'Could not find employee details for the selected documents.', variant: 'destructive'});
+            return;
+        }
 
-        let csvContent = "EmployeePersonNumber,PrimaryAppraiserPersonNumber,SecondaryAppraiserPersonNumber,PrimaryEvalGoalTypes,SecondaryEvalGoalTypes\n";
-        for (const empNum in mappingsByEmployee) {
-            const primary = mappingsByEmployee[empNum].Primary;
-            const secondary = mappingsByEmployee[empNum].Secondary;
-            csvContent += `${empNum},${primary?.appraiserPersonNumber || ''},${secondary?.appraiserPersonNumber || ''},${primary?.evalGoalTypes || ''},${secondary?.evalGoalTypes || ''}\n`;
+        const relevantMappings = (allAppraiserMappings || []).filter(m => 
+            employeePersonNumbers.includes(m.employeePersonNumber) && 
+            m.performanceCycleId === selectedDocsForBulkUpdate[0].performanceCycleId
+        );
+
+        for (const mapping of relevantMappings) {
+            csvContent += `${mapping.employeePersonNumber},${mapping.appraiserPersonNumber},${mapping.appraiserType},"${mapping.evalGoalTypes}"\n`;
         }
         
-        downloadCSV(csvContent, `appraisers_${getCycleName(cycleFilter)}.csv`);
+        downloadCSV(csvContent, `selected_appraisers.csv`);
     };
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -467,8 +475,8 @@ function EmployeeDocumentsContent() {
         reader.onload = async (e) => {
             const content = e.target?.result as string;
             const lines = content.split('\n').filter(line => line.trim() !== '');
-            const header = lines[0].trim();
-            if (header !== "EmployeePersonNumber,PrimaryAppraiserPersonNumber,SecondaryAppraiserPersonNumber,PrimaryEvalGoalTypes,SecondaryEvalGoalTypes") {
+            const header = lines[0].trim().replace(/"/g, '');
+            if (header.toLowerCase() !== "employeepersonnumber,appraiserpersonnumber,appraisertype,evalgoaltypes") {
                 toast({ title: "Invalid CSV", description: "CSV header does not match the template.", variant: "destructive" });
                 return;
             }
@@ -476,19 +484,23 @@ function EmployeeDocumentsContent() {
             const rows = lines.slice(1);
             try {
                 const batch = writeBatch(firestore);
-                const empPersonNumbers = rows.map(row => row.split(',')[0].trim());
+                const employeePersonNumbersInCsv = [...new Set(rows.map(row => row.split(',')[0].trim()))];
                 
-                const existingMappingsQuery = query(collection(firestore, 'employee_appraiser_mappings'), where('performanceCycleId', '==', cycleFilter), where('employeePersonNumber', 'in', empPersonNumbers));
+                const existingMappingsQuery = query(collection(firestore, 'employee_appraiser_mappings'), where('performanceCycleId', '==', cycleFilter), where('employeePersonNumber', 'in', employeePersonNumbersInCsv));
                 const existingMappingsSnapshot = await getDocs(existingMappingsQuery);
                 existingMappingsSnapshot.forEach(doc => batch.delete(doc.ref));
 
                 rows.forEach(row => {
-                    const [emp, primary, secondary, primaryTypes, secondaryTypes] = row.split(',').map(v => v.trim());
-                    if (emp && primary) {
-                        batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), { employeePersonNumber: emp, performanceCycleId: cycleFilter, appraiserType: 'Primary', appraiserPersonNumber: primary, evalGoalTypes: primaryTypes || 'Work', isCompleted: false });
-                    }
-                    if (emp && secondary) {
-                        batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), { employeePersonNumber: emp, performanceCycleId: cycleFilter, appraiserType: 'Secondary', appraiserPersonNumber: secondary, evalGoalTypes: secondaryTypes || 'Home', isCompleted: false });
+                    const [emp, appraiser, type, types] = row.split(',').map(v => v.trim().replace(/"/g, ''));
+                    if (emp && appraiser && type) {
+                        batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), { 
+                            employeePersonNumber: emp, 
+                            performanceCycleId: cycleFilter, 
+                            appraiserType: type as 'Primary' | 'Secondary',
+                            appraiserPersonNumber: appraiser, 
+                            evalGoalTypes: types || '', 
+                            isCompleted: false 
+                        });
                     }
                 });
 
@@ -550,7 +562,10 @@ function EmployeeDocumentsContent() {
                 <Button onClick={() => handleBulkUpdateClick(table)} disabled={!hasSelection} size="sm">
                     <Users className="mr-2 h-4 w-4" /> Bulk Update Appraisers
                 </Button>
-                <Button onClick={() => setIsUploadDialogOpen(true)} size="sm" variant="outline">
+                <Button onClick={() => {
+                     setSelectedDocsForBulkUpdate(table.getFilteredSelectedRowModel().rows.map(r => r.original));
+                     setIsUploadDialogOpen(true);
+                }} size="sm" variant="outline">
                     <Upload className="mr-2 h-4 w-4" /> Upload Appraiser List
                 </Button>
             </div>
@@ -656,90 +671,135 @@ function EmployeeDocumentsContent() {
             )}
 
              <Dialog open={isManageAppraisersOpen} onOpenChange={setIsManageAppraisersOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-3xl">
                     <DialogHeader>
                         <DialogTitle className="font-headline">Manage Appraisers</DialogTitle>
                         <DialogDescription>
                             Modify the appraisers for {documentToManage ? getEmployeeName(documentToManage.employeeId) : ''}.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-                        {appraisersToManage.map(appraiser => (
-                            <div key={appraiser.id} className="p-4 border rounded-lg grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                                <div className="space-y-2 md:col-span-3">
-                                    <Label>Appraiser</Label>
-                                    <Combobox
-                                        options={appraiserOptions}
-                                        value={appraiser.appraiserPersonNumber}
-                                        onChange={(val) => handleAppraiserPersonChange(appraiser.id, val)}
-                                        placeholder="Select an appraiser..."
-                                        triggerClassName='w-full'
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                     <Label>Appraiser Type</Label>
-                                     <Select value={appraiser.appraiserType} onValueChange={(v: 'Primary' | 'Secondary') => handleAppraiserTypeChange(appraiser.id, v)}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Primary">Primary</SelectItem>
-                                            <SelectItem value="Secondary">Secondary</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label>Evaluation Goal Type(s)</Label>
-                                    <div className="flex items-center gap-4 pt-2">
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox
-                                                id={`work-goal-${appraiser.id}`}
-                                                checked={appraiser.evalGoalTypes.includes('Work')}
-                                                onCheckedChange={(checked) => {
-                                                    const currentTypes = appraiser.evalGoalTypes.split(',').filter(t => t);
-                                                    let newTypes;
-                                                    if (checked) {
-                                                        newTypes = [...new Set([...currentTypes, 'Work'])];
-                                                    } else {
-                                                        newTypes = currentTypes.filter(t => t !== 'Work');
-                                                    }
-                                                    handleAppraiserPropChange(appraiser.id, 'evalGoalTypes', newTypes.join(','));
-                                                }}
-                                            />
-                                            <Label htmlFor={`work-goal-${appraiser.id}`} className="font-normal">Work</Label>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox
-                                                id={`home-goal-${appraiser.id}`}
-                                                checked={appraiser.evalGoalTypes.includes('Home')}
-                                                onCheckedChange={(checked) => {
-                                                    const currentTypes = appraiser.evalGoalTypes.split(',').filter(t => t);
-                                                    let newTypes;
-                                                    if (checked) {
-                                                        newTypes = [...new Set([...currentTypes, 'Home'])];
-                                                    } else {
-                                                        newTypes = currentTypes.filter(t => t !== 'Home');
-                                                    }
-                                                    handleAppraiserPropChange(appraiser.id, 'evalGoalTypes', newTypes.join(','));
-                                                }}
-                                            />
-                                            <Label htmlFor={`home-goal-${appraiser.id}`} className="font-normal">Home</Label>
+                    <div className="space-y-6 py-4 max-h-[70vh] overflow-y-auto pr-4">
+                        {/* Primary Appraiser Section */}
+                        {primaryAppraiserToManage && (
+                             <Card>
+                                <CardHeader><CardTitle className="font-headline text-lg">Primary Appraiser</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                     <div className="space-y-2">
+                                        <Label>Appraiser</Label>
+                                        <Combobox
+                                            options={appraiserOptions}
+                                            value={primaryAppraiserToManage.appraiserPersonNumber || ''}
+                                            onChange={(val) => setPrimaryAppraiserToManage(p => p ? {...p, appraiserPersonNumber: val} : null)}
+                                            placeholder="Select an appraiser..."
+                                            triggerClassName='w-full'
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Evaluation Goal Type(s)</Label>
+                                        <div className="flex items-center gap-4 pt-2">
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id={`primary-work-goal`}
+                                                    checked={primaryAppraiserToManage.evalGoalTypes?.includes('Work')}
+                                                    onCheckedChange={(checked) => {
+                                                        const currentTypes = primaryAppraiserToManage.evalGoalTypes?.split(',').filter(t => t) || [];
+                                                        let newTypes;
+                                                        if (checked) {
+                                                            newTypes = [...new Set([...currentTypes, 'Work'])];
+                                                        } else {
+                                                            newTypes = currentTypes.filter(t => t !== 'Work');
+                                                        }
+                                                        setPrimaryAppraiserToManage(p => p ? {...p, evalGoalTypes: newTypes.join(',')} : null);
+                                                    }}
+                                                />
+                                                <Label htmlFor={`primary-work-goal`} className="font-normal">Work</Label>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id={`primary-home-goal`}
+                                                    checked={primaryAppraiserToManage.evalGoalTypes?.includes('Home')}
+                                                    onCheckedChange={(checked) => {
+                                                        const currentTypes = primaryAppraiserToManage.evalGoalTypes?.split(',').filter(t => t) || [];
+                                                        let newTypes;
+                                                        if (checked) {
+                                                            newTypes = [...new Set([...currentTypes, 'Home'])];
+                                                        } else {
+                                                            newTypes = currentTypes.filter(t => t !== 'Home');
+                                                        }
+                                                        setPrimaryAppraiserToManage(p => p ? {...p, evalGoalTypes: newTypes.join(',')} : null);
+                                                    }}
+                                                />
+                                                <Label htmlFor={`primary-home-goal`} className="font-normal">Home</Label>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <Button 
-                                        variant="destructive" 
-                                        onClick={() => handleDeleteAppraiser(appraiser.id)}
-                                        disabled={appraiser.appraiserType === 'Primary'}
-                                        className="w-full"
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
+                                </CardContent>
+                            </Card>
+                        )}
+                        
+                        {/* Secondary Appraisers Section */}
+                        <Card>
+                            <CardHeader className="flex-row items-center justify-between">
+                                <CardTitle className="font-headline text-lg">Secondary Appraisers</CardTitle>
+                                <Button size="sm" variant="outline" onClick={() => setSecondaryAppraisersToManage(s => [...s, { id: `new-${Date.now()}`, appraiserType: 'Secondary', employeePersonNumber: primaryAppraiserToManage?.employeePersonNumber, performanceCycleId: primaryAppraiserToManage?.performanceCycleId, isCompleted: false }])}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add Secondary
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {secondaryAppraisersToManage.length > 0 ? secondaryAppraisersToManage.map((appraiser, index) => (
+                                    <div key={appraiser.id} className="p-4 border rounded-lg space-y-4 relative">
+                                         <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive" onClick={() => setSecondaryAppraisersToManage(s => s.filter(a => a.id !== appraiser.id))}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                        <div className="space-y-2">
+                                            <Label>Appraiser #{index + 1}</Label>
+                                            <Combobox
+                                                options={appraiserOptions}
+                                                value={appraiser.appraiserPersonNumber || ''}
+                                                onChange={(val) => setSecondaryAppraisersToManage(s => s.map(a => a.id === appraiser.id ? {...a, appraiserPersonNumber: val} : a))}
+                                                placeholder="Select an appraiser..."
+                                                triggerClassName='w-full'
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Evaluation Goal Type(s)</Label>
+                                            <div className="flex items-center gap-4 pt-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Checkbox
+                                                        id={`secondary-work-goal-${appraiser.id}`}
+                                                        checked={appraiser.evalGoalTypes?.includes('Work')}
+                                                        onCheckedChange={(checked) => {
+                                                            const currentTypes = appraiser.evalGoalTypes?.split(',').filter(t => t) || [];
+                                                            let newTypes;
+                                                            if (checked) { newTypes = [...new Set([...currentTypes, 'Work'])]; } 
+                                                            else { newTypes = currentTypes.filter(t => t !== 'Work'); }
+                                                            setSecondaryAppraisersToManage(s => s.map(a => a.id === appraiser.id ? {...a, evalGoalTypes: newTypes.join(',')} : a));
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`secondary-work-goal-${appraiser.id}`} className="font-normal">Work</Label>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Checkbox
+                                                        id={`secondary-home-goal-${appraiser.id}`}
+                                                        checked={appraiser.evalGoalTypes?.includes('Home')}
+                                                        onCheckedChange={(checked) => {
+                                                            const currentTypes = appraiser.evalGoalTypes?.split(',').filter(t => t) || [];
+                                                            let newTypes;
+                                                            if (checked) { newTypes = [...new Set([...currentTypes, 'Home'])]; } 
+                                                            else { newTypes = currentTypes.filter(t => t !== 'Home'); }
+                                                            setSecondaryAppraisersToManage(s => s.map(a => a.id === appraiser.id ? {...a, evalGoalTypes: newTypes.join(',')} : a));
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`secondary-home-goal-${appraiser.id}`} className="font-normal">Home</Label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <p className="text-sm text-center text-muted-foreground py-4">No secondary appraisers assigned.</p>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsManageAppraisersOpen(false)}>Cancel</Button>
@@ -815,55 +875,62 @@ function EmployeeDocumentsContent() {
                         <Button variant="outline" onClick={() => setIsViewDetailsOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
-
-             <AlertDialog open={isPromoteConfirmOpen} onOpenChange={setIsPromoteConfirmOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Confirm Status Promotion</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            You are about to promote <span className="font-bold">{promotionDetails?.count}</span> document(s).
-                            <div className="mt-2 space-y-1 text-foreground">
-                                <p>From: <Badge variant="secondary">{promotionDetails?.currentStatus}</Badge></p>
-                                <p>To: <Badge>{promotionDetails?.nextStatus}</Badge></p>
-                            </div>
-                            Are you sure you want to proceed?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => executePromotion(null!)}>Promote</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
             </AlertDialog>
             
              <Dialog open={isBulkUpdateOpen} onOpenChange={setIsBulkUpdateOpen}>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Bulk Update Appraisers</DialogTitle>
                         <DialogDescription>
-                            Apply new appraisers to the <span className="font-bold">{selectedDocsForBulkUpdate.length}</span> selected document(s). This will replace all existing appraisers.
+                            Apply new appraisers to the <span className="font-bold">{selectedDocsForBulkUpdate.length}</span> selected document(s). This will replace all existing appraisers for these employees in this cycle.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 space-y-4">
-                        {/* Primary Appraiser */}
-                        <div className="space-y-2">
-                             <Label>Primary Appraiser</Label>
-                             <Combobox options={appraiserOptions} value={bulkPrimaryAppraiser} onChange={setBulkPrimaryAppraiser} placeholder="Select Primary Appraiser" triggerClassName="w-full" />
-                             <div className="flex items-center gap-4 pl-1">
-                                <div className="flex items-center gap-2"><Checkbox id="bulk-p-work" checked={bulkPrimaryEvalTypes.includes('Work')} onCheckedChange={(c) => setBulkPrimaryEvalTypes(c ? [...bulkPrimaryEvalTypes, 'Work'] : bulkPrimaryEvalTypes.filter(t => t !== 'Work'))} /><Label htmlFor="bulk-p-work">Work</Label></div>
-                                <div className="flex items-center gap-2"><Checkbox id="bulk-p-home" checked={bulkPrimaryEvalTypes.includes('Home')} onCheckedChange={(c) => setBulkPrimaryEvalTypes(c ? [...bulkPrimaryEvalTypes, 'Home'] : bulkPrimaryEvalTypes.filter(t => t !== 'Home'))} /><Label htmlFor="bulk-p-home">Home</Label></div>
-                             </div>
-                        </div>
-                        {/* Secondary Appraiser */}
-                        <div className="space-y-2">
-                             <Label>Secondary Appraiser</Label>
-                             <Combobox options={appraiserOptions} value={bulkSecondaryAppraiser} onChange={setBulkSecondaryAppraiser} placeholder="Select Secondary Appraiser" triggerClassName="w-full" />
-                             <div className="flex items-center gap-4 pl-1">
-                                <div className="flex items-center gap-2"><Checkbox id="bulk-s-work" checked={bulkSecondaryEvalTypes.includes('Work')} onCheckedChange={(c) => setBulkSecondaryEvalTypes(c ? [...bulkSecondaryEvalTypes, 'Work'] : bulkSecondaryEvalTypes.filter(t => t !== 'Work'))} /><Label htmlFor="bulk-s-work">Work</Label></div>
-                                <div className="flex items-center gap-2"><Checkbox id="bulk-s-home" checked={bulkSecondaryEvalTypes.includes('Home')} onCheckedChange={(c) => setBulkSecondaryEvalTypes(c ? [...bulkSecondaryEvalTypes, 'Home'] : bulkSecondaryEvalTypes.filter(t => t !== 'Home'))} /><Label htmlFor="bulk-s-home">Home</Label></div>
-                             </div>
-                        </div>
+                    <div className="py-4 space-y-6 max-h-[70vh] overflow-y-auto pr-4">
+                        <Card>
+                            <CardHeader><CardTitle className="font-headline text-lg">Primary Appraiser</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Appraiser</Label>
+                                    <Combobox options={appraiserOptions} value={bulkPrimaryAppraiser} onChange={setBulkPrimaryAppraiser} placeholder="Select Primary Appraiser" triggerClassName="w-full" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Evaluation Goal Type(s)</Label>
+                                    <div className="flex items-center gap-4 pl-1">
+                                        <div className="flex items-center gap-2"><Checkbox id="bulk-p-work" checked={bulkPrimaryEvalTypes.includes('Work')} onCheckedChange={(c) => setBulkPrimaryEvalTypes(c ? [...bulkPrimaryEvalTypes, 'Work'] : bulkPrimaryEvalTypes.filter(t => t !== 'Work'))} /><Label htmlFor="bulk-p-work" className="font-normal">Work</Label></div>
+                                        <div className="flex items-center gap-2"><Checkbox id="bulk-p-home" checked={bulkPrimaryEvalTypes.includes('Home')} onCheckedChange={(c) => setBulkPrimaryEvalTypes(c ? [...bulkPrimaryEvalTypes, 'Home'] : bulkPrimaryEvalTypes.filter(t => t !== 'Home'))} /><Label htmlFor="bulk-p-home" className="font-normal">Home</Label></div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex-row items-center justify-between">
+                                <CardTitle className="font-headline text-lg">Secondary Appraisers</CardTitle>
+                                <Button size="sm" variant="outline" onClick={() => setBulkSecondaryAppraisers(s => [...s, { id: `new-${Date.now()}`, personNumber: '', evalGoalTypes: [] }])}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Add
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {bulkSecondaryAppraisers.map((secondary, index) => (
+                                    <div key={secondary.id} className="p-4 border rounded-lg space-y-4 relative">
+                                        <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive" onClick={() => setBulkSecondaryAppraisers(s => s.filter(a => a.id !== secondary.id))}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                         <div className="space-y-2">
+                                            <Label>Appraiser #{index + 1}</Label>
+                                            <Combobox options={appraiserOptions} value={secondary.personNumber} onChange={(val) => setBulkSecondaryAppraisers(s => s.map(a => a.id === secondary.id ? { ...a, personNumber: val } : a))} placeholder="Select Secondary Appraiser" triggerClassName="w-full" />
+                                         </div>
+                                         <div className="space-y-2">
+                                            <Label>Evaluation Goal Type(s)</Label>
+                                            <div className="flex items-center gap-4 pl-1">
+                                                <div className="flex items-center gap-2"><Checkbox id={`bulk-s-work-${secondary.id}`} checked={secondary.evalGoalTypes.includes('Work')} onCheckedChange={(c) => setBulkSecondaryAppraisers(s => s.map(a => a.id === secondary.id ? { ...a, evalGoalTypes: c ? [...a.evalGoalTypes, 'Work'] : a.evalGoalTypes.filter(t => t !== 'Work') } : a))} /><Label htmlFor={`bulk-s-work-${secondary.id}`} className="font-normal">Work</Label></div>
+                                                <div className="flex items-center gap-2"><Checkbox id={`bulk-s-home-${secondary.id}`} checked={secondary.evalGoalTypes.includes('Home')} onCheckedChange={(c) => setBulkSecondaryAppraisers(s => s.map(a => a.id === secondary.id ? { ...a, evalGoalTypes: c ? [...a.evalGoalTypes, 'Home'] : a.evalGoalTypes.filter(t => t !== 'Home') } : a))} /><Label htmlFor={`bulk-s-home-${secondary.id}`} className="font-normal">Home</Label></div>
+                                            </div>
+                                         </div>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsBulkUpdateOpen(false)}>Cancel</Button>
@@ -882,7 +949,7 @@ function EmployeeDocumentsContent() {
                     </DialogHeader>
                     <div className="py-4 space-y-4">
                         <Button onClick={handleDownloadTemplate} variant="outline" className="w-full justify-start"><Download className="mr-2" /> Download CSV Template</Button>
-                        <Button onClick={handleDownloadExisting} variant="outline" className="w-full justify-start" disabled={!cycleFilter}><Download className="mr-2" /> Download Existing Appraisers for "{cycleFilter ? getCycleName(cycleFilter) : ''}"</Button>
+                        <Button onClick={handleDownloadSelected} variant="outline" className="w-full justify-start" disabled={selectedDocsForBulkUpdate.length === 0}><Download className="mr-2" /> Download Selected Appraisers ({selectedDocsForBulkUpdate.length})</Button>
                         <div>
                             <Label htmlFor="csv-upload" className={!cycleFilter ? 'text-muted-foreground' : ''}>Upload CSV</Label>
                             <Input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} disabled={!cycleFilter} />
