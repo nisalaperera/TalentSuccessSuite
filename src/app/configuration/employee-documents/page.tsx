@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, Suspense, useCallback, useEffect } from 'react';
+import { useState, useMemo, Suspense, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
@@ -30,6 +30,7 @@ function EmployeeDocumentsContent() {
     const searchParams = useSearchParams();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const tableRef = useRef<TanstackTable<EmployeePerformanceDocument> | null>(null);
 
     // Dialog states
     const [isManageAppraisersOpen, setIsManageAppraisersOpen] = useState(false);
@@ -327,8 +328,9 @@ function EmployeeDocumentsContent() {
         setIsPromoteConfirmOpen(true);
     };
     
-    const executePromotion = async (table: TanstackTable<EmployeePerformanceDocument>) => {
-        if (!promotionDetails) return;
+    const executePromotion = async () => {
+        if (!promotionDetails || !tableRef.current) return;
+        const table = tableRef.current;
         
         try {
             const batch = writeBatch(firestore);
@@ -581,6 +583,7 @@ function EmployeeDocumentsContent() {
     const hasActiveFilters = cycleFilter || employeeFilter || statusFilter || primaryAppraiserFilter || secondaryAppraiserFilter;
     
     const toolbarActions = (table: TanstackTable<EmployeePerformanceDocument>) => {
+        tableRef.current = table;
         const hasSelection = table.getFilteredSelectedRowModel().rows.length > 0;
         return (
             <div className="flex items-center gap-2">
@@ -916,7 +919,7 @@ function EmployeeDocumentsContent() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => setPromotionDetails(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => executePromotion(table)}>Promote</AlertDialogAction>
+                            <AlertDialogAction onClick={executePromotion}>Promote</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -1018,3 +1021,5 @@ export default function EmployeeDocumentsPage() {
         </Suspense>
     )
 }
+
+    
