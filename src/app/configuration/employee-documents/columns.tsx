@@ -64,7 +64,6 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
         accessorKey: 'status',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
-            const doc = row.original;
             const status = row.getValue('status') as string;
             
             let variant: "default" | "secondary" | "destructive" | "outline" | null | undefined;
@@ -80,15 +79,7 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
                     variant = 'outline';
             }
             
-            return (
-                <div className="flex items-center gap-2">
-                    <Badge variant={variant}>{status}</Badge>
-                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onViewDetails(doc)}>
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">View Details</span>
-                    </Button>
-                </div>
-            );
+            return <Badge variant={variant}>{status}</Badge>;
         }
     },
     {
@@ -97,9 +88,13 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
             const doc = row.original;
 
             return (
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-end gap-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onViewDetails(doc)}>
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">View Details</span>
+                    </Button>
                     {doc.status === 'Worker Self-Evaluation' && (
-                        <Button variant="ghost" size="icon" onClick={() => onManageAppraisers(doc)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onManageAppraisers(doc)}>
                             <UserCog className="h-4 w-4" />
                             <span className="sr-only">Manage Appraisers</span>
                         </Button>
