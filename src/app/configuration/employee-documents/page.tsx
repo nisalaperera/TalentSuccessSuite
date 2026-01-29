@@ -7,17 +7,18 @@ import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, where, writeBatch, doc, getDocs } from 'firebase/firestore';
 import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping, EvaluationFlow, PerformanceDocument } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { X, ArrowUpWideNarrow, Trash2 } from 'lucide-react';
+import { X, ArrowUpWideNarrow, Trash2, Users, Upload, Download } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EVALUATION_FLOW_PROCESS_PHASES } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import type { Table as TanstackTable } from '@tanstack/react-table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -30,12 +31,27 @@ function EmployeeDocumentsContent() {
     const firestore = useFirestore();
     const { toast } = useToast();
 
+    // Dialog states
     const [isManageAppraisersOpen, setIsManageAppraisersOpen] = useState(false);
     const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
+    const [isPromoteConfirmOpen, setIsPromoteConfirmOpen] = useState(false);
+    const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+    const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+
+    // Data for dialogs
     const [documentToManage, setDocumentToManage] = useState<EmployeePerformanceDocument | null>(null);
     const [documentToView, setDocumentToView] = useState<EmployeePerformanceDocument | null>(null);
     const [appraisersToManage, setAppraisersToManage] = useState<AppraiserMapping[]>([]);
     const [originalAppraisers, setOriginalAppraisers] = useState<AppraiserMapping[]>([]);
+    const [promotionDetails, setPromotionDetails] = useState<{ count: number; currentStatus: string; nextStatus: string; docsToUpdate: EmployeePerformanceDocument[]; } | null>(null);
+    
+    // Bulk appraiser form state
+    const [bulkPrimaryAppraiser, setBulkPrimaryAppraiser] = useState('');
+    const [bulkSecondaryAppraiser, setBulkSecondaryAppraiser] = useState('');
+    const [bulkPrimaryEvalTypes, setBulkPrimaryEvalTypes] = useState<string[]>([]);
+    const [bulkSecondaryEvalTypes, setBulkSecondaryEvalTypes] = useState<string[]>([]);
+    const [selectedDocsForBulkUpdate, setSelectedDocsForBulkUpdate] = useState<EmployeePerformanceDocument[]>([]);
+
 
     const employeeDocumentsQuery = useMemoFirebase(() => collection(firestore, 'employee_performance_documents'), [firestore]);
     const { data: employeeDocuments } = useCollection<EmployeePerformanceDocument>(employeeDocumentsQuery);
@@ -109,6 +125,14 @@ function EmployeeDocumentsContent() {
         return employees.map(emp => ({
             value: emp.id,
             label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
+        }));
+    }, [employees]);
+    
+    const appraiserOptions = useMemo(() => {
+        if (!employees) return [];
+        return employees.map(emp => ({
+            value: emp.personNumber,
+            label: `${emp.firstName} ${emp.lastName} | ${emp.personNumber}`
         }));
     }, [employees]);
 
@@ -246,6 +270,238 @@ function EmployeeDocumentsContent() {
             toast({ title: 'Error', description: 'Failed to update appraisers.', variant: 'destructive' });
         }
     };
+    
+    // --- Bulk Action Handlers ---
+
+    const handlePromoteClick = (table: TanstackTable<EmployeePerformanceDocument>) => {
+        const selectedDocs = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+        
+        const firstDoc = selectedDocs[0];
+        const currentStatus = firstDoc.status;
+        const currentCycleId = firstDoc.performanceCycleId;
+
+        if (!selectedDocs.every(doc => doc.status === currentStatus && doc.performanceCycleId === currentCycleId)) {
+            toast({ title: "Inconsistent Selection", description: "All selected documents must have the same status and performance cycle.", variant: "destructive" });
+            return;
+        }
+
+        const flow = evaluationFlows?.find(f => f.id === firstDoc.evaluationFlowId);
+        if (!flow) {
+            toast({ title: "Workflow Error", description: "Could not find the evaluation flow.", variant: "destructive" });
+            return;
+        }
+        
+        const sortedSteps = [...flow.steps].sort((a,b) => a.sequence - b.sequence);
+        const currentStep = sortedSteps.find(step => step.task === currentStatus);
+        if (!currentStep) {
+            toast({ title: "Workflow Error", description: "Could not determine current workflow step.", variant: "destructive" });
+            return;
+        }
+
+        let nextSequence = Infinity;
+        for (const step of sortedSteps) {
+            if (step.sequence > currentStep.sequence) {
+                nextSequence = step.sequence;
+                break;
+            }
+        }
+        
+        if (nextSequence === Infinity) {
+            toast({ title: "Workflow End", description: "Documents are already at the final step.", variant: "destructive" });
+            return;
+        }
+        const nextStep = sortedSteps.find(step => step.sequence === nextSequence);
+        if (!nextStep) {
+            toast({ title: "Workflow Error", description: "Could not determine the next step.", variant: "destructive" });
+            return;
+        }
+
+        setPromotionDetails({
+            count: selectedDocs.length,
+            currentStatus,
+            nextStatus: nextStep.task,
+            docsToUpdate: selectedDocs
+        });
+        setIsPromoteConfirmOpen(true);
+    };
+    
+    const executePromotion = async (table: TanstackTable<EmployeePerformanceDocument>) => {
+        if (!promotionDetails) return;
+        
+        try {
+            const batch = writeBatch(firestore);
+            promotionDetails.docsToUpdate.forEach(docToUpdate => {
+                const docRef = doc(firestore, 'employee_performance_documents', docToUpdate.id);
+                batch.update(docRef, { status: promotionDetails.nextStatus });
+            });
+            await batch.commit();
+
+            toast({ title: "Success", description: `${promotionDetails.count} document(s) promoted to "${promotionDetails.nextStatus}".`});
+            table.resetRowSelection();
+        } catch (error) {
+            console.error("Error promoting documents:", error);
+            toast({ title: "Update Failed", description: "An error occurred while updating statuses.", variant: "destructive" });
+        } finally {
+            setIsPromoteConfirmOpen(false);
+            setPromotionDetails(null);
+        }
+    };
+    
+    const handleBulkUpdateClick = (table: TanstackTable<EmployeePerformanceDocument>) => {
+        setSelectedDocsForBulkUpdate(table.getFilteredSelectedRowModel().rows.map(r => r.original));
+        setBulkPrimaryAppraiser('');
+        setBulkSecondaryAppraiser('');
+        setBulkPrimaryEvalTypes([]);
+        setBulkSecondaryEvalTypes([]);
+        setIsBulkUpdateOpen(true);
+    };
+
+    const executeBulkAppraiserUpdate = async () => {
+        if (selectedDocsForBulkUpdate.length === 0) return;
+        if (!bulkPrimaryAppraiser && !bulkSecondaryAppraiser) {
+            toast({ title: "Input Required", description: "Please select at least one appraiser to apply.", variant: "destructive"});
+            return;
+        }
+        if (bulkPrimaryAppraiser && bulkPrimaryAppraiser === bulkSecondaryAppraiser) {
+            toast({ title: "Validation Error", description: "Primary and Secondary appraisers cannot be the same person.", variant: "destructive" });
+            return;
+        }
+
+        try {
+            const batch = writeBatch(firestore);
+            const cycleId = selectedDocsForBulkUpdate[0].performanceCycleId;
+            const employeePersonNumbers = selectedDocsForBulkUpdate.map(doc => employees?.find(e => e.id === doc.employeeId)?.personNumber).filter(Boolean) as string[];
+
+            const mappingsQuery = query(collection(firestore, 'employee_appraiser_mappings'), where('performanceCycleId', '==', cycleId), where('employeePersonNumber', 'in', employeePersonNumbers));
+            const existingMappingsSnapshot = await getDocs(mappingsQuery);
+            existingMappingsSnapshot.forEach(doc => batch.delete(doc.ref));
+
+            for (const personNumber of employeePersonNumbers) {
+                if (bulkPrimaryAppraiser) {
+                    batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), {
+                        employeePersonNumber: personNumber,
+                        performanceCycleId: cycleId,
+                        appraiserType: 'Primary',
+                        appraiserPersonNumber: bulkPrimaryAppraiser,
+                        evalGoalTypes: bulkPrimaryEvalTypes.join(','),
+                        isCompleted: false
+                    });
+                }
+                if (bulkSecondaryAppraiser) {
+                     batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), {
+                        employeePersonNumber: personNumber,
+                        performanceCycleId: cycleId,
+                        appraiserType: 'Secondary',
+                        appraiserPersonNumber: bulkSecondaryAppraiser,
+                        evalGoalTypes: bulkSecondaryEvalTypes.join(','),
+                        isCompleted: false
+                    });
+                }
+            }
+
+            await batch.commit();
+            toast({ title: "Success", description: `Appraisers updated for ${selectedDocsForBulkUpdate.length} document(s).`});
+            setIsBulkUpdateOpen(false);
+
+        } catch (error) {
+            console.error("Error bulk updating appraisers:", error);
+            toast({ title: "Bulk Update Failed", description: "An error occurred.", variant: "destructive" });
+        }
+    };
+    
+    // --- CSV Handlers ---
+    const downloadCSV = (content: string, fileName: string) => {
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleDownloadTemplate = () => {
+        const header = "EmployeePersonNumber,PrimaryAppraiserPersonNumber,SecondaryAppraiserPersonNumber,PrimaryEvalGoalTypes,SecondaryEvalGoalTypes\n";
+        downloadCSV(header, 'appraiser_template.csv');
+    };
+
+    const handleDownloadExisting = async () => {
+        if (!cycleFilter) {
+            toast({ title: "Cycle Required", description: "Please select a performance cycle to download its appraiser data.", variant: "destructive" });
+            return;
+        }
+        
+        const cycleMappingsQuery = query(collection(firestore, 'employee_appraiser_mappings'), where('performanceCycleId', '==', cycleFilter));
+        const snapshot = await getDocs(cycleMappingsQuery);
+
+        const mappingsByEmployee: Record<string, Partial<Record<'Primary' | 'Secondary', AppraiserMapping>>> = {};
+
+        snapshot.forEach(doc => {
+            const data = doc.data() as AppraiserMapping;
+            if (!mappingsByEmployee[data.employeePersonNumber]) {
+                mappingsByEmployee[data.employeePersonNumber] = {};
+            }
+            mappingsByEmployee[data.employeePersonNumber][data.appraiserType] = data;
+        });
+
+        let csvContent = "EmployeePersonNumber,PrimaryAppraiserPersonNumber,SecondaryAppraiserPersonNumber,PrimaryEvalGoalTypes,SecondaryEvalGoalTypes\n";
+        for (const empNum in mappingsByEmployee) {
+            const primary = mappingsByEmployee[empNum].Primary;
+            const secondary = mappingsByEmployee[empNum].Secondary;
+            csvContent += `${empNum},${primary?.appraiserPersonNumber || ''},${secondary?.appraiserPersonNumber || ''},${primary?.evalGoalTypes || ''},${secondary?.evalGoalTypes || ''}\n`;
+        }
+        
+        downloadCSV(csvContent, `appraisers_${getCycleName(cycleFilter)}.csv`);
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !cycleFilter) {
+            toast({ title: "File or Cycle Missing", description: "Please select a file and ensure a cycle is filtered.", variant: 'destructive' });
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const content = e.target?.result as string;
+            const lines = content.split('\n').filter(line => line.trim() !== '');
+            const header = lines[0].trim();
+            if (header !== "EmployeePersonNumber,PrimaryAppraiserPersonNumber,SecondaryAppraiserPersonNumber,PrimaryEvalGoalTypes,SecondaryEvalGoalTypes") {
+                toast({ title: "Invalid CSV", description: "CSV header does not match the template.", variant: "destructive" });
+                return;
+            }
+
+            const rows = lines.slice(1);
+            try {
+                const batch = writeBatch(firestore);
+                const empPersonNumbers = rows.map(row => row.split(',')[0].trim());
+                
+                const existingMappingsQuery = query(collection(firestore, 'employee_appraiser_mappings'), where('performanceCycleId', '==', cycleFilter), where('employeePersonNumber', 'in', empPersonNumbers));
+                const existingMappingsSnapshot = await getDocs(existingMappingsQuery);
+                existingMappingsSnapshot.forEach(doc => batch.delete(doc.ref));
+
+                rows.forEach(row => {
+                    const [emp, primary, secondary, primaryTypes, secondaryTypes] = row.split(',').map(v => v.trim());
+                    if (emp && primary) {
+                        batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), { employeePersonNumber: emp, performanceCycleId: cycleFilter, appraiserType: 'Primary', appraiserPersonNumber: primary, evalGoalTypes: primaryTypes || 'Work', isCompleted: false });
+                    }
+                    if (emp && secondary) {
+                        batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), { employeePersonNumber: emp, performanceCycleId: cycleFilter, appraiserType: 'Secondary', appraiserPersonNumber: secondary, evalGoalTypes: secondaryTypes || 'Home', isCompleted: false });
+                    }
+                });
+
+                await batch.commit();
+                toast({ title: 'Upload Successful', description: `Processed ${rows.length} records.`});
+                setIsUploadDialogOpen(false);
+            } catch (error) {
+                console.error(error);
+                toast({ title: 'Upload Failed', description: 'An error occurred during the upload process.', variant: 'destructive'});
+            }
+        };
+        reader.readAsText(file);
+    };
 
     const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers: handleManageAppraisers, onViewDetails: handleViewDetails }), [getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, handleManageAppraisers, handleViewDetails]);
 
@@ -284,99 +540,23 @@ function EmployeeDocumentsContent() {
     
     const hasActiveFilters = cycleFilter || employeeFilter || statusFilter || primaryAppraiserFilter || secondaryAppraiserFilter;
     
-    const handlePromoteStatus = async (table: TanstackTable<EmployeePerformanceDocument>) => {
-        const selectedRows = table.getFilteredSelectedRowModel().rows;
-        if (selectedRows.length === 0) {
-            toast({ title: "No documents selected", description: "Please select documents to promote.", variant: "destructive" });
-            return;
-        }
-
-        const selectedDocs = selectedRows.map(row => row.original);
-        const firstDoc = selectedDocs[0];
-        const currentStatus = firstDoc.status;
-        const currentCycleId = firstDoc.performanceCycleId;
-
-        const allSameStatusAndCycle = selectedDocs.every(
-            doc => doc.status === currentStatus && doc.performanceCycleId === currentCycleId
-        );
-
-        if (!allSameStatusAndCycle) {
-            toast({ title: "Inconsistent Selection", description: "All selected documents must have the same status and performance cycle.", variant: "destructive" });
-            return;
-        }
-
-        const flow = evaluationFlows?.find(f => f.id === firstDoc.evaluationFlowId);
-        if (!flow) {
-            toast({ title: "Workflow Error", description: "Could not find the evaluation flow for the selected documents.", variant: "destructive" });
-            return;
-        }
-        
-        const sortedSteps = [...flow.steps].sort((a,b) => a.sequence - b.sequence);
-        const currentStep = sortedSteps.find(step => step.task === currentStatus);
-
-        if (!currentStep) {
-            toast({ title: "Workflow Error", description: "Could not determine current workflow step.", variant: "destructive" });
-            return;
-        }
-        
-        // Find the next sequential step number
-        let nextSequence = Infinity;
-        for (const step of sortedSteps) {
-            if (step.sequence > currentStep.sequence) {
-                nextSequence = step.sequence;
-                break;
-            }
-        }
-
-        if (nextSequence === Infinity) {
-            toast({ title: "Workflow End", description: "The selected documents are already at the final step of the workflow.", variant: "destructive" });
-            return;
-        }
-
-        const nextStep = sortedSteps.find(step => step.sequence === nextSequence);
-        
-        if (!nextStep) {
-             toast({ title: "Workflow Error", description: "Could not determine the next step in the workflow.", variant: "destructive" });
-            return;
-        }
-        
-        const nextStatus = nextStep.task;
-
-        try {
-            const batch = writeBatch(firestore);
-            selectedDocs.forEach(docToUpdate => {
-                const docRef = doc(firestore, 'employee_performance_documents', docToUpdate.id);
-                batch.update(docRef, { status: nextStatus });
-            });
-            await batch.commit();
-
-            toast({ title: "Success", description: `${selectedDocs.length} document(s) have been promoted to "${nextStatus}".`});
-            table.resetRowSelection();
-        } catch (error) {
-            console.error("Error promoting documents:", error);
-            toast({ title: "Update Failed", description: "An error occurred while updating the document statuses.", variant: "destructive" });
-        }
+    const toolbarActions = (table: TanstackTable<EmployeePerformanceDocument>) => {
+        const hasSelection = table.getFilteredSelectedRowModel().rows.length > 0;
+        return (
+            <div className="flex items-center gap-2">
+                <Button onClick={() => handlePromoteClick(table)} disabled={!hasSelection} size="sm">
+                    <ArrowUpWideNarrow className="mr-2 h-4 w-4" /> Promote Status
+                </Button>
+                <Button onClick={() => handleBulkUpdateClick(table)} disabled={!hasSelection} size="sm">
+                    <Users className="mr-2 h-4 w-4" /> Bulk Update Appraisers
+                </Button>
+                <Button onClick={() => setIsUploadDialogOpen(true)} size="sm" variant="outline">
+                    <Upload className="mr-2 h-4 w-4" /> Upload Appraiser List
+                </Button>
+            </div>
+        )
     };
     
-    const toolbarActions = (table: TanstackTable<EmployeePerformanceDocument>) => (
-        <Button
-            onClick={() => handlePromoteStatus(table)}
-            disabled={table.getFilteredSelectedRowModel().rows.length === 0}
-            size="sm"
-        >
-            <ArrowUpWideNarrow className="mr-2 h-4 w-4" />
-            Promote Status
-        </Button>
-    );
-
-    const appraiserOptions = useMemo(() => {
-        if (!employees) return [];
-        return employees.map(emp => ({
-            value: emp.personNumber,
-            label: `${emp.firstName} ${emp.lastName} | ${emp.personNumber}`
-        }));
-    }, [employees]);
-
     const viewedEmployee = useMemo(() => {
         if (!documentToView || !employees) return null;
         return employees.find(e => e.id === documentToView.employeeId);
@@ -633,6 +813,84 @@ function EmployeeDocumentsContent() {
                     )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsViewDetailsOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+             <AlertDialog open={isPromoteConfirmOpen} onOpenChange={setIsPromoteConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Status Promotion</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You are about to promote <span className="font-bold">{promotionDetails?.count}</span> document(s).
+                            <div className="mt-2 space-y-1 text-foreground">
+                                <p>From: <Badge variant="secondary">{promotionDetails?.currentStatus}</Badge></p>
+                                <p>To: <Badge>{promotionDetails?.nextStatus}</Badge></p>
+                            </div>
+                            Are you sure you want to proceed?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => executePromotion(null!)}>Promote</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            
+             <Dialog open={isBulkUpdateOpen} onOpenChange={setIsBulkUpdateOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Bulk Update Appraisers</DialogTitle>
+                        <DialogDescription>
+                            Apply new appraisers to the <span className="font-bold">{selectedDocsForBulkUpdate.length}</span> selected document(s). This will replace all existing appraisers.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        {/* Primary Appraiser */}
+                        <div className="space-y-2">
+                             <Label>Primary Appraiser</Label>
+                             <Combobox options={appraiserOptions} value={bulkPrimaryAppraiser} onChange={setBulkPrimaryAppraiser} placeholder="Select Primary Appraiser" triggerClassName="w-full" />
+                             <div className="flex items-center gap-4 pl-1">
+                                <div className="flex items-center gap-2"><Checkbox id="bulk-p-work" checked={bulkPrimaryEvalTypes.includes('Work')} onCheckedChange={(c) => setBulkPrimaryEvalTypes(c ? [...bulkPrimaryEvalTypes, 'Work'] : bulkPrimaryEvalTypes.filter(t => t !== 'Work'))} /><Label htmlFor="bulk-p-work">Work</Label></div>
+                                <div className="flex items-center gap-2"><Checkbox id="bulk-p-home" checked={bulkPrimaryEvalTypes.includes('Home')} onCheckedChange={(c) => setBulkPrimaryEvalTypes(c ? [...bulkPrimaryEvalTypes, 'Home'] : bulkPrimaryEvalTypes.filter(t => t !== 'Home'))} /><Label htmlFor="bulk-p-home">Home</Label></div>
+                             </div>
+                        </div>
+                        {/* Secondary Appraiser */}
+                        <div className="space-y-2">
+                             <Label>Secondary Appraiser</Label>
+                             <Combobox options={appraiserOptions} value={bulkSecondaryAppraiser} onChange={setBulkSecondaryAppraiser} placeholder="Select Secondary Appraiser" triggerClassName="w-full" />
+                             <div className="flex items-center gap-4 pl-1">
+                                <div className="flex items-center gap-2"><Checkbox id="bulk-s-work" checked={bulkSecondaryEvalTypes.includes('Work')} onCheckedChange={(c) => setBulkSecondaryEvalTypes(c ? [...bulkSecondaryEvalTypes, 'Work'] : bulkSecondaryEvalTypes.filter(t => t !== 'Work'))} /><Label htmlFor="bulk-s-work">Work</Label></div>
+                                <div className="flex items-center gap-2"><Checkbox id="bulk-s-home" checked={bulkSecondaryEvalTypes.includes('Home')} onCheckedChange={(c) => setBulkSecondaryEvalTypes(c ? [...bulkSecondaryEvalTypes, 'Home'] : bulkSecondaryEvalTypes.filter(t => t !== 'Home'))} /><Label htmlFor="bulk-s-home">Home</Label></div>
+                             </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsBulkUpdateOpen(false)}>Cancel</Button>
+                        <Button onClick={executeBulkAppraiserUpdate}>Apply to All</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Upload Appraiser List</DialogTitle>
+                        <DialogDescription>
+                            Download a template or existing data, then upload a CSV to bulk-update appraiser mappings for the currently selected performance cycle.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <Button onClick={handleDownloadTemplate} variant="outline" className="w-full justify-start"><Download className="mr-2" /> Download CSV Template</Button>
+                        <Button onClick={handleDownloadExisting} variant="outline" className="w-full justify-start" disabled={!cycleFilter}><Download className="mr-2" /> Download Existing Appraisers for "{cycleFilter ? getCycleName(cycleFilter) : ''}"</Button>
+                        <div>
+                            <Label htmlFor="csv-upload" className={!cycleFilter ? 'text-muted-foreground' : ''}>Upload CSV</Label>
+                            <Input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} disabled={!cycleFilter} />
+                            {!cycleFilter && <p className="text-xs text-muted-foreground mt-1">Please select a Performance Cycle filter before uploading.</p>}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                         <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
