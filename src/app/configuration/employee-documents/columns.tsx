@@ -5,11 +5,8 @@ import { ColumnDef } from '@tanstack/react-table';
 import type { EmployeePerformanceDocument, AppraiserMapping } from '@/lib/types';
 import { DataTableColumnHeader } from '@/app/components/data-table/data-table-column-header';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Eye, UserCog } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
 
 
@@ -69,7 +66,6 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
         cell: ({ row }) => {
             const doc = row.original;
             const status = row.getValue('status') as string;
-            const appraisers = getAppraisersForDocument(doc);
             
             let variant: "default" | "secondary" | "destructive" | "outline" | null | undefined;
 
@@ -87,52 +83,10 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
             return (
                 <div className="flex items-center gap-2">
                     <Badge variant={variant}>{status}</Badge>
-                     {appraisers && appraisers.length > 0 && (
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6">
-                                    <Eye className="h-4 w-4" />
-                                    <span className="sr-only">View Appraisers</span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto">
-                                <div className="grid gap-4">
-                                    <div className="space-y-2">
-                                        <h4 className="font-medium leading-none">Appraiser List</h4>
-                                        <p className="text-sm text-muted-foreground">
-                                            Appraisers for this document.
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Appraiser</TableHead>
-                                                    <TableHead>Type</TableHead>
-                                                    <TableHead>Eval Types</TableHead>
-                                                    <TableHead>Status</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {appraisers.map(appraiser => (
-                                                    <TableRow key={appraiser.id}>
-                                                        <TableCell>{getEmployeeNameByPersonNumber(appraiser.appraiserPersonNumber)}</TableCell>
-                                                        <TableCell>{appraiser.appraiserType}</TableCell>
-                                                        <TableCell>{appraiser.evalGoalTypes}</TableCell>
-                                                        <TableCell>
-                                                            <Badge variant={appraiser.isCompleted ? 'default' : 'secondary'}>
-                                                                {appraiser.isCompleted ? 'Completed' : 'Pending'}
-                                                            </Badge>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                    )}
+                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onViewDetails(doc)}>
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">View Details</span>
+                    </Button>
                 </div>
             );
         }
@@ -141,13 +95,7 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
         id: 'actions',
         cell: ({ row }) => {
             const doc = row.original;
-            const customActions = [
-                {
-                    label: "View Details",
-                    icon: <Eye className="mr-2 h-3.5 w-3.5" />,
-                    onClick: onViewDetails,
-                }
-            ];
+            const customActions = [];
             if (doc.status === 'Worker Self-Evaluation') {
                 customActions.push({
                     label: "Manage Appraisers",
@@ -167,3 +115,4 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
         },
     },
 ];
+
