@@ -20,9 +20,10 @@ type ColumnsConfig = {
     getAppraisersForDocument: (doc: EmployeePerformanceDocument) => AppraiserMapping[];
     getEmployeeNameByPersonNumber: (personNumber: string) => string;
     onManageAppraisers: (doc: EmployeePerformanceDocument) => void;
+    onViewDetails: (doc: EmployeePerformanceDocument) => void;
 }
 
-export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers }: ColumnsConfig): ColumnDef<EmployeePerformanceDocument>[] => [
+export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers, onViewDetails }: ColumnsConfig): ColumnDef<EmployeePerformanceDocument>[] => [
     {
         id: 'select',
         header: ({ table }) => (
@@ -140,16 +141,19 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
         id: 'actions',
         cell: ({ row }) => {
             const doc = row.original;
-            const customActions = [];
+            const customActions = [
+                {
+                    label: "View Details",
+                    icon: <Eye className="mr-2 h-3.5 w-3.5" />,
+                    onClick: onViewDetails,
+                }
+            ];
             if (doc.status === 'Worker Self-Evaluation') {
                 customActions.push({
                     label: "Manage Appraisers",
                     icon: <UserCog className="mr-2 h-3.5 w-3.5" />,
                     onClick: onManageAppraisers,
                 });
-            }
-            if (customActions.length === 0) {
-                return null;
             }
             return (
                  <DataTableRowActions

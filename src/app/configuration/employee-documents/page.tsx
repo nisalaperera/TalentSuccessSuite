@@ -8,12 +8,13 @@ import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, writeBatch, doc } from 'firebase/firestore';
-import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping, EvaluationFlow } from '@/lib/types';
+import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping, EvaluationFlow, PerformanceDocument } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X, ArrowUpWideNarrow, Trash2 } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EVALUATION_FLOW_PROCESS_PHASES } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import type { Table as TanstackTable } from '@tanstack/react-table';
@@ -21,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 function EmployeeDocumentsContent() {
     const router = useRouter();
@@ -29,7 +31,9 @@ function EmployeeDocumentsContent() {
     const { toast } = useToast();
 
     const [isManageAppraisersOpen, setIsManageAppraisersOpen] = useState(false);
+    const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
     const [documentToManage, setDocumentToManage] = useState<EmployeePerformanceDocument | null>(null);
+    const [documentToView, setDocumentToView] = useState<EmployeePerformanceDocument | null>(null);
     const [appraisersToManage, setAppraisersToManage] = useState<AppraiserMapping[]>([]);
     const [originalAppraisers, setOriginalAppraisers] = useState<AppraiserMapping[]>([]);
 
@@ -47,6 +51,9 @@ function EmployeeDocumentsContent() {
     
     const performanceTemplatesQuery = useMemoFirebase(() => collection(firestore, 'performance_templates'), [firestore]);
     const { data: performanceTemplates } = useCollection<PerformanceTemplate>(performanceTemplatesQuery);
+
+    const performanceDocumentsDataQuery = useMemoFirebase(() => collection(firestore, 'performance_documents'), [firestore]);
+    const { data: allPerformanceDocuments } = useCollection<PerformanceDocument>(performanceDocumentsDataQuery);
     
     const appraiserMappingsQuery = useMemoFirebase(() => collection(firestore, 'employee_appraiser_mappings'), [firestore]);
     const { data: allAppraiserMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
@@ -156,6 +163,11 @@ function EmployeeDocumentsContent() {
         setOriginalAppraisers(currentAppraisers);
         setIsManageAppraisersOpen(true);
     }, [employees, allAppraiserMappings, toast]);
+    
+    const handleViewDetails = useCallback((doc: EmployeePerformanceDocument) => {
+        setDocumentToView(doc);
+        setIsViewDetailsOpen(true);
+    }, []);
 
     const handleAppraiserPropChange = useCallback((appraiserId: string, prop: keyof AppraiserMapping, value: any) => {
         setAppraisersToManage(current =>
@@ -235,7 +247,7 @@ function EmployeeDocumentsContent() {
         }
     };
 
-    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers: handleManageAppraisers }), [getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, handleManageAppraisers]);
+    const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers: handleManageAppraisers, onViewDetails: handleViewDetails }), [getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, handleManageAppraisers, handleViewDetails]);
 
     const filteredData = useMemo(() => {
         if (!employeeDocuments || !cycleFilter) return [];
@@ -364,6 +376,21 @@ function EmployeeDocumentsContent() {
             label: `${emp.firstName} ${emp.lastName} | ${emp.personNumber}`
         }));
     }, [employees]);
+
+    const viewedEmployee = useMemo(() => {
+        if (!documentToView || !employees) return null;
+        return employees.find(e => e.id === documentToView.employeeId);
+    }, [documentToView, employees]);
+
+    const viewedPerformanceDocument = useMemo(() => {
+        if (!documentToView || !allPerformanceDocuments) return null;
+        return allPerformanceDocuments.find(d => d.id === documentToView.performanceDocumentId);
+    }, [documentToView, allPerformanceDocuments]);
+
+    const viewedAppraisers = useMemo(() => {
+        if (!documentToView) return [];
+        return getAppraisersForDocument(documentToView);
+    }, [documentToView, getAppraisersForDocument]);
 
 
     return (
@@ -540,6 +567,75 @@ function EmployeeDocumentsContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <Dialog open={isViewDetailsOpen} onOpenChange={setIsViewDetailsOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="font-headline">Document Details</DialogTitle>
+                        <DialogDescription>
+                            Viewing details for the selected performance document.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {documentToView && (
+                        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
+                            <Card>
+                                <CardHeader><CardTitle>Employee Details</CardTitle></CardHeader>
+                                <CardContent className="space-y-2">
+                                    <div className="flex justify-between"><span className="text-muted-foreground">Name</span> <span>{viewedEmployee?.firstName} {viewedEmployee?.lastName}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">Person Number</span> <span>{viewedEmployee?.personNumber}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">Department</span> <span>{viewedEmployee?.department}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">Designation</span> <span>{viewedEmployee?.designation}</span></div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>Performance Document Details</CardTitle></CardHeader>
+                                <CardContent className="space-y-2">
+                                    <div className="flex justify-between"><span className="text-muted-foreground">Document Name</span> <span>{viewedPerformanceDocument?.name}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">Cycle</span> <span>{getCycleName(documentToView.performanceCycleId)}</span></div>
+                                    <div className="flex justify-between"><span className="text-muted-foreground">Template</span> <span>{getTemplateName(documentToView.performanceTemplateId)}</span></div>
+                                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Status</span> <Badge variant="secondary">{documentToView.status}</Badge></div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader><CardTitle>Appraiser Details</CardTitle></CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Appraiser</TableHead>
+                                                <TableHead>Type</TableHead>
+                                                <TableHead>Eval Types</TableHead>
+                                                <TableHead>Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {viewedAppraisers.length > 0 ? viewedAppraisers.map(appraiser => (
+                                                <TableRow key={appraiser.id}>
+                                                    <TableCell>{getEmployeeNameByPersonNumber(appraiser.appraiserPersonNumber)}</TableCell>
+                                                    <TableCell>{appraiser.appraiserType}</TableCell>
+                                                    <TableCell>{appraiser.evalGoalTypes}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={appraiser.isCompleted ? 'default' : 'secondary'}>
+                                                            {appraiser.isCompleted ? 'Completed' : 'Pending'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="text-center">No appraisers assigned.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsViewDetailsOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -552,5 +648,3 @@ export default function EmployeeDocumentsPage() {
         </Suspense>
     )
 }
-
-    
