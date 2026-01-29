@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, UserCog } from 'lucide-react';
 import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 type ColumnsConfig = {
@@ -115,4 +116,3 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
         },
     },
 ];
-
