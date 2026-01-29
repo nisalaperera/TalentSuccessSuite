@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, Suspense, useCallback } from 'react';
@@ -57,11 +58,15 @@ function EmployeeDocumentsContent() {
     const [selectedCycleId, setSelectedCycleId] = useState(searchParams.get('cycleId') || '');
     const [selectedEmployeeId, setSelectedEmployeeId] = useState(searchParams.get('employeeId') || '');
     const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || '');
+    const [selectedPrimaryAppraiserId, setSelectedPrimaryAppraiserId] = useState(searchParams.get('primaryAppraiserId') || '');
+    const [selectedSecondaryAppraiserId, setSelectedSecondaryAppraiserId] = useState(searchParams.get('secondaryAppraiserId') || '');
 
     // Filters from URL for data filtering
     const cycleFilter = searchParams.get('cycleId');
     const employeeFilter = searchParams.get('employeeId');
     const statusFilter = searchParams.get('status');
+    const primaryAppraiserFilter = searchParams.get('primaryAppraiserId');
+    const secondaryAppraiserFilter = searchParams.get('secondaryAppraiserId');
 
     const handleSearch = () => {
         if (!selectedCycleId) {
@@ -77,6 +82,8 @@ function EmployeeDocumentsContent() {
         if (selectedCycleId && selectedCycleId !== 'all') params.set('cycleId', selectedCycleId);
         if (selectedEmployeeId && selectedEmployeeId !== 'all') params.set('employeeId', selectedEmployeeId);
         if (selectedStatus && selectedStatus !== 'all') params.set('status', selectedStatus);
+        if (selectedPrimaryAppraiserId && selectedPrimaryAppraiserId !== 'all') params.set('primaryAppraiserId', selectedPrimaryAppraiserId);
+        if (selectedSecondaryAppraiserId && selectedSecondaryAppraiserId !== 'all') params.set('secondaryAppraiserId', selectedSecondaryAppraiserId);
 
         router.push(`/configuration/employee-documents?${params.toString()}`);
     };
@@ -85,6 +92,8 @@ function EmployeeDocumentsContent() {
         setSelectedCycleId('');
         setSelectedEmployeeId('');
         setSelectedStatus('');
+        setSelectedPrimaryAppraiserId('');
+        setSelectedSecondaryAppraiserId('');
         router.push('/configuration/employee-documents');
     };
 
@@ -234,11 +243,34 @@ function EmployeeDocumentsContent() {
             const cycleMatch = doc.performanceCycleId === cycleFilter;
             const employeeMatch = !employeeFilter || doc.employeeId === employeeFilter;
             const statusMatch = !statusFilter || doc.status === statusFilter;
-            return cycleMatch && employeeMatch && statusMatch;
+            
+            const docEmployee = employees?.find(e => e.id === doc.employeeId);
+
+            const primaryAppraiserMatch = !primaryAppraiserFilter || (allAppraiserMappings || []).some(mapping => {
+                const appraiser = employees?.find(e => e.id === primaryAppraiserFilter);
+                if (!appraiser || !docEmployee) return false;
+
+                return mapping.employeePersonNumber === docEmployee.personNumber &&
+                       mapping.performanceCycleId === doc.performanceCycleId &&
+                       mapping.appraiserType === 'Primary' &&
+                       mapping.appraiserPersonNumber === appraiser.personNumber;
+            });
+            
+            const secondaryAppraiserMatch = !secondaryAppraiserFilter || (allAppraiserMappings || []).some(mapping => {
+                const appraiser = employees?.find(e => e.id === secondaryAppraiserFilter);
+                if (!appraiser || !docEmployee) return false;
+
+                return mapping.employeePersonNumber === docEmployee.personNumber &&
+                       mapping.performanceCycleId === doc.performanceCycleId &&
+                       mapping.appraiserType === 'Secondary' &&
+                       mapping.appraiserPersonNumber === appraiser.personNumber;
+            });
+
+            return cycleMatch && employeeMatch && statusMatch && primaryAppraiserMatch && secondaryAppraiserMatch;
         });
-    }, [employeeDocuments, cycleFilter, employeeFilter, statusFilter]);
+    }, [employeeDocuments, cycleFilter, employeeFilter, statusFilter, primaryAppraiserFilter, secondaryAppraiserFilter, employees, allAppraiserMappings]);
     
-    const hasActiveFilters = cycleFilter || employeeFilter || statusFilter;
+    const hasActiveFilters = cycleFilter || employeeFilter || statusFilter || primaryAppraiserFilter || secondaryAppraiserFilter;
     
     const handlePromoteStatus = async (table: TanstackTable<EmployeePerformanceDocument>) => {
         const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -275,10 +307,24 @@ function EmployeeDocumentsContent() {
             return;
         }
         
-        const nextStep = sortedSteps.find(step => step.sequence > currentStep.sequence);
+        // Find the next sequential step number
+        let nextSequence = Infinity;
+        for (const step of sortedSteps) {
+            if (step.sequence > currentStep.sequence) {
+                nextSequence = step.sequence;
+                break;
+            }
+        }
 
-        if (!nextStep) {
+        if (nextSequence === Infinity) {
             toast({ title: "Workflow End", description: "The selected documents are already at the final step of the workflow.", variant: "destructive" });
+            return;
+        }
+
+        const nextStep = sortedSteps.find(step => step.sequence === nextSequence);
+        
+        if (!nextStep) {
+             toast({ title: "Workflow Error", description: "Could not determine the next step in the workflow.", variant: "destructive" });
             return;
         }
         
@@ -359,6 +405,24 @@ function EmployeeDocumentsContent() {
                         ))}
                     </SelectContent>
                 </Select>
+                 <Combobox
+                    options={employeeOptions}
+                    value={selectedPrimaryAppraiserId}
+                    onChange={setSelectedPrimaryAppraiserId}
+                    placeholder="Filter by Primary Appraiser..."
+                    searchPlaceholder="Search employees..."
+                    noResultsText="No employees found."
+                    triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
+                />
+                <Combobox
+                    options={employeeOptions}
+                    value={selectedSecondaryAppraiserId}
+                    onChange={setSelectedSecondaryAppraiserId}
+                    placeholder="Filter by Secondary Appraiser..."
+                    searchPlaceholder="Search employees..."
+                    noResultsText="No employees found."
+                    triggerClassName="w-full sm:w-auto flex-grow md:flex-grow-0 md:w-[250px]"
+                />
                 
                 <Button onClick={handleSearch}>Search</Button>
 
@@ -488,3 +552,5 @@ export default function EmployeeDocumentsPage() {
         </Suspense>
     )
 }
+
+    
