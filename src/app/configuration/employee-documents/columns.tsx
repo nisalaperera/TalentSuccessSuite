@@ -7,7 +7,6 @@ import { DataTableColumnHeader } from '@/app/components/data-table/data-table-co
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, UserCog } from 'lucide-react';
-import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
 import { Checkbox } from '@/components/ui/checkbox';
 
 
@@ -96,22 +95,16 @@ export const columns = ({ getEmployeeName, getCycleName, getTemplateName, getApp
         id: 'actions',
         cell: ({ row }) => {
             const doc = row.original;
-            const customActions = [];
-            if (doc.status === 'Worker Self-Evaluation') {
-                customActions.push({
-                    label: "Manage Appraisers",
-                    icon: <UserCog className="mr-2 h-3.5 w-3.5" />,
-                    onClick: onManageAppraisers,
-                });
-            }
+
             return (
-                 <DataTableRowActions
-                    row={row}
-                    customActions={customActions}
-                    isToggleable={false}
-                    canEdit={false}
-                    canDelete={false}
-                />
+                <div className="flex items-center justify-end">
+                    {doc.status === 'Worker Self-Evaluation' && (
+                        <Button variant="ghost" size="icon" onClick={() => onManageAppraisers(doc)}>
+                            <UserCog className="h-4 w-4" />
+                            <span className="sr-only">Manage Appraisers</span>
+                        </Button>
+                    )}
+                </div>
             )
         },
     },
