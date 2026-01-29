@@ -11,7 +11,7 @@ import { collection, query, where, writeBatch, doc, getDocs } from 'firebase/fir
 import type { EmployeePerformanceDocument, PerformanceCycle, ReviewPeriod, Employee, PerformanceTemplate, AppraiserMapping, EvaluationFlow, PerformanceDocument } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { X, ArrowUpWideNarrow, Trash2, Users, Upload, Download, PlusCircle } from 'lucide-react';
+import { X, ArrowUpWideNarrow, Trash2, Users, Upload, Download, PlusCircle, Eye } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,6 +37,7 @@ function EmployeeDocumentsContent() {
     const [isPromoteConfirmOpen, setIsPromoteConfirmOpen] = useState(false);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+    const [fileToUpload, setFileToUpload] = useState<File | null>(null);
 
     // Data for dialogs
     const [documentToManage, setDocumentToManage] = useState<EmployeePerformanceDocument | null>(null);
@@ -433,7 +434,7 @@ function EmployeeDocumentsContent() {
     };
 
     const handleDownloadTemplate = () => {
-        const header = "EmployeePersonNumber,AppraiserPersonNumber,AppraiserType,EvalGoalTypes\n";
+        const header = "EmployeePersonNumber,PerformanceCycleId,AppraiserPersonNumber,AppraiserType,EvalGoalTypes\n";
         downloadCSV(header, 'appraiser_template.csv');
     };
 
@@ -443,77 +444,104 @@ function EmployeeDocumentsContent() {
             return;
         }
         
-        let csvContent = "EmployeePersonNumber,AppraiserPersonNumber,AppraiserType,EvalGoalTypes\n";
+        let csvContent = "EmployeePersonNumber,PerformanceCycleId,AppraiserPersonNumber,AppraiserType,EvalGoalTypes\n";
 
         const employeePersonNumbers = selectedDocsForBulkUpdate.map(doc => employees?.find(e => e.id === doc.employeeId)?.personNumber).filter((pn): pn is string => !!pn);
+        const cycleIds = [...new Set(selectedDocsForBulkUpdate.map(doc => doc.performanceCycleId))];
 
-        if (employeePersonNumbers.length === 0) {
-            toast({ title: 'No Employees Found', description: 'Could not find employee details for the selected documents.', variant: 'destructive'});
+
+        if (employeePersonNumbers.length === 0 || cycleIds.length === 0) {
+            toast({ title: 'No Data Found', description: 'Could not find employee or cycle details for the selected documents.', variant: 'destructive'});
             return;
         }
 
         const relevantMappings = (allAppraiserMappings || []).filter(m => 
             employeePersonNumbers.includes(m.employeePersonNumber) && 
-            m.performanceCycleId === selectedDocsForBulkUpdate[0].performanceCycleId
+            cycleIds.includes(m.performanceCycleId)
         );
 
         for (const mapping of relevantMappings) {
-            csvContent += `${mapping.employeePersonNumber},${mapping.appraiserPersonNumber},${mapping.appraiserType},"${mapping.evalGoalTypes}"\n`;
+            csvContent += `${mapping.employeePersonNumber},${mapping.performanceCycleId},${mapping.appraiserPersonNumber},${mapping.appraiserType},"${mapping.evalGoalTypes}"\n`;
         }
         
         downloadCSV(csvContent, `selected_appraisers.csv`);
     };
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !cycleFilter) {
-            toast({ title: "File or Cycle Missing", description: "Please select a file and ensure a cycle is filtered.", variant: 'destructive' });
+    const handleFileUpload = async () => {
+        if (!fileToUpload) {
+            toast({ title: "No File Selected", description: "Please select a CSV file to upload.", variant: 'destructive' });
             return;
         }
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const content = e.target?.result as string;
+        try {
+            const content = await fileToUpload.text();
             const lines = content.split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                 toast({ title: "Empty File", description: "The CSV file is empty or contains only a header.", variant: "destructive" });
+                return;
+            }
+
             const header = lines[0].trim().replace(/"/g, '');
-            if (header.toLowerCase() !== "employeepersonnumber,appraiserpersonnumber,appraisertype,evalgoaltypes") {
+            if (header.toLowerCase() !== "employeepersonnumber,performancecycleid,appraiserpersonnumber,appraisertype,evalgoaltypes") {
                 toast({ title: "Invalid CSV", description: "CSV header does not match the template.", variant: "destructive" });
                 return;
             }
 
             const rows = lines.slice(1);
-            try {
-                const batch = writeBatch(firestore);
-                const employeePersonNumbersInCsv = [...new Set(rows.map(row => row.split(',')[0].trim()))];
+            
+            const groupedData = new Map<string, { emp: string; cycle: string; appraisers: any[] }>();
+            for (const row of rows) {
+                const [emp, cycle, appraiser, type, types] = row.split(',').map(v => v.trim().replace(/"/g, ''));
+                 if (emp && cycle) {
+                    const key = `${emp}-${cycle}`;
+                    if (!groupedData.has(key)) {
+                        groupedData.set(key, { emp, cycle, appraisers: [] });
+                    }
+                     if (appraiser && type) {
+                        groupedData.get(key)!.appraisers.push({ appraiser, type, types: types || '' });
+                    }
+                }
+            }
+            
+            toast({ title: 'Processing Upload...', description: `Found ${groupedData.size} employee-cycle groups to update.` });
+
+            for (const [key, { emp, cycle, appraisers }] of groupedData.entries()) {
+                const q = query(
+                    collection(firestore, 'employee_appraiser_mappings'),
+                    where('employeePersonNumber', '==', emp),
+                    where('performanceCycleId', '==', cycle)
+                );
+                const existingMappingsSnapshot = await getDocs(q);
                 
-                const existingMappingsQuery = query(collection(firestore, 'employee_appraiser_mappings'), where('performanceCycleId', '==', cycleFilter), where('employeePersonNumber', 'in', employeePersonNumbersInCsv));
-                const existingMappingsSnapshot = await getDocs(existingMappingsQuery);
+                const batch = writeBatch(firestore);
+
                 existingMappingsSnapshot.forEach(doc => batch.delete(doc.ref));
 
-                rows.forEach(row => {
-                    const [emp, appraiser, type, types] = row.split(',').map(v => v.trim().replace(/"/g, ''));
-                    if (emp && appraiser && type) {
-                        batch.set(doc(collection(firestore, 'employee_appraiser_mappings')), { 
-                            employeePersonNumber: emp, 
-                            performanceCycleId: cycleFilter, 
-                            appraiserType: type as 'Primary' | 'Secondary',
-                            appraiserPersonNumber: appraiser, 
-                            evalGoalTypes: types || '', 
-                            isCompleted: false 
-                        });
-                    }
+                appraisers.forEach(({ appraiser, type, types }) => {
+                    const newMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                    batch.set(newMappingRef, {
+                        employeePersonNumber: emp,
+                        performanceCycleId: cycle,
+                        appraiserType: type as 'Primary' | 'Secondary',
+                        appraiserPersonNumber: appraiser,
+                        evalGoalTypes: types,
+                        isCompleted: false,
+                    });
                 });
-
+                
                 await batch.commit();
-                toast({ title: 'Upload Successful', description: `Processed ${rows.length} records.`});
-                setIsUploadDialogOpen(false);
-            } catch (error) {
-                console.error(error);
-                toast({ title: 'Upload Failed', description: 'An error occurred during the upload process.', variant: 'destructive'});
             }
-        };
-        reader.readAsText(file);
+
+            toast({ title: 'Upload Successful', description: `Successfully updated appraisers for ${groupedData.size} employee-cycle group(s).` });
+            setIsUploadDialogOpen(false);
+            setFileToUpload(null);
+
+        } catch (error) {
+            console.error(error);
+            toast({ title: 'Upload Failed', description: 'An error occurred during the upload process.', variant: 'destructive' });
+        }
     };
+
 
     const tableColumns = useMemo(() => columns({ getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, onManageAppraisers: handleManageAppraisers, onViewDetails: handleViewDetails }), [getEmployeeName, getCycleName, getTemplateName, getAppraisersForDocument, getEmployeeNameByPersonNumber, handleManageAppraisers, handleViewDetails]);
 
@@ -876,7 +904,24 @@ function EmployeeDocumentsContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            
+
+             {promotionDetails && (
+                <AlertDialog open={isPromoteConfirmOpen} onOpenChange={setIsPromoteConfirmOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirm Status Promotion</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to promote {promotionDetails.count} document(s) from "{promotionDetails.currentStatus}" to "{promotionDetails.nextStatus}"?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setPromotionDetails(null)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => executePromotion(table)}>Promote</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+             
              <Dialog open={isBulkUpdateOpen} onOpenChange={setIsBulkUpdateOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
@@ -939,25 +984,25 @@ function EmployeeDocumentsContent() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+            <Dialog open={isUploadDialogOpen} onOpenChange={(isOpen) => { setIsUploadDialogOpen(isOpen); if (!isOpen) setFileToUpload(null); }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Upload Appraiser List</DialogTitle>
                         <DialogDescription>
-                            Download a template or existing data, then upload a CSV to bulk-update appraiser mappings for the currently selected performance cycle.
+                            Download a template or existing data, then upload a CSV to bulk-update appraiser mappings.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
                         <Button onClick={handleDownloadTemplate} variant="outline" className="w-full justify-start"><Download className="mr-2" /> Download CSV Template</Button>
                         <Button onClick={handleDownloadSelected} variant="outline" className="w-full justify-start" disabled={selectedDocsForBulkUpdate.length === 0}><Download className="mr-2" /> Download Selected Appraisers ({selectedDocsForBulkUpdate.length})</Button>
                         <div>
-                            <Label htmlFor="csv-upload" className={!cycleFilter ? 'text-muted-foreground' : ''}>Upload CSV</Label>
-                            <Input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} disabled={!cycleFilter} />
-                            {!cycleFilter && <p className="text-xs text-muted-foreground mt-1">Please select a Performance Cycle filter before uploading.</p>}
+                            <Label htmlFor="csv-upload">Upload CSV</Label>
+                            <Input id="csv-upload" type="file" accept=".csv" onChange={(e) => setFileToUpload(e.target.files?.[0] ?? null)} />
                         </div>
                     </div>
                     <DialogFooter>
-                         <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>Close</Button>
+                         <Button variant="outline" onClick={() => { setIsUploadDialogOpen(false); setFileToUpload(null); }}>Cancel</Button>
+                         <Button onClick={handleFileUpload} disabled={!fileToUpload}><Upload className="mr-2"/> Upload File</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
