@@ -875,7 +875,7 @@ function EmployeeDocumentsContent() {
                         <Button variant="outline" onClick={() => setIsViewDetailsOpen(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
-            </AlertDialog>
+            </Dialog>
             
              <Dialog open={isBulkUpdateOpen} onOpenChange={setIsBulkUpdateOpen}>
                 <DialogContent className="max-w-2xl">
