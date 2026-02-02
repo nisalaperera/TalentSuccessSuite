@@ -66,12 +66,12 @@ export function Combobox({
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
-                  onSelect={() => {
+                  value={option.value}
+                  onSelect={(currentValue) => {
                     if (allowDeselect) {
-                      onChange(option.value === value ? "" : option.value)
+                      onChange(currentValue === value ? "" : currentValue)
                     } else {
-                      onChange(option.value)
+                      onChange(currentValue)
                     }
                     setOpen(false)
                   }}
