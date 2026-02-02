@@ -35,7 +35,7 @@ function EmployeeDocumentsContent() {
     // Dialog states
     const [isManageAppraisersOpen, setIsManageAppraisersOpen] = useState(false);
     const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
-    const [isPromoteConfirmOpen, setIsPromoteConfirmOpen] = useState(false);
+    const [isBulkStatusUpdateOpen, setIsBulkStatusUpdateOpen] = useState(false);
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -43,7 +43,8 @@ function EmployeeDocumentsContent() {
     // Data for dialogs
     const [documentToManage, setDocumentToManage] = useState<EmployeePerformanceDocument | null>(null);
     const [documentToView, setDocumentToView] = useState<EmployeePerformanceDocument | null>(null);
-    const [promotionDetails, setPromotionDetails] = useState<{ count: number; currentStatus: string; nextStatus: string; docsToUpdate: EmployeePerformanceDocument[]; } | null>(null);
+    const [selectedDocsForStatusUpdate, setSelectedDocsForStatusUpdate] = useState<EmployeePerformanceDocument[]>([]);
+    const [targetStatus, setTargetStatus] = useState<string>('');
     const [selectedDocsForBulkUpdate, setSelectedDocsForBulkUpdate] = useState<EmployeePerformanceDocument[]>([]);
     
     // Manage appraisers state
@@ -78,7 +79,7 @@ function EmployeeDocumentsContent() {
     const { data: allAppraiserMappings } = useCollection<AppraiserMapping>(appraiserMappingsQuery);
 
     const evaluationFlowsQuery = useMemoFirebase(() => collection(firestore, 'evaluation_flows'), [firestore]);
-    const { data: evaluationFlows } = useCollection<EvaluationFlow>(evaluationFlowsQuery);
+    const { data: evaluationFlows } = useCollection(evaluationFlowsQuery);
     
     // State for filter inputs, initialized from URL params
     const [selectedCycleId, setSelectedCycleId] = useState(searchParams.get('cycleId') || '');
@@ -264,90 +265,51 @@ function EmployeeDocumentsContent() {
     
     // --- Bulk Action Handlers ---
 
-    const handlePromoteClick = (table: TanstackTable<EmployeePerformanceDocument>) => {
+    const handleBulkStatusUpdateClick = (table: TanstackTable<EmployeePerformanceDocument>) => {
         const selectedDocs = table.getFilteredSelectedRowModel().rows.map(row => row.original);
         
         if (selectedDocs.length === 0) {
-            toast({ title: "No Selection", description: "Please select documents to promote.", variant: "destructive" });
+            toast({ title: "No Selection", description: "Please select documents to update their status.", variant: "destructive" });
             return;
         }
 
         const firstDoc = selectedDocs[0];
-        const currentStatus = firstDoc.status;
         const currentCycleId = firstDoc.performanceCycleId;
 
-        if (!selectedDocs.every(doc => doc.status === currentStatus && doc.performanceCycleId === currentCycleId)) {
-            toast({ title: "Inconsistent Selection", description: "All selected documents must have the same status and performance cycle.", variant: "destructive" });
-            return;
-        }
-
-        const flow = evaluationFlows?.find(f => f.id === firstDoc.evaluationFlowId);
-        if (!flow) {
-            toast({ title: "Workflow Error", description: "Could not find the evaluation flow.", variant: "destructive" });
+        if (!selectedDocs.every(doc => doc.performanceCycleId === currentCycleId)) {
+            toast({ title: "Inconsistent Selection", description: "All selected documents must belong to the same performance cycle.", variant: "destructive" });
             return;
         }
         
-        const sortedSteps = [...flow.steps].sort((a,b) => a.sequence - b.sequence);
-        const currentStep = sortedSteps.find(step => step.task === currentStatus);
-        if (!currentStep) {
-            toast({ title: "Workflow Error", description: "Could not determine current workflow step.", variant: "destructive" });
-            return;
-        }
-
-        let nextStep = null;
-        let minNextSequence = Infinity;
-
-        // Find the lowest sequence number that is greater than the current one
-        for (const step of sortedSteps) {
-            if (step.sequence > currentStep.sequence) {
-                if (step.sequence < minNextSequence) {
-                    minNextSequence = step.sequence;
-                }
-            }
-        }
-        
-        if (minNextSequence === Infinity) {
-            toast({ title: "Workflow End", description: "Documents are already at the final step.", variant: "destructive" });
-            return;
-        }
-        
-        // Find the first step with that sequence number
-        nextStep = sortedSteps.find(step => step.sequence === minNextSequence);
-
-        if (!nextStep) {
-            toast({ title: "Workflow Error", description: "Could not determine the next step.", variant: "destructive" });
-            return;
-        }
-
-        setPromotionDetails({
-            count: selectedDocs.length,
-            currentStatus,
-            nextStatus: nextStep.task,
-            docsToUpdate: selectedDocs
-        });
-        setIsPromoteConfirmOpen(true);
+        setSelectedDocsForStatusUpdate(selectedDocs);
+        setTargetStatus(''); // Reset target status
+        setIsBulkStatusUpdateOpen(true);
     };
     
-    const executePromotion = async () => {
-        if (!promotionDetails || !tableRef.current) return;
+    const executeBulkStatusUpdate = async () => {
+        if (!tableRef.current || selectedDocsForStatusUpdate.length === 0 || !targetStatus) {
+            toast({ title: "Update Failed", description: "No documents selected or no target status chosen.", variant: "destructive" });
+            return;
+        }
         const table = tableRef.current;
         
         try {
             const batch = writeBatch(firestore);
-            promotionDetails.docsToUpdate.forEach(docToUpdate => {
+            selectedDocsForStatusUpdate.forEach(docToUpdate => {
                 const docRef = doc(firestore, 'employee_performance_documents', docToUpdate.id);
-                batch.update(docRef, { status: promotionDetails.nextStatus });
+                batch.update(docRef, { status: targetStatus });
             });
             await batch.commit();
 
-            toast({ title: "Success", description: `${promotionDetails.count} document(s) promoted to "${promotionDetails.nextStatus}".`});
+            toast({ title: "Success", description: `${selectedDocsForStatusUpdate.length} document(s) updated to status "${targetStatus}".`});
             table.resetRowSelection();
         } catch (error) {
-            console.error("Error promoting documents:", error);
+            console.error("Error bulk updating status:", error);
             toast({ title: "Update Failed", description: "An error occurred while updating statuses.", variant: "destructive" });
         } finally {
-            setIsPromoteConfirmOpen(false);
-            setPromotionDetails(null);
+            setIsBulkStatusUpdateOpen(false);
+            setSelectedDocsForStatusUpdate([]);
+            setTargetStatus('');
         }
     };
     
@@ -587,10 +549,10 @@ function EmployeeDocumentsContent() {
         const hasSelection = table.getFilteredSelectedRowModel().rows.length > 0;
         return (
             <div className="flex items-center gap-2">
-                <Button onClick={() => handlePromoteClick(table)} disabled={!hasSelection} size="sm">
-                    <ArrowUpWideNarrow className="mr-2 h-4 w-4" /> Promote Status
+                <Button onClick={() => handleBulkStatusUpdateClick(table)} disabled={!hasSelection} size="sm">
+                    <ArrowUpWideNarrow className="mr-2 h-4 w-4" /> Bulk Update Status
                 </Button>
-                <Button onClick={() => handleBulkUpdateClick(table)} disabled={!hasSelection} size="sm">
+                <Button onClick={()={() => handleBulkUpdateClick(table)} disabled={!hasSelection} size="sm">
                     <Users className="mr-2 h-4 w-4" /> Bulk Update Appraisers
                 </Button>
                 <Button onClick={() => {
@@ -602,6 +564,14 @@ function EmployeeDocumentsContent() {
             </div>
         )
     };
+
+    const possibleStatuses = useMemo(() => {
+        if (selectedDocsForStatusUpdate.length === 0 || !evaluationFlows) return [];
+        const firstDoc = selectedDocsForStatusUpdate[0];
+        const flow = evaluationFlows.find(f => f.id === firstDoc.evaluationFlowId);
+        if (!flow) return [];
+        return [...new Set(flow.steps.map(step => step.task))];
+    }, [selectedDocsForStatusUpdate, evaluationFlows]);
     
     const viewedEmployee = useMemo(() => {
         if (!documentToView || !employees) return null;
@@ -908,22 +878,35 @@ function EmployeeDocumentsContent() {
                 </DialogContent>
             </Dialog>
 
-             {promotionDetails && (
-                <AlertDialog open={isPromoteConfirmOpen} onOpenChange={setIsPromoteConfirmOpen}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Confirm Status Promotion</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Are you sure you want to promote {promotionDetails.count} document(s) from "{promotionDetails.currentStatus}" to "{promotionDetails.nextStatus}"?
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setPromotionDetails(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={executePromotion}>Promote</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
+            <Dialog open={isBulkStatusUpdateOpen} onOpenChange={setIsBulkStatusUpdateOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Bulk Update Document Status</DialogTitle>
+                        <DialogDescription>
+                            Select a new status to apply to the {selectedDocsForStatusUpdate.length} selected document(s).
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="target-status">New Status</Label>
+                            <Select value={targetStatus} onValueChange={setTargetStatus}>
+                                <SelectTrigger id="target-status">
+                                    <SelectValue placeholder="Select a status..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {possibleStatuses.map(status => (
+                                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsBulkStatusUpdateOpen(false)}>Cancel</Button>
+                        <Button onClick={executeBulkStatusUpdate} disabled={!targetStatus}>Update Status</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
              
              <Dialog open={isBulkUpdateOpen} onOpenChange={setIsBulkUpdateOpen}>
                 <DialogContent className="max-w-2xl">
