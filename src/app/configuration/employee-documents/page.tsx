@@ -125,18 +125,22 @@ function EmployeeDocumentsContent() {
 
     const employeeOptions = useMemo(() => {
         if (!employees) return [];
-        return employees.map(emp => ({
-            value: emp.id,
-            label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
-        }));
+        return [...employees]
+            .sort((a, b) => a.personNumber.localeCompare(b.personNumber, undefined, { numeric: true }))
+            .map(emp => ({
+                value: emp.id,
+                label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
+            }));
     }, [employees]);
     
     const appraiserOptions = useMemo(() => {
         if (!employees) return [];
-        return employees.map(emp => ({
-            value: emp.personNumber,
-            label: `${emp.firstName} ${emp.lastName} | ${emp.personNumber}`
-        }));
+        return [...employees]
+            .sort((a, b) => a.personNumber.localeCompare(b.personNumber, undefined, { numeric: true }))
+            .map(emp => ({
+                value: emp.personNumber,
+                label: `${emp.firstName} ${emp.lastName} | ${emp.personNumber}`
+            }));
     }, [employees]);
 
     const getEmployeeName = useCallback((id: string) => {
@@ -996,7 +1000,7 @@ function EmployeeDocumentsContent() {
 }
 
 
-export default function EmployeeDocumentsPage() {
+export default function EmployeePerformanceDocumentsPage() {
     return (
         <Suspense fallback={<div>Loading...</div>}>
             <EmployeeDocumentsContent />

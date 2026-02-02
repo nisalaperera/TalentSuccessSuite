@@ -394,8 +394,9 @@ export default function PerformanceDocumentsPage() {
                 .map(d => d.employeeId)
         );
 
-        return employees
+        return [...employees]
             .filter(emp => !assignedEmployeeIds.has(emp.id))
+            .sort((a, b) => a.personNumber.localeCompare(b.personNumber, undefined, { numeric: true }))
             .map(emp => ({
                 value: emp.id,
                 label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
