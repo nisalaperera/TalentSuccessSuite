@@ -12,9 +12,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 
 export default function PerformanceDocumentsPage() {
@@ -51,9 +53,13 @@ export default function PerformanceDocumentsPage() {
 
     const technologistWeightsQuery = useMemoFirebase(() => collection(firestore, 'technologist_weights'), [firestore]);
     const { data: technologistWeights } = useCollection<TechnologistWeight>(technologistWeightsQuery);
+    
+    const employeePerfDocsQuery = useMemoFirebase(() => collection(firestore, 'employee_performance_documents'), [firestore]);
+    const { data: employeePerformanceDocs } = useCollection<EmployeePerformanceDocument>(employeePerfDocsQuery);
 
     // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
     
     // Form state
     const [name, setName] = useState('');
@@ -61,6 +67,12 @@ export default function PerformanceDocumentsPage() {
     const [performanceTemplateId, setPerformanceTemplateId] = useState<string>();
     const [evaluationFlowId, setEvaluationFlowId] = useState<string>();
     const [eligibilityId, setEligibilityId] = useState<string>();
+    
+    // Add Employee Dialog State
+    const [docToAddEmployeeTo, setDocToAddEmployeeTo] = useState<PerfDocType | null>(null);
+    const [selectedEmployeeIdToAdd, setSelectedEmployeeIdToAdd] = useState<string | null>(null);
+    const [addEmployeeError, setAddEmployeeError] = useState<string | null>(null);
+    const [isAddingEmployee, setIsAddingEmployee] = useState(false);
 
     const selectedPerformanceCycle = useMemo(() => 
         performanceCycles?.find(c => c.id === performanceCycleId),
@@ -101,7 +113,7 @@ export default function PerformanceDocumentsPage() {
         if (isDuplicate) {
             toast({
                 title: 'Duplicate Name',
-                description: `A performance document with the name "${'name'}" already exists.`,
+                description: `A performance document with the name "${name}" already exists.`,
                 variant: 'destructive',
             });
             return;
@@ -269,6 +281,112 @@ export default function PerformanceDocumentsPage() {
             toast({ title: "Launch Failed", description: "There was an error creating the employee documents.", variant: "destructive"});
         }
     };
+    
+    const handleOpenAddEmployeeDialog = (doc: PerfDocType) => {
+        setDocToAddEmployeeTo(doc);
+        setSelectedEmployeeIdToAdd(null);
+        setAddEmployeeError(null);
+        setIsAddEmployeeDialogOpen(true);
+    };
+
+    useEffect(() => {
+        if (!selectedEmployeeIdToAdd || !docToAddEmployeeTo || !employeePerformanceDocs) {
+            setAddEmployeeError(null);
+            return;
+        }
+
+        const alreadyExists = employeePerformanceDocs.some(
+            doc => doc.employeeId === selectedEmployeeIdToAdd && doc.performanceDocumentId === docToAddEmployeeTo.id
+        );
+
+        if (alreadyExists) {
+            setAddEmployeeError('This employee already has this performance document assigned.');
+        } else {
+            setAddEmployeeError(null);
+        }
+    }, [selectedEmployeeIdToAdd, docToAddEmployeeTo, employeePerformanceDocs]);
+
+    const handleAddEmployeeProceed = async () => {
+        if (!selectedEmployeeIdToAdd || !docToAddEmployeeTo || !employees || !evaluationFlows || !technologistWeights) {
+            toast({ title: 'Error', description: 'Required data is missing to proceed.', variant: 'destructive' });
+            return;
+        }
+
+        setIsAddingEmployee(true);
+
+        const employeeToAdd = employees.find(e => e.id === selectedEmployeeIdToAdd);
+        if (!employeeToAdd) {
+            toast({ title: 'Error', description: 'Selected employee not found.', variant: 'destructive' });
+            setIsAddingEmployee(false);
+            return;
+        }
+        
+        const evaluationFlow = evaluationFlows.find(f => f.id === docToAddEmployeeTo.evaluationFlowId);
+        if (!evaluationFlow) {
+            toast({ title: "Evaluation flow not found", variant: "destructive" });
+            setIsAddingEmployee(false);
+            return;
+        }
+
+        const sortedSteps = [...evaluationFlow.steps].sort((a, b) => a.sequence - b.sequence);
+        const firstStep = sortedSteps[0];
+        if (!firstStep) {
+            toast({ title: "Evaluation flow has no steps", variant: "destructive" });
+            setIsAddingEmployee(false);
+            return;
+        }
+        const initialStatus = firstStep.task;
+
+        try {
+            const batch = writeBatch(firestore);
+
+            const newEmployeeDocRef = doc(collection(firestore, 'employee_performance_documents'));
+            const newDoc: Omit<EmployeePerformanceDocument, 'id'> = {
+                performanceDocumentId: docToAddEmployeeTo.id,
+                employeeId: employeeToAdd.id,
+                performanceCycleId: docToAddEmployeeTo.performanceCycleId,
+                performanceTemplateId: docToAddEmployeeTo.performanceTemplateId,
+                evaluationFlowId: docToAddEmployeeTo.evaluationFlowId,
+                status: initialStatus,
+            };
+            batch.set(newEmployeeDocRef, newDoc);
+
+            const empTechnologistType = employeeToAdd.technologist_type || 'JUNIOR';
+            const weightConfig = technologistWeights.find(w => w.technologist_type === empTechnologistType);
+            
+            if (weightConfig) {
+                 const primaryAppraiserRole = weightConfig.primaryAppraiser;
+                const secondaryAppraiserRole = weightConfig.secondaryAppraiser;
+                const primaryAppraiserPersonNumber = primaryAppraiserRole === 'Work Manager' ? employeeToAdd.workManager : employeeToAdd.homeManager;
+                const primaryEvalGoalType = primaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
+                const secondaryAppraiserPersonNumber = secondaryAppraiserRole === 'Work Manager' ? employeeToAdd.workManager : employeeToAdd.homeManager;
+                const secondaryEvalGoalType = secondaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
+                
+                if (primaryAppraiserPersonNumber && primaryAppraiserPersonNumber === secondaryAppraiserPersonNumber) {
+                    const mappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                    batch.set(mappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Primary', appraiserPersonNumber: primaryAppraiserPersonNumber, evalGoalTypes: 'Work,Home', isCompleted: false });
+                } else {
+                    if (primaryAppraiserPersonNumber) {
+                        const primaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                        batch.set(primaryMappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Primary', appraiserPersonNumber: primaryAppraiserPersonNumber, evalGoalTypes: primaryEvalGoalType, isCompleted: false });
+                    }
+                    if (secondaryAppraiserPersonNumber) {
+                        const secondaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                        batch.set(secondaryMappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Secondary', appraiserPersonNumber: secondaryAppraiserPersonNumber, evalGoalTypes: secondaryEvalGoalType, isCompleted: false });
+                    }
+                }
+            }
+
+            await batch.commit();
+            toast({ title: 'Success', description: `${employeeToAdd.firstName} ${employeeToAdd.lastName} has been added to the performance document.`});
+            setIsAddEmployeeDialogOpen(false);
+        } catch(error) {
+            console.error("Error manually adding employee:", error);
+            toast({ title: 'Error', description: 'Failed to add employee.', variant: 'destructive'});
+        } finally {
+            setIsAddingEmployee(false);
+        }
+    };
 
     const getLookUpName = (type: 'reviewPeriod' | 'performanceCycle' | 'performanceTemplate' | 'goalPlan', id: string) => {
         switch(type) {
@@ -284,7 +402,21 @@ export default function PerformanceDocumentsPage() {
         }
     }
     
-    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows, technologistWeights]);
+    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch, onAddEmployee: handleOpenAddEmployeeDialog }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows, technologistWeights]);
+
+    const employeeOptions = useMemo(() => {
+        if (!employees) return [];
+        return employees.map(emp => ({
+            value: emp.id,
+            label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
+        }));
+    }, [employees]);
+
+    const eligibilityDetails = useMemo(() => {
+        if (!docToAddEmployeeTo || !eligibilityCriteria) return null;
+        return eligibilityCriteria.find(e => e.id === docToAddEmployeeTo.eligibilityId);
+    }, [docToAddEmployeeTo, eligibilityCriteria]);
+
 
     return (
         <div className="container mx-auto py-10">
@@ -313,6 +445,59 @@ export default function PerformanceDocumentsPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
                         <Button onClick={handleCreateDocument} disabled={isCreateDisabled}>Create & Finalize Document</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Add Employee to: {docToAddEmployeeTo?.name}</DialogTitle>
+                        <DialogDescription>
+                            Select an employee to manually assign them to this performance document.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="employee-select">Employee</Label>
+                            <Combobox
+                                options={employeeOptions || []}
+                                value={selectedEmployeeIdToAdd || ''}
+                                onChange={setSelectedEmployeeIdToAdd}
+                                placeholder="Select an employee..."
+                                searchPlaceholder="Search employees..."
+                                noResultsText="No employees found."
+                                triggerClassName="w-full"
+                                allowDeselect={false}
+                            />
+                        </div>
+
+                        {addEmployeeError && (
+                            <p className="text-sm font-medium text-destructive">{addEmployeeError}</p>
+                        )}
+
+                        {selectedEmployeeIdToAdd && !addEmployeeError && docToAddEmployeeTo && eligibilityDetails && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Eligibility Criteria Review</CardTitle>
+                                    <CardDescription>This document uses the "{eligibilityDetails.name}" criteria. Adding this employee manually bypasses these rules.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="text-sm space-y-1">
+                                    {eligibilityDetails.rules.length > 0 ? eligibilityDetails.rules.map(rule => (
+                                        <p key={rule.id}>- Excludes if <strong>{rule.type}</strong> is one of: {rule.values.join(', ')}</p>
+                                    )) : <p>No specific exclusion rules defined.</p>}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>Cancel</Button>
+                        <Button 
+                            onClick={handleAddEmployeeProceed} 
+                            disabled={!selectedEmployeeIdToAdd || !!addEmployeeError || isAddingEmployee}
+                        >
+                            {isAddingEmployee ? 'Adding...' : 'Proceed'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
