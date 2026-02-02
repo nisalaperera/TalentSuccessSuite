@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useReducer, useState, useMemo, useEffect } from 'react';
@@ -15,7 +14,6 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Label } from '@/components/ui/label';
-import { Combobox } from '@/components/ui/combobox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 
@@ -71,7 +69,6 @@ export default function PerformanceDocumentsPage() {
     // Add Employee Dialog State
     const [docToAddEmployeeTo, setDocToAddEmployeeTo] = useState<PerfDocType | null>(null);
     const [selectedEmployeeIdToAdd, setSelectedEmployeeIdToAdd] = useState<string | null>(null);
-    const [addEmployeeError, setAddEmployeeError] = useState<string | null>(null);
     const [isAddingEmployee, setIsAddingEmployee] = useState(false);
 
     const selectedPerformanceCycle = useMemo(() => 
@@ -285,26 +282,8 @@ export default function PerformanceDocumentsPage() {
     const handleOpenAddEmployeeDialog = (doc: PerfDocType) => {
         setDocToAddEmployeeTo(doc);
         setSelectedEmployeeIdToAdd(null);
-        setAddEmployeeError(null);
         setIsAddEmployeeDialogOpen(true);
     };
-
-    useEffect(() => {
-        if (!selectedEmployeeIdToAdd || !docToAddEmployeeTo || !employeePerformanceDocs) {
-            setAddEmployeeError(null);
-            return;
-        }
-
-        const alreadyExists = employeePerformanceDocs.some(
-            doc => doc.employeeId === selectedEmployeeIdToAdd && doc.performanceDocumentId === docToAddEmployeeTo.id
-        );
-
-        if (alreadyExists) {
-            setAddEmployeeError('This employee already has this performance document assigned.');
-        } else {
-            setAddEmployeeError(null);
-        }
-    }, [selectedEmployeeIdToAdd, docToAddEmployeeTo, employeePerformanceDocs]);
 
     const handleAddEmployeeProceed = async () => {
         if (!selectedEmployeeIdToAdd || !docToAddEmployeeTo || !employees || !evaluationFlows || !technologistWeights) {
@@ -404,13 +383,22 @@ export default function PerformanceDocumentsPage() {
     
     const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch, onAddEmployee: handleOpenAddEmployeeDialog }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows, technologistWeights]);
 
-    const employeeOptions = useMemo(() => {
-        if (!employees) return [];
-        return employees.map(emp => ({
-            value: emp.id,
-            label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
-        }));
-    }, [employees]);
+    const availableEmployeeOptions = useMemo(() => {
+        if (!employees || !docToAddEmployeeTo || !employeePerformanceDocs) return [];
+        
+        const assignedEmployeeIds = new Set(
+            employeePerformanceDocs
+                .filter(d => d.performanceDocumentId === docToAddEmployeeTo.id)
+                .map(d => d.employeeId)
+        );
+
+        return employees
+            .filter(emp => !assignedEmployeeIds.has(emp.id))
+            .map(emp => ({
+                value: emp.id,
+                label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
+            }));
+    }, [employees, docToAddEmployeeTo, employeePerformanceDocs]);
 
     const eligibilityDetails = useMemo(() => {
         if (!docToAddEmployeeTo || !eligibilityCriteria) return null;
@@ -460,23 +448,26 @@ export default function PerformanceDocumentsPage() {
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label htmlFor="employee-select">Employee</Label>
-                            <Combobox
-                                options={employeeOptions || []}
-                                value={selectedEmployeeIdToAdd || ''}
-                                onChange={setSelectedEmployeeIdToAdd}
-                                placeholder="Select an employee..."
-                                searchPlaceholder="Search employees..."
-                                noResultsText="No employees found."
-                                triggerClassName="w-full"
-                                allowDeselect={false}
-                            />
+                            <Select 
+                                value={selectedEmployeeIdToAdd || ''} 
+                                onValueChange={setSelectedEmployeeIdToAdd}
+                            >
+                                <SelectTrigger id="employee-select">
+                                    <SelectValue placeholder="Select an employee..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableEmployeeOptions.length > 0 ? availableEmployeeOptions.map(opt => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </SelectItem>
+                                    )) : (
+                                        <div className="p-2 text-sm text-muted-foreground text-center">No more employees available.</div>
+                                    )}
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        {addEmployeeError && (
-                            <p className="text-sm font-medium text-destructive">{addEmployeeError}</p>
-                        )}
-
-                        {selectedEmployeeIdToAdd && !addEmployeeError && docToAddEmployeeTo && eligibilityDetails && (
+                        {selectedEmployeeIdToAdd && docToAddEmployeeTo && eligibilityDetails && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-lg">Eligibility Criteria Review</CardTitle>
@@ -494,7 +485,7 @@ export default function PerformanceDocumentsPage() {
                         <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>Cancel</Button>
                         <Button 
                             onClick={handleAddEmployeeProceed} 
-                            disabled={!selectedEmployeeIdToAdd || !!addEmployeeError || isAddingEmployee}
+                            disabled={!selectedEmployeeIdToAdd || isAddingEmployee}
                         >
                             {isAddingEmployee ? 'Adding...' : 'Proceed'}
                         </Button>
