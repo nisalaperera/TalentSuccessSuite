@@ -1,12 +1,18 @@
-
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
 import type { PerformanceDocument } from '@/lib/types';
 import { DataTableColumnHeader } from '@/app/components/data-table/data-table-column-header';
-import { DataTableRowActions } from '@/app/components/data-table/data-table-row-actions';
 import { Rocket, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
 
 type ColumnsConfig = {
     getLookUpName: (type: 'performanceCycle' | 'performanceTemplate', id: string) => string;
@@ -42,31 +48,36 @@ export const columns = ({ getLookUpName, onLaunch, onAddEmployee }: ColumnsConfi
         cell: ({ row }) => {
             const doc = row.original;
             
-            const launchAction = {
-                label: "Launch",
-                icon: <Rocket className="mr-2 h-3.5 w-3.5" />,
-                onClick: onLaunch
-            };
-            const addEmployeeAction = {
-                label: "Add Employee",
-                icon: <UserPlus className="mr-2 h-3.5 w-3.5" />,
-                onClick: onAddEmployee
-            };
-
-            const customActions = doc.isLaunched ? [addEmployeeAction] : [launchAction];
-
             return (
-                 <DataTableRowActions
-                    row={row}
-                    onEdit={() => alert('Editing not implemented for Performance Docs')}
-                    onDelete={() => alert('Deletion not implemented for Performance Docs')}
-                    isToggleable={false}
-                    canEdit={false}
-                    canDelete={false}
-                    customActions={customActions}
-                    editTooltip="Performance documents cannot be edited."
-                    deleteTooltip="Performance documents cannot be deleted."
-                />
+                <TooltipProvider>
+                    <div className="flex justify-end gap-2">
+                        {doc.isLaunched ? (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={() => onAddEmployee(doc)}>
+                                        <UserPlus className="h-4 w-4" />
+                                        <span className="sr-only">Add Employee</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Add Employee</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ) : (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                     <Button variant="ghost" size="icon" onClick={() => onLaunch(doc)}>
+                                        <Rocket className="h-4 w-4" />
+                                        <span className="sr-only">Launch</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Launch</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
+                    </div>
+                </TooltipProvider>
             )
         },
     },
