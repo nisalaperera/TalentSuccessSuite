@@ -1,6 +1,7 @@
 'use client';
 
 import { useReducer, useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/app/components/page-header';
 import { DataTable } from '@/app/components/data-table/data-table';
 import { columns } from './columns';
@@ -21,6 +22,7 @@ import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function PerformanceDocumentsPage() {
     const firestore = useFirestore();
+    const router = useRouter();
     const { toast } = useToast();
     
     // Data Hooks
@@ -287,6 +289,10 @@ export default function PerformanceDocumentsPage() {
         setIsAddEmployeeDialogOpen(true);
     };
 
+    const handleViewEmployeeDocs = (doc: PerfDocType) => {
+        router.push(`/configuration/employee-documents?cycleId=${doc.performanceCycleId}`);
+    };
+
     const handleAddEmployeeProceed = async () => {
         if (!selectedEmployeeIdToAdd || !docToAddEmployeeTo || !employees || !evaluationFlows || !technologistWeights) {
             toast({ title: 'Error', description: 'Required data is missing to proceed.', variant: 'destructive' });
@@ -383,7 +389,7 @@ export default function PerformanceDocumentsPage() {
         }
     }
     
-    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch, onAddEmployee: handleOpenAddEmployeeDialog }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows, technologistWeights]);
+    const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch, onAddEmployee: handleOpenAddEmployeeDialog, onViewEmployeeDocs: handleViewEmployeeDocs }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows, technologistWeights]);
 
     const availableEmployeeOptions = useMemo(() => {
         if (!employees || !docToAddEmployeeTo || !employeePerformanceDocs) return [];

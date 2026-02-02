@@ -3,7 +3,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import type { PerformanceDocument } from '@/lib/types';
 import { DataTableColumnHeader } from '@/app/components/data-table/data-table-column-header';
-import { Rocket, UserPlus } from 'lucide-react';
+import { Rocket, UserPlus, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,9 +18,10 @@ type ColumnsConfig = {
     getLookUpName: (type: 'performanceCycle' | 'performanceTemplate', id: string) => string;
     onLaunch: (doc: PerformanceDocument) => void;
     onAddEmployee: (doc: PerformanceDocument) => void;
+    onViewEmployeeDocs: (doc: PerformanceDocument) => void;
 }
 
-export const columns = ({ getLookUpName, onLaunch, onAddEmployee }: ColumnsConfig): ColumnDef<PerformanceDocument>[] => [
+export const columns = ({ getLookUpName, onLaunch, onAddEmployee, onViewEmployeeDocs }: ColumnsConfig): ColumnDef<PerformanceDocument>[] => [
     {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Document Name" />,
@@ -51,6 +52,18 @@ export const columns = ({ getLookUpName, onLaunch, onAddEmployee }: ColumnsConfi
             return (
                 <TooltipProvider>
                     <div className="flex justify-end gap-2">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={() => onViewEmployeeDocs(doc)}>
+                                    <Users className="h-4 w-4" />
+                                    <span className="sr-only">View Employee Documents</span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>View Employee Documents</p>
+                            </TooltipContent>
+                        </Tooltip>
+
                         {doc.isLaunched ? (
                             <Tooltip>
                                 <TooltipTrigger asChild>
