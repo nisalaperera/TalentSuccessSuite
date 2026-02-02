@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, Suspense, useCallback, useEffect, useRef } from 'react';
@@ -552,7 +551,7 @@ function EmployeeDocumentsContent() {
                 <Button onClick={() => handleBulkStatusUpdateClick(table)} disabled={!hasSelection} size="sm">
                     <ArrowUpWideNarrow className="mr-2 h-4 w-4" /> Bulk Update Status
                 </Button>
-                <Button onClick={()={() => handleBulkUpdateClick(table)} disabled={!hasSelection} size="sm">
+                <Button onClick={() => handleBulkUpdateClick(table)} disabled={!hasSelection} size="sm">
                     <Users className="mr-2 h-4 w-4" /> Bulk Update Appraisers
                 </Button>
                 <Button onClick={() => {
@@ -1004,5 +1003,3 @@ export default function EmployeeDocumentsPage() {
         </Suspense>
     )
 }
-
-    
