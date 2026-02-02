@@ -318,5 +318,4 @@ export default function PerformanceDocumentsPage() {
             </Dialog>
         </div>
     );
-
-    
+}
