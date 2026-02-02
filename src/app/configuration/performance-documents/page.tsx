@@ -15,6 +15,8 @@ import { collection, doc, writeBatch, getDocs, query, where, serverTimestamp } f
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 
 export default function PerformanceDocumentsPage() {
@@ -405,6 +407,29 @@ export default function PerformanceDocumentsPage() {
         return eligibilityCriteria.find(e => e.id === docToAddEmployeeTo.eligibilityId);
     }, [docToAddEmployeeTo, eligibilityCriteria]);
 
+    const employeeToAdd = useMemo(() => 
+        employees?.find(e => e.id === selectedEmployeeIdToAdd),
+    [selectedEmployeeIdToAdd, employees]);
+
+    const eligibilityEvaluation = useMemo(() => {
+        if (!employeeToAdd || !eligibilityDetails) return null;
+        
+        const failingRules = eligibilityDetails.rules.filter(rule => {
+            let employeeValue: string | undefined;
+            switch (rule.type) {
+                case 'Person Type': employeeValue = employeeToAdd.personType; break;
+                case 'Department': employeeValue = employeeToAdd.department; break;
+                case 'Legal Entity': employeeValue = employeeToAdd.entity; break;
+            }
+            return employeeValue ? rule.values.includes(employeeValue) : false;
+        });
+
+        return {
+            isEligible: failingRules.length === 0,
+            failingRules: failingRules
+        };
+    }, [employeeToAdd, eligibilityDetails]);
+
 
     return (
         <div className="container mx-auto py-10">
@@ -467,16 +492,48 @@ export default function PerformanceDocumentsPage() {
                             </Select>
                         </div>
 
-                        {selectedEmployeeIdToAdd && docToAddEmployeeTo && eligibilityDetails && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-lg">Eligibility Criteria Review</CardTitle>
-                                    <CardDescription>This document uses the "{eligibilityDetails.name}" criteria. Adding this employee manually bypasses these rules.</CardDescription>
+                        {selectedEmployeeIdToAdd && docToAddEmployeeTo && eligibilityDetails && eligibilityEvaluation && (
+                            <Card className={eligibilityEvaluation.isEligible ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/50"}>
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg font-headline flex items-center gap-2">
+                                            {eligibilityEvaluation.isEligible ? (
+                                                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                            ) : (
+                                                <AlertCircle className="h-5 w-5 text-amber-600" />
+                                            )}
+                                            Eligibility Evaluation
+                                        </CardTitle>
+                                        <Badge variant={eligibilityEvaluation.isEligible ? "default" : "destructive"} className={eligibilityEvaluation.isEligible ? "bg-green-600 hover:bg-green-700" : ""}>
+                                            {eligibilityEvaluation.isEligible ? 'Eligible' : 'Ineligible'}
+                                        </Badge>
+                                    </div>
+                                    <CardDescription>
+                                        {eligibilityEvaluation.isEligible 
+                                            ? `${employeeToAdd?.firstName} ${employeeToAdd?.lastName} matches all defined eligibility criteria.`
+                                            : `${employeeToAdd?.firstName} ${employeeToAdd?.lastName} is technically excluded by the rules, but you can still proceed manually.`
+                                        }
+                                    </CardDescription>
                                 </CardHeader>
-                                <CardContent className="text-sm space-y-1">
-                                    {eligibilityDetails.rules.length > 0 ? eligibilityDetails.rules.map(rule => (
-                                        <p key={rule.id}>- Excludes if <strong>{rule.type}</strong> is one of: {rule.values.join(', ')}</p>
-                                    )) : <p>No specific exclusion rules defined.</p>}
+                                <CardContent className="text-sm space-y-2">
+                                    <div className="pt-2 border-t border-muted">
+                                        <p className="font-semibold mb-1">Applied Rules ({eligibilityDetails.name}):</p>
+                                        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                                            {eligibilityDetails.rules.length > 0 ? eligibilityDetails.rules.map(rule => {
+                                                const isFailing = eligibilityEvaluation.failingRules.some(fr => fr.id === rule.id);
+                                                return (
+                                                    <li key={rule.id} className={isFailing ? "text-amber-700 font-medium" : ""}>
+                                                        Exclude if <strong>{rule.type}</strong> is: [{rule.values.join(', ')}]
+                                                        {isFailing && <span className="ml-2">(Violated: {rule.type} is "{
+                                                            rule.type === 'Person Type' ? employeeToAdd?.personType :
+                                                            rule.type === 'Department' ? employeeToAdd?.department :
+                                                            employeeToAdd?.entity
+                                                        }")</span>}
+                                                    </li>
+                                                );
+                                            }) : <li>No specific exclusion rules defined.</li>}
+                                        </ul>
+                                    </div>
                                 </CardContent>
                             </Card>
                         )}
