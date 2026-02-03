@@ -17,7 +17,9 @@ import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/no
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Search, CheckSquare, Square } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 export default function PerformanceDocumentsPage() {
@@ -72,8 +74,9 @@ export default function PerformanceDocumentsPage() {
     
     // Add Employee Dialog State
     const [docToAddEmployeeTo, setDocToAddEmployeeTo] = useState<PerfDocType | null>(null);
-    const [selectedEmployeeIdToAdd, setSelectedEmployeeIdToAdd] = useState<string | null>(null);
-    const [isAddingEmployee, setIsAddingEmployee] = useState(false);
+    const [selectedEmployeeIdsToAdd, setSelectedEmployeeIdsToAdd] = useState<string[]>([]);
+    const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+    const [isAddingEmployees, setIsAddingEmployees] = useState(false);
 
     const selectedPerformanceCycle = useMemo(() => 
         performanceCycles?.find(c => c.id === performanceCycleId),
@@ -285,7 +288,8 @@ export default function PerformanceDocumentsPage() {
     
     const handleOpenAddEmployeeDialog = (doc: PerfDocType) => {
         setDocToAddEmployeeTo(doc);
-        setSelectedEmployeeIdToAdd(null);
+        setSelectedEmployeeIdsToAdd([]);
+        setEmployeeSearchTerm('');
         setIsAddEmployeeDialogOpen(true);
     };
 
@@ -294,24 +298,17 @@ export default function PerformanceDocumentsPage() {
     };
 
     const handleAddEmployeeProceed = async () => {
-        if (!selectedEmployeeIdToAdd || !docToAddEmployeeTo || !employees || !evaluationFlows || !technologistWeights) {
-            toast({ title: 'Error', description: 'Required data is missing to proceed.', variant: 'destructive' });
+        if (selectedEmployeeIdsToAdd.length === 0 || !docToAddEmployeeTo || !employees || !evaluationFlows || !technologistWeights) {
+            toast({ title: 'Error', description: 'Required data or selections are missing to proceed.', variant: 'destructive' });
             return;
         }
 
-        setIsAddingEmployee(true);
+        setIsAddingEmployees(true);
 
-        const employeeToAdd = employees.find(e => e.id === selectedEmployeeIdToAdd);
-        if (!employeeToAdd) {
-            toast({ title: 'Error', description: 'Selected employee not found.', variant: 'destructive' });
-            setIsAddingEmployee(false);
-            return;
-        }
-        
         const evaluationFlow = evaluationFlows.find(f => f.id === docToAddEmployeeTo.evaluationFlowId);
         if (!evaluationFlow) {
             toast({ title: "Evaluation flow not found", variant: "destructive" });
-            setIsAddingEmployee(false);
+            setIsAddingEmployees(false);
             return;
         }
 
@@ -319,59 +316,66 @@ export default function PerformanceDocumentsPage() {
         const firstStep = sortedSteps[0];
         if (!firstStep) {
             toast({ title: "Evaluation flow has no steps", variant: "destructive" });
-            setIsAddingEmployee(false);
+            setIsAddingEmployees(false);
             return;
         }
         const initialStatus = firstStep.task;
 
         try {
             const batch = writeBatch(firestore);
+            let addedCount = 0;
 
-            const newEmployeeDocRef = doc(collection(firestore, 'employee_performance_documents'));
-            const newDoc: Omit<EmployeePerformanceDocument, 'id'> = {
-                performanceDocumentId: docToAddEmployeeTo.id,
-                employeeId: employeeToAdd.id,
-                performanceCycleId: docToAddEmployeeTo.performanceCycleId,
-                performanceTemplateId: docToAddEmployeeTo.performanceTemplateId,
-                evaluationFlowId: docToAddEmployeeTo.evaluationFlowId,
-                status: initialStatus,
-            };
-            batch.set(newEmployeeDocRef, newDoc);
+            for (const employeeId of selectedEmployeeIdsToAdd) {
+                const employeeToAdd = employees.find(e => e.id === employeeId);
+                if (!employeeToAdd) continue;
 
-            const empTechnologistType = employeeToAdd.technologist_type || 'JUNIOR';
-            const weightConfig = technologistWeights.find(w => w.technologist_type === empTechnologistType);
-            
-            if (weightConfig) {
-                 const primaryAppraiserRole = weightConfig.primaryAppraiser;
-                const secondaryAppraiserRole = weightConfig.secondaryAppraiser;
-                const primaryAppraiserPersonNumber = primaryAppraiserRole === 'Work Manager' ? employeeToAdd.workManager : employeeToAdd.homeManager;
-                const primaryEvalGoalType = primaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
-                const secondaryAppraiserPersonNumber = secondaryAppraiserRole === 'Work Manager' ? employeeToAdd.workManager : employeeToAdd.homeManager;
-                const secondaryEvalGoalType = secondaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
+                const newEmployeeDocRef = doc(collection(firestore, 'employee_performance_documents'));
+                const newDoc: Omit<EmployeePerformanceDocument, 'id'> = {
+                    performanceDocumentId: docToAddEmployeeTo.id,
+                    employeeId: employeeToAdd.id,
+                    performanceCycleId: docToAddEmployeeTo.performanceCycleId,
+                    performanceTemplateId: docToAddEmployeeTo.performanceTemplateId,
+                    evaluationFlowId: docToAddEmployeeTo.evaluationFlowId,
+                    status: initialStatus,
+                };
+                batch.set(newEmployeeDocRef, newDoc);
+
+                const empTechnologistType = employeeToAdd.technologist_type || 'JUNIOR';
+                const weightConfig = technologistWeights.find(w => w.technologist_type === empTechnologistType);
                 
-                if (primaryAppraiserPersonNumber && primaryAppraiserPersonNumber === secondaryAppraiserPersonNumber) {
-                    const mappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
-                    batch.set(mappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Primary', appraiserPersonNumber: primaryAppraiserPersonNumber, evalGoalTypes: 'Work,Home', isCompleted: false });
-                } else {
-                    if (primaryAppraiserPersonNumber) {
-                        const primaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
-                        batch.set(primaryMappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Primary', appraiserPersonNumber: primaryAppraiserPersonNumber, evalGoalTypes: primaryEvalGoalType, isCompleted: false });
-                    }
-                    if (secondaryAppraiserPersonNumber) {
-                        const secondaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
-                        batch.set(secondaryMappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Secondary', appraiserPersonNumber: secondaryAppraiserPersonNumber, evalGoalTypes: secondaryEvalGoalType, isCompleted: false });
+                if (weightConfig) {
+                    const primaryAppraiserRole = weightConfig.primaryAppraiser;
+                    const secondaryAppraiserRole = weightConfig.secondaryAppraiser;
+                    const primaryAppraiserPersonNumber = primaryAppraiserRole === 'Work Manager' ? employeeToAdd.workManager : employeeToAdd.homeManager;
+                    const primaryEvalGoalType = primaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
+                    const secondaryAppraiserPersonNumber = secondaryAppraiserRole === 'Work Manager' ? employeeToAdd.workManager : employeeToAdd.homeManager;
+                    const secondaryEvalGoalType = secondaryAppraiserRole === 'Work Manager' ? 'Work' : 'Home';
+                    
+                    if (primaryAppraiserPersonNumber && primaryAppraiserPersonNumber === secondaryAppraiserPersonNumber) {
+                        const mappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                        batch.set(mappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Primary', appraiserPersonNumber: primaryAppraiserPersonNumber, evalGoalTypes: 'Work,Home', isCompleted: false });
+                    } else {
+                        if (primaryAppraiserPersonNumber) {
+                            const primaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                            batch.set(primaryMappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Primary', appraiserPersonNumber: primaryAppraiserPersonNumber, evalGoalTypes: primaryEvalGoalType, isCompleted: false });
+                        }
+                        if (secondaryAppraiserPersonNumber) {
+                            const secondaryMappingRef = doc(collection(firestore, 'employee_appraiser_mappings'));
+                            batch.set(secondaryMappingRef, { employeePersonNumber: employeeToAdd.personNumber, performanceCycleId: docToAddEmployeeTo.performanceCycleId, appraiserType: 'Secondary', appraiserPersonNumber: secondaryAppraiserPersonNumber, evalGoalTypes: secondaryEvalGoalType, isCompleted: false });
+                        }
                     }
                 }
+                addedCount++;
             }
 
             await batch.commit();
-            toast({ title: 'Success', description: `${employeeToAdd.firstName} ${employeeToAdd.lastName} has been added to the performance document.`});
+            toast({ title: 'Success', description: `${addedCount} employee(s) have been added to the performance document.`});
             setIsAddEmployeeDialogOpen(false);
         } catch(error) {
-            console.error("Error manually adding employee:", error);
-            toast({ title: 'Error', description: 'Failed to add employee.', variant: 'destructive'});
+            console.error("Error manually adding employees:", error);
+            toast({ title: 'Error', description: 'Failed to add employees.', variant: 'destructive'});
         } finally {
-            setIsAddingEmployee(false);
+            setIsAddingEmployees(false);
         }
     };
 
@@ -391,7 +395,7 @@ export default function PerformanceDocumentsPage() {
     
     const tableColumns = useMemo(() => columns({ getLookUpName, onLaunch: handleLaunch, onAddEmployee: handleOpenAddEmployeeDialog, onViewEmployeeDocs: handleViewEmployeeDocs }), [reviewPeriods, performanceCycles, performanceTemplates, employees, eligibilityCriteria, evaluationFlows, technologistWeights]);
 
-    const availableEmployeeOptions = useMemo(() => {
+    const availableEmployees = useMemo(() => {
         if (!employees || !docToAddEmployeeTo || !employeePerformanceDocs) return [];
         
         const assignedEmployeeIds = new Set(
@@ -402,40 +406,69 @@ export default function PerformanceDocumentsPage() {
 
         return [...employees]
             .filter(emp => !assignedEmployeeIds.has(emp.id))
-            .sort((a, b) => a.personNumber.localeCompare(b.personNumber, undefined, { numeric: true }))
-            .map(emp => ({
-                value: emp.id,
-                label: `${emp.firstName} ${emp.lastName} (${emp.personNumber})`,
-            }));
+            .sort((a, b) => a.personNumber.localeCompare(b.personNumber, undefined, { numeric: true }));
     }, [employees, docToAddEmployeeTo, employeePerformanceDocs]);
+
+    const filteredEmployees = useMemo(() => {
+        return availableEmployees.filter(emp => 
+            emp.firstName.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+            emp.lastName.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+            emp.personNumber.includes(employeeSearchTerm) ||
+            emp.designation.toLowerCase().includes(employeeSearchTerm.toLowerCase())
+        );
+    }, [availableEmployees, employeeSearchTerm]);
 
     const eligibilityDetails = useMemo(() => {
         if (!docToAddEmployeeTo || !eligibilityCriteria) return null;
         return eligibilityCriteria.find(e => e.id === docToAddEmployeeTo.eligibilityId);
     }, [docToAddEmployeeTo, eligibilityCriteria]);
 
-    const employeeToAdd = useMemo(() => 
-        employees?.find(e => e.id === selectedEmployeeIdToAdd),
-    [selectedEmployeeIdToAdd, employees]);
-
-    const eligibilityEvaluation = useMemo(() => {
-        if (!employeeToAdd || !eligibilityDetails) return null;
+    const eligibilitySummary = useMemo(() => {
+        if (selectedEmployeeIdsToAdd.length === 0 || !eligibilityDetails || !employees) return null;
         
-        const failingRules = eligibilityDetails.rules.filter(rule => {
-            let employeeValue: string | undefined;
-            switch (rule.type) {
-                case 'Person Type': employeeValue = employeeToAdd.personType; break;
-                case 'Department': employeeValue = employeeToAdd.department; break;
-                case 'Legal Entity': employeeValue = employeeToAdd.entity; break;
-            }
-            return employeeValue ? rule.values.includes(employeeValue) : false;
-        });
+        let eligibleCount = 0;
+        let ineligibleCount = 0;
+
+        for (const employeeId of selectedEmployeeIdsToAdd) {
+            const emp = employees.find(e => e.id === employeeId);
+            if (!emp) continue;
+
+            const isFailing = eligibilityDetails.rules.some(rule => {
+                let employeeValue: string | undefined;
+                switch (rule.type) {
+                    case 'Person Type': employeeValue = emp.personType; break;
+                    case 'Department': employeeValue = emp.department; break;
+                    case 'Legal Entity': employeeValue = emp.entity; break;
+                }
+                return employeeValue ? rule.values.includes(employeeValue) : false;
+            });
+
+            if (isFailing) ineligibleCount++;
+            else eligibleCount++;
+        }
 
         return {
-            isEligible: failingRules.length === 0,
-            failingRules: failingRules
+            total: selectedEmployeeIdsToAdd.length,
+            eligible: eligibleCount,
+            ineligible: ineligibleCount
         };
-    }, [employeeToAdd, eligibilityDetails]);
+    }, [selectedEmployeeIdsToAdd, eligibilityDetails, employees]);
+
+    const handleToggleEmployee = (id: string) => {
+        setSelectedEmployeeIdsToAdd(prev => 
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        );
+    };
+
+    const handleSelectAllFiltered = () => {
+        const filteredIds = filteredEmployees.map(e => e.id);
+        setSelectedEmployeeIdsToAdd(prev => [...new Set([...prev, ...filteredIds])]);
+    };
+
+    const handleDeselectAllFiltered = () => {
+        const filteredIds = new Set(filteredEmployees.map(e => e.id));
+        setSelectedEmployeeIdsToAdd(prev => prev.filter(id => !filteredIds.has(id)));
+    };
 
 
     return (
@@ -470,78 +503,96 @@ export default function PerformanceDocumentsPage() {
             </Dialog>
 
             <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
-                <DialogContent className="max-w-xl">
+                <DialogContent className="max-w-3xl">
                     <DialogHeader>
-                        <DialogTitle>Add Employee to: {docToAddEmployeeTo?.name}</DialogTitle>
+                        <DialogTitle>Add Employees to: {docToAddEmployeeTo?.name}</DialogTitle>
                         <DialogDescription>
-                            Select an employee to manually assign them to this performance document.
+                            Select one or more employees to manually assign them to this performance document.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="employee-select">Employee</Label>
-                            <Select 
-                                value={selectedEmployeeIdToAdd || ''} 
-                                onValueChange={setSelectedEmployeeIdToAdd}
-                            >
-                                <SelectTrigger id="employee-select">
-                                    <SelectValue placeholder="Select an employee..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableEmployeeOptions.length > 0 ? availableEmployeeOptions.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </SelectItem>
-                                    )) : (
-                                        <div className="p-2 text-sm text-muted-foreground text-center">No more employees available.</div>
-                                    )}
-                                </SelectContent>
-                            </Select>
+                    <div className="space-y-6 py-4">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Search by name, person number, or designation..." 
+                                        className="pl-9"
+                                        value={employeeSearchTerm}
+                                        onChange={e => setEmployeeSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" onClick={handleSelectAllFiltered} title="Select All Filtered">
+                                        <CheckSquare className="h-4 w-4 mr-2" /> Select All
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={handleDeselectAllFiltered} title="Deselect All Filtered">
+                                        <Square className="h-4 w-4 mr-2" /> Deselect All
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <Card className="border">
+                                <CardHeader className="py-3 px-4 border-b bg-muted/30">
+                                    <div className="flex justify-between items-center">
+                                        <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Available Employees ({filteredEmployees.length})</CardTitle>
+                                        <Badge variant="secondary">{selectedEmployeeIdsToAdd.length} selected</Badge>
+                                    </div>
+                                </CardHeader>
+                                <ScrollArea className="h-[300px]">
+                                    <div className="p-2 space-y-1">
+                                        {filteredEmployees.length > 0 ? filteredEmployees.map(emp => (
+                                            <div 
+                                                key={emp.id} 
+                                                className={`flex items-center space-x-3 p-3 rounded-md hover:bg-accent cursor-pointer transition-colors ${selectedEmployeeIdsToAdd.includes(emp.id) ? 'bg-accent/50 border-l-4 border-primary' : 'border-l-4 border-transparent'}`}
+                                                onClick={() => handleToggleEmployee(emp.id)}
+                                            >
+                                                <Checkbox 
+                                                    id={`emp-${emp.id}`} 
+                                                    checked={selectedEmployeeIdsToAdd.includes(emp.id)} 
+                                                    onCheckedChange={() => handleToggleEmployee(emp.id)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <div className="flex-1 grid grid-cols-3 gap-2 items-center">
+                                                    <div className="font-medium text-sm">{emp.personNumber}</div>
+                                                    <div className="font-semibold text-sm">{emp.firstName} {emp.lastName}</div>
+                                                    <div className="text-xs text-muted-foreground truncate">{emp.designation}</div>
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="p-8 text-center text-muted-foreground">No matching employees found.</div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </Card>
                         </div>
 
-                        {selectedEmployeeIdToAdd && docToAddEmployeeTo && eligibilityDetails && eligibilityEvaluation && (
-                            <Card className={eligibilityEvaluation.isEligible ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/50"}>
-                                <CardHeader className="pb-3">
+                        {selectedEmployeeIdsToAdd.length > 0 && eligibilitySummary && (
+                            <Card className={eligibilitySummary.ineligible === 0 ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/50"}>
+                                <CardHeader className="py-3">
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-lg font-headline flex items-center gap-2">
-                                            {eligibilityEvaluation.isEligible ? (
+                                            {eligibilitySummary.ineligible === 0 ? (
                                                 <CheckCircle2 className="h-5 w-5 text-green-600" />
                                             ) : (
                                                 <AlertCircle className="h-5 w-5 text-amber-600" />
                                             )}
-                                            Eligibility Evaluation
+                                            Selection Eligibility Summary
                                         </CardTitle>
-                                        <Badge variant={eligibilityEvaluation.isEligible ? "default" : "destructive"} className={eligibilityEvaluation.isEligible ? "bg-green-600 hover:bg-green-700" : ""}>
-                                            {eligibilityEvaluation.isEligible ? 'Eligible' : 'Ineligible'}
-                                        </Badge>
+                                        <div className="flex gap-2">
+                                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">{eligibilitySummary.eligible} Eligible</Badge>
+                                            {eligibilitySummary.ineligible > 0 && (
+                                                <Badge variant="destructive">{eligibilitySummary.ineligible} Ineligible</Badge>
+                                            )}
+                                        </div>
                                     </div>
                                     <CardDescription>
-                                        {eligibilityEvaluation.isEligible 
-                                            ? `${employeeToAdd?.firstName} ${employeeToAdd?.lastName} matches all defined eligibility criteria.`
-                                            : `${employeeToAdd?.firstName} ${employeeToAdd?.lastName} is technically excluded by the rules, but you can still proceed manually.`
+                                        {eligibilitySummary.ineligible === 0 
+                                            ? `All ${eligibilitySummary.total} selected employees match the defined eligibility criteria.`
+                                            : `${eligibilitySummary.ineligible} selected employees are technically excluded by rules, but you can still proceed manually.`
                                         }
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="text-sm space-y-2">
-                                    <div className="pt-2 border-t border-muted">
-                                        <p className="font-semibold mb-1">Applied Rules ({eligibilityDetails.name}):</p>
-                                        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                                            {eligibilityDetails.rules.length > 0 ? eligibilityDetails.rules.map(rule => {
-                                                const isFailing = eligibilityEvaluation.failingRules.some(fr => fr.id === rule.id);
-                                                return (
-                                                    <li key={rule.id} className={isFailing ? "text-amber-700 font-medium" : ""}>
-                                                        Exclude if <strong>{rule.type}</strong> is: [{rule.values.join(', ')}]
-                                                        {isFailing && <span className="ml-2">(Violated: {rule.type} is "{
-                                                            rule.type === 'Person Type' ? employeeToAdd?.personType :
-                                                            rule.type === 'Department' ? employeeToAdd?.department :
-                                                            employeeToAdd?.entity
-                                                        }")</span>}
-                                                    </li>
-                                                );
-                                            }) : <li>No specific exclusion rules defined.</li>}
-                                        </ul>
-                                    </div>
-                                </CardContent>
                             </Card>
                         )}
                     </div>
@@ -549,9 +600,9 @@ export default function PerformanceDocumentsPage() {
                         <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>Cancel</Button>
                         <Button 
                             onClick={handleAddEmployeeProceed} 
-                            disabled={!selectedEmployeeIdToAdd || isAddingEmployee}
+                            disabled={selectedEmployeeIdsToAdd.length === 0 || isAddingEmployees}
                         >
-                            {isAddingEmployee ? 'Adding...' : 'Proceed'}
+                            {isAddingEmployees ? 'Adding...' : `Proceed with ${selectedEmployeeIdsToAdd.length} employee(s)`}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
