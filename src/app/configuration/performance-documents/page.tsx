@@ -17,9 +17,10 @@ import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/no
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, AlertCircle, Search, CheckSquare, Square } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Search, CheckSquare, Square, Info } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 export default function PerformanceDocumentsPage() {
@@ -423,6 +424,28 @@ export default function PerformanceDocumentsPage() {
         return eligibilityCriteria.find(e => e.id === docToAddEmployeeTo.eligibilityId);
     }, [docToAddEmployeeTo, eligibilityCriteria]);
 
+    const getEmployeeEligibility = (emp: Employee) => {
+        if (!eligibilityDetails) return { isEligible: true, reasons: [] };
+
+        const failingRules = eligibilityDetails.rules.filter(rule => {
+            let employeeValue: string | undefined;
+            switch (rule.type) {
+                case 'Person Type': employeeValue = emp.personType; break;
+                case 'Department': employeeValue = emp.department; break;
+                case 'Legal Entity': employeeValue = emp.entity; break;
+            }
+            return employeeValue ? rule.values.includes(employeeValue) : false;
+        });
+
+        if (failingRules.length === 0) {
+            return { isEligible: true, reasons: [] };
+        }
+        return { 
+            isEligible: false, 
+            reasons: failingRules.map(r => `Excluded because ${r.type} is "${emp[r.type === 'Person Type' ? 'personType' : r.type === 'Department' ? 'department' : 'entity']}"`)
+        };
+    };
+
     const eligibilitySummary = useMemo(() => {
         if (selectedEmployeeIdsToAdd.length === 0 || !eligibilityDetails || !employees) return null;
         
@@ -433,18 +456,9 @@ export default function PerformanceDocumentsPage() {
             const emp = employees.find(e => e.id === employeeId);
             if (!emp) continue;
 
-            const isFailing = eligibilityDetails.rules.some(rule => {
-                let employeeValue: string | undefined;
-                switch (rule.type) {
-                    case 'Person Type': employeeValue = emp.personType; break;
-                    case 'Department': employeeValue = emp.department; break;
-                    case 'Legal Entity': employeeValue = emp.entity; break;
-                }
-                return employeeValue ? rule.values.includes(employeeValue) : false;
-            });
-
-            if (isFailing) ineligibleCount++;
-            else eligibleCount++;
+            const { isEligible } = getEmployeeEligibility(emp);
+            if (isEligible) eligibleCount++;
+            else ineligibleCount++;
         }
 
         return {
@@ -502,111 +516,138 @@ export default function PerformanceDocumentsPage() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
-                <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Add Employees to: {docToAddEmployeeTo?.name}</DialogTitle>
-                        <DialogDescription>
-                            Select one or more employees to manually assign them to this performance document.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-6 py-4">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input 
-                                        placeholder="Search by name, person number, or designation..." 
-                                        className="pl-9"
-                                        value={employeeSearchTerm}
-                                        onChange={e => setEmployeeSearchTerm(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" onClick={handleSelectAllFiltered} title="Select All Filtered">
-                                        <CheckSquare className="h-4 w-4 mr-2" /> Select All
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={handleDeselectAllFiltered} title="Deselect All Filtered">
-                                        <Square className="h-4 w-4 mr-2" /> Deselect All
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <Card className="border">
-                                <CardHeader className="py-3 px-4 border-b bg-muted/30">
-                                    <div className="flex justify-between items-center">
-                                        <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Available Employees ({filteredEmployees.length})</CardTitle>
-                                        <Badge variant="secondary">{selectedEmployeeIdsToAdd.length} selected</Badge>
+            <TooltipProvider>
+                <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
+                    <DialogContent className="max-w-4xl">
+                        <DialogHeader>
+                            <DialogTitle>Add Employees to: {docToAddEmployeeTo?.name}</DialogTitle>
+                            <DialogDescription>
+                                Select one or more employees to manually assign them to this performance document.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Search by name, person number..." 
+                                            className="pl-9"
+                                            value={employeeSearchTerm}
+                                            onChange={e => setEmployeeSearchTerm(e.target.value)}
+                                        />
                                     </div>
-                                </CardHeader>
-                                <ScrollArea className="h-[300px]">
-                                    <div className="p-2 space-y-1">
-                                        {filteredEmployees.length > 0 ? filteredEmployees.map(emp => (
-                                            <div 
-                                                key={emp.id} 
-                                                className={`flex items-center space-x-3 p-3 rounded-md hover:bg-accent cursor-pointer transition-colors ${selectedEmployeeIdsToAdd.includes(emp.id) ? 'bg-accent/50 border-l-4 border-primary' : 'border-l-4 border-transparent'}`}
-                                                onClick={() => handleToggleEmployee(emp.id)}
-                                            >
-                                                <Checkbox 
-                                                    id={`emp-${emp.id}`} 
-                                                    checked={selectedEmployeeIdsToAdd.includes(emp.id)} 
-                                                    onCheckedChange={() => handleToggleEmployee(emp.id)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
-                                                <div className="flex-1 grid grid-cols-3 gap-2 items-center">
-                                                    <div className="font-medium text-sm">{emp.personNumber}</div>
-                                                    <div className="font-semibold text-sm">{emp.firstName} {emp.lastName}</div>
-                                                    <div className="text-xs text-muted-foreground truncate">{emp.designation}</div>
-                                                </div>
-                                            </div>
-                                        )) : (
-                                            <div className="p-8 text-center text-muted-foreground">No matching employees found.</div>
-                                        )}
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" onClick={handleSelectAllFiltered} title="Select All Filtered">
+                                            <CheckSquare className="h-4 w-4 mr-2" /> Select All
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={handleDeselectAllFiltered} title="Deselect All Filtered">
+                                            <Square className="h-4 w-4 mr-2" /> Deselect All
+                                        </Button>
                                     </div>
-                                </ScrollArea>
-                            </Card>
-                        </div>
+                                </div>
 
-                        {selectedEmployeeIdsToAdd.length > 0 && eligibilitySummary && (
-                            <Card className={eligibilitySummary.ineligible === 0 ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/50"}>
-                                <CardHeader className="py-3">
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="text-lg font-headline flex items-center gap-2">
-                                            {eligibilitySummary.ineligible === 0 ? (
-                                                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                            ) : (
-                                                <AlertCircle className="h-5 w-5 text-amber-600" />
-                                            )}
-                                            Selection Eligibility Summary
-                                        </CardTitle>
-                                        <div className="flex gap-2">
-                                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">{eligibilitySummary.eligible} Eligible</Badge>
-                                            {eligibilitySummary.ineligible > 0 && (
-                                                <Badge variant="destructive">{eligibilitySummary.ineligible} Ineligible</Badge>
+                                <Card className="border">
+                                    <CardHeader className="py-3 px-4 border-b bg-muted/30">
+                                        <div className="flex justify-between items-center">
+                                            <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Available Employees ({filteredEmployees.length})</CardTitle>
+                                            <Badge variant="secondary">{selectedEmployeeIdsToAdd.length} selected</Badge>
+                                        </div>
+                                    </CardHeader>
+                                    <ScrollArea className="h-[400px]">
+                                        <div className="p-2 space-y-1">
+                                            {filteredEmployees.length > 0 ? filteredEmployees.map(emp => {
+                                                const { isEligible, reasons } = getEmployeeEligibility(emp);
+                                                return (
+                                                    <div 
+                                                        key={emp.id} 
+                                                        className={`flex items-center space-x-3 p-3 rounded-md hover:bg-accent cursor-pointer transition-colors ${selectedEmployeeIdsToAdd.includes(emp.id) ? 'bg-accent/50 border-l-4 border-primary' : 'border-l-4 border-transparent'}`}
+                                                        onClick={() => handleToggleEmployee(emp.id)}
+                                                    >
+                                                        <Checkbox 
+                                                            id={`emp-${emp.id}`} 
+                                                            checked={selectedEmployeeIdsToAdd.includes(emp.id)} 
+                                                            onCheckedChange={() => handleToggleEmployee(emp.id)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                        <div className="flex-1 grid grid-cols-12 gap-2 items-center">
+                                                            <div className="col-span-2 font-medium text-sm">{emp.personNumber}</div>
+                                                            <div className="col-span-4 flex items-center gap-2">
+                                                                <span className="font-semibold text-sm">{emp.firstName} {emp.lastName}</span>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Info className={`h-4 w-4 cursor-help ${isEligible ? 'text-green-500' : 'text-amber-500'}`} />
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent side="right" className="max-w-[300px]">
+                                                                        <div className="space-y-1 p-1">
+                                                                            <p className="font-bold text-sm">Eligibility Status: {isEligible ? 'Eligible' : 'Ineligible'}</p>
+                                                                            {!isEligible && (
+                                                                                <ul className="text-xs list-disc pl-4 space-y-1">
+                                                                                    {reasons.map((r, i) => <li key={i}>{r}</li>)}
+                                                                                </ul>
+                                                                            )}
+                                                                            {isEligible && <p className="text-xs text-muted-foreground">This employee matches all defined eligibility rules.</p>}
+                                                                        </div>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </div>
+                                                            <div className="col-span-6 flex flex-wrap gap-1 items-center">
+                                                                <Badge variant="outline" className="text-[10px] py-0 h-5 bg-muted/50">{emp.personType}</Badge>
+                                                                <Badge variant="outline" className="text-[10px] py-0 h-5 bg-muted/50 max-w-[120px] truncate">{emp.department}</Badge>
+                                                                <Badge variant="outline" className="text-[10px] py-0 h-5 bg-muted/50 max-w-[120px] truncate">{emp.entity}</Badge>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }) : (
+                                                <div className="p-8 text-center text-muted-foreground">No matching employees found.</div>
                                             )}
                                         </div>
-                                    </div>
-                                    <CardDescription>
-                                        {eligibilitySummary.ineligible === 0 
-                                            ? `All ${eligibilitySummary.total} selected employees match the defined eligibility criteria.`
-                                            : `${eligibilitySummary.ineligible} selected employees are technically excluded by rules, but you can still proceed manually.`
-                                        }
-                                    </CardDescription>
-                                </CardHeader>
-                            </Card>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>Cancel</Button>
-                        <Button 
-                            onClick={handleAddEmployeeProceed} 
-                            disabled={selectedEmployeeIdsToAdd.length === 0 || isAddingEmployees}
-                        >
-                            {isAddingEmployees ? 'Adding...' : `Proceed with ${selectedEmployeeIdsToAdd.length} employee(s)`}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                                    </ScrollArea>
+                                </Card>
+                            </div>
+
+                            {selectedEmployeeIdsToAdd.length > 0 && eligibilitySummary && (
+                                <Card className={eligibilitySummary.ineligible === 0 ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/50"}>
+                                    <CardHeader className="py-3">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-lg font-headline flex items-center gap-2">
+                                                {eligibilitySummary.ineligible === 0 ? (
+                                                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                                ) : (
+                                                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                                                )}
+                                                Selection Eligibility Summary
+                                            </CardTitle>
+                                            <div className="flex gap-2">
+                                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">{eligibilitySummary.eligible} Eligible</Badge>
+                                                {eligibilitySummary.ineligible > 0 && (
+                                                    <Badge variant="destructive">{eligibilitySummary.ineligible} Ineligible</Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <CardDescription>
+                                            {eligibilitySummary.ineligible === 0 
+                                                ? `All ${eligibilitySummary.total} selected employees match the defined eligibility criteria.`
+                                                : `${eligibilitySummary.ineligible} selected employees are technically excluded by rules, but you can still proceed manually.`
+                                            }
+                                        </CardDescription>
+                                    </CardHeader>
+                                </Card>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>Cancel</Button>
+                            <Button 
+                                onClick={handleAddEmployeeProceed} 
+                                disabled={selectedEmployeeIdsToAdd.length === 0 || isAddingEmployees}
+                            >
+                                {isAddingEmployees ? 'Adding...' : `Proceed with ${selectedEmployeeIdsToAdd.length} employee(s)`}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </TooltipProvider>
         </div>
     );
 }
